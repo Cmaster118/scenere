@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/http//cmaster118.github.io/serene/static/css/main.8c8b27cf.chunk.css",
+    "main.js": "/http//cmaster118.github.io/serene/static/js/main.18cc7ace.chunk.js",
+    "main.js.map": "/http//cmaster118.github.io/serene/static/js/main.18cc7ace.chunk.js.map",
+    "runtime-main.js": "/http//cmaster118.github.io/serene/static/js/runtime-main.850868c3.js",
+    "runtime-main.js.map": "/http//cmaster118.github.io/serene/static/js/runtime-main.850868c3.js.map",
+    "static/css/2.1a02f21c.chunk.css": "/http//cmaster118.github.io/serene/static/css/2.1a02f21c.chunk.css",
+    "static/js/2.21843b61.chunk.js": "/http//cmaster118.github.io/serene/static/js/2.21843b61.chunk.js",
+    "static/js/2.21843b61.chunk.js.map": "/http//cmaster118.github.io/serene/static/js/2.21843b61.chunk.js.map",
+    "static/js/3.6881378d.chunk.js": "/http//cmaster118.github.io/serene/static/js/3.6881378d.chunk.js",
+    "static/js/3.6881378d.chunk.js.map": "/http//cmaster118.github.io/serene/static/js/3.6881378d.chunk.js.map",
+    "index.html": "/http//cmaster118.github.io/serene/index.html",
+    "static/css/2.1a02f21c.chunk.css.map": "/http//cmaster118.github.io/serene/static/css/2.1a02f21c.chunk.css.map",
+    "static/css/main.8c8b27cf.chunk.css.map": "/http//cmaster118.github.io/serene/static/css/main.8c8b27cf.chunk.css.map",
+    "static/js/2.21843b61.chunk.js.LICENSE.txt": "/http//cmaster118.github.io/serene/static/js/2.21843b61.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.850868c3.js",
+    "static/css/2.1a02f21c.chunk.css",
+    "static/js/2.21843b61.chunk.js",
+    "static/css/main.8c8b27cf.chunk.css",
+    "static/js/main.18cc7ace.chunk.js"
+  ]
+}
