@@ -11,19 +11,65 @@ class navigation extends React.Component {
 
         };
 	}
+
+	triggerLogout = () => {
+		this.props.clearLogin()
+	}
 	
 	render() {
+		const basePath = this.props.basePath
+
+		let iconButton = null
+		let userDisplay = null
+
+		if (this.props.currentUser === undefined) {
+			iconButton = [
+				(<li className={'nav-item'} key='0'>
+					<Link className="nav-link" to={basePath+"/signup"}>
+						Sign Up
+					</Link>
+				</li>),
+
+				(<li className={'nav-item'}  key='1'>
+					<Link className="nav-link" to={basePath+"/signin"}>
+						Sign In
+					</Link>
+				</li>)
+			]
+
+			userDisplay = (
+				<li className={'nav-item'}  key='2'>	
+					<Link className="nav-link" to={basePath+"/menu"}>
+						None
+					</Link>
+				</li>
+			)
+		}
+		else {
+			iconButton = (
+				<li className={'nav-item'}  key='3'>
+					<Link className="nav-link" to={basePath+"/"} onClick={this.triggerLogout}>
+						Sign Out
+					</Link>
+				</li>
+			)
+
+			userDisplay = (
+				<li className={'nav-item'}  key='4'>	
+					<Link className="nav-link" to={basePath+"/menu"}>
+						{this.props.currentUser}
+					</Link>
+				</li>
+			)
+		}
+
 		return (
 			<div className="navigation">
 				<nav className="navbar navbar-expand-lg navbar-dark bg-dark">
 					<div className="container">
-						<Link className="navbar-brand" to="/">
-							Unnamed Journaling Site
+						<Link className="navbar-brand" to={basePath+"/"}>
+							Project Serene
 						</Link>
-						
-						<p className="text-light">
-							Current User: {this.props.currentUser}
-						</p>
 						
 						<button
 							className="navbar-toggler"
@@ -37,68 +83,14 @@ class navigation extends React.Component {
 							
 							<span className="navbar-toggler-icon"></span>
 						</button>
+
 						<div className="collapse navbar-collapse" id="navbarResponsive">
 							<ul className="navbar-nav ml-auto">
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/">
-										Landing
-										<span className="sr-only">(current)</span>
-									</Link>
+								{iconButton}
+								<li className={'nav-link'}>	
+									Current User: 
 								</li>
-								
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/signup" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/signup">
-										Sign Up
-									</Link>
-								</li>
-								
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/signin" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/signin">
-										Sign In
-									</Link>
-								</li>
-								
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/read" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/read">
-										JournalScan
-									</Link>
-								</li>
-								
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/write" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/write">
-										JournalWrite
-									</Link>
-								</li>
-								
-								<li
-									className={`nav-item  ${
-									this.props.location.pathname === "/company" ? "active" : ""
-									}`}
-									>
-									<Link className="nav-link" to="/company">
-										Company
-									</Link>
-								</li>
+								{userDisplay}
 							</ul>
 						</div>
 					</div>
