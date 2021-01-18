@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/serene/static/css/main.3a4e0354.chunk.css",
-    "main.js": "/serene/static/js/main.3c7e5da1.chunk.js",
-    "main.js.map": "/serene/static/js/main.3c7e5da1.chunk.js.map",
+    "main.js": "/serene/static/js/main.3f472bd4.chunk.js",
+    "main.js.map": "/serene/static/js/main.3f472bd4.chunk.js.map",
     "runtime-main.js": "/serene/static/js/runtime-main.2b9eb00f.js",
     "runtime-main.js.map": "/serene/static/js/runtime-main.2b9eb00f.js.map",
     "static/css/2.1a02f21c.chunk.css": "/serene/static/css/2.1a02f21c.chunk.css",
@@ -20,6 +20,6 @@
     "static/css/2.1a02f21c.chunk.css",
     "static/js/2.d0dc2825.chunk.js",
     "static/css/main.3a4e0354.chunk.css",
-    "static/js/main.3c7e5da1.chunk.js"
+    "static/js/main.3f472bd4.chunk.js"
   ]
 }
