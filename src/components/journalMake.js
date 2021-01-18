@@ -1,6 +1,7 @@
 import React from "react";
 import axios from "axios";
 
+import { withRouter } from "react-router-dom";
 //import Store from "store"
 import {Editor, EditorState, RichUtils, ContentState} from 'draft-js';
 
@@ -36,20 +37,19 @@ class journalView extends React.Component {
 		
 	};
 
+	backButton = () => {
+		this.props.history.goBack()
+	}
+
 	// Lets test a POST request then!
 	saveJournal = () => {
-		
-		if (this.props.authToken == null) {
-			console.log("Not logged in")
-			return false
-		}
 		
 		const config = {
 			headers: { Authorization: `JWT ${this.props.authToken}` }
 		};
 		
 		const data = {
-			shorthand: 'Some sort of has identifier?',
+			shorthand: 'made from the website (random code needed)',
 			
 			// This is my workaround before I learn what ACTUALLY TO DO HERE
 			author: '',
@@ -63,9 +63,9 @@ class journalView extends React.Component {
 			content: this.state.editorState.getCurrentContent().getPlainText(),
 		};
 		
-		console.log(data.content)
+		//console.log(data.content)
 		
-		axios.post("http://10.0.0.60:8000/saveUserJournal/", data, config )
+		axios.post(this.props.APIHost +"/saveUserJournal/", data, config )
 		.then( res => { 
 		
 			console.log(res)
@@ -74,7 +74,10 @@ class journalView extends React.Component {
 		})
 		.catch( err => {
 			// Change this depending on the error...
-			console.log(err)
+			if (err.response.status === 401) {
+				this.props.forceLogout()
+				this.props.history.push(this.props.reRouteTarget)
+			}
 		})
 	}
 
@@ -108,6 +111,17 @@ class journalView extends React.Component {
 		return (
 			<div className="makeView">
 				<div className="container">
+
+					<div className="row">
+						<div className="col-sm-3 m-2">	
+							<button className="btn btn-primary" onClick={this.backButton}>
+								Go Back
+							</button>
+						</div>
+						<div className="col-sm m-2">	
+							Page Title Test!
+						</div>
+					</div>
 				
 					<div className="row">
 						<div className="col">
@@ -138,4 +152,4 @@ class journalView extends React.Component {
 	}
 }
 
-export default journalView;
+export default withRouter(journalView);

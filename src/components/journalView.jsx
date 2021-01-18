@@ -3,7 +3,10 @@ import axios from "axios";
 
 import Store from "store"
 import Calendar from 'react-calendar'
+import 'react-calendar/dist/Calendar.css';
 import { Doughnut, Radar, Bar } from 'react-chartjs-2';
+
+import { withRouter } from "react-router-dom";
 
 //import {isLoggedIn} from '../utils';
 import {getRadarEmotionData, getSentimentData, getConceptsData, getCategoryData} from '../utils';
@@ -50,6 +53,10 @@ class journalView extends React.Component {
 		};
 		
 	};
+
+	backButton = () => {
+		this.props.history.goBack()
+	}
 	
 	componentDidMount() {
 		
@@ -67,6 +74,7 @@ class journalView extends React.Component {
 		try{
 			this.setState({validJournalScanDates: journalDates.AIDates, validJournalDates: journalDates.journalDates})
 			console.log("Got the journal data from the cookies")
+			
 		} catch{
 			//console.log("No cookies to load the data from")
 		}
@@ -247,11 +255,6 @@ class journalView extends React.Component {
 	
 	getJournalDates = () => {
 		
-		if (this.props.authToken == null) {
-			console.log("Not logged in")
-			return false
-		}
-		
 		const config = {
 			headers: { Authorization: `JWT ${this.props.authToken}` }
 		};
@@ -260,7 +263,7 @@ class journalView extends React.Component {
 		
 		// So, this will give you EVERY SINGLE VALID ENTRY WE HAVE
 		// WITHOUT. I REPEAT. WITHOUT THE JOURNAL CONTENT
-		axios.get("http://10.0.0.60:8000/getJournalDates", config)
+		axios.get(this.props.APIHost +"/getJournalDates", config)
 		.then( 
 			res => {
 				
@@ -291,13 +294,19 @@ class journalView extends React.Component {
 				
 		})
 		.catch( err => {
-			console.log(err)
+			if (err.response.status === 401) {
+				this.props.forceLogout()
+				this.props.history.push(this.props.reRouteTarget)
+			}
 		});
 		
 		return false
 	};
 	
 	pickDate = (selectedDate) => {
+		
+		console.log("requesting date")
+		this.setState({currentDate: selectedDate})
 		
 		// Okay, so check to see if we HAVE the journal entry in our storage
 		// If we do, show that!
@@ -319,14 +328,9 @@ class journalView extends React.Component {
 			// Probobly need to add a "last Edited" field...
 			// And and edit history... but that is for later
 			
-			// We will change this to its own function eventually...
-			if (this.props.authToken == null) {
-				console.log("Not logged in")
-				return false
-			}
-			
 			const config = {
-				headers: { Authorization: `JWT ${this.props.authToken}` }
+				//headers: { Authorization: `JWT ${this.props.authToken}` }
+				headers: { Authorization: `JWT asdkjdsakjldsajklsd` }
 			};
 			
 			console.log("requesting date")
@@ -334,7 +338,7 @@ class journalView extends React.Component {
 			
 			const dateReq = selectedDate.toJSON().split("T")[0]
 			
-			axios.get("http://10.0.0.60:8000/getUserJournal/?reqDate="+dateReq, config)
+			axios.get(this.props.APIHost +"/getUserJournal/?reqDate="+dateReq, config)
 			.then( 
 				res => {
 					// What if it is > 1?
@@ -366,38 +370,48 @@ class journalView extends React.Component {
 					// LEts not store it in the cookies for now...
 			})
 			.catch( err => {
-				console.log(err)
+				
+				if (err.response.status === 401) {
+					this.props.forceLogout()
+					this.props.history.push(this.props.reRouteTarget)
+				}
+				
 			});
 		
 		}
 	};
 	
-	tileClassName = ({ date, view }) => {
+	forceCalenderUpdateTest = () => {
 		
-		// Add class to tiles in month view only
-		if (view === 'month') {
-			
-			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
-			
-			//console.log(checkDate)
-			//console.log(this.state.validJournalDates)
-
-			// Check if a date React-Calendar wants to check is on the list of dates to add class to
-			const hasJournal = this.state.validJournalDates.find( element => element === checkDate)
-			const hasAI = this.state.validJournalScanDates.find( element => element === checkDate)
-			
-			if (hasAI) {
-				return 'btn-dark';
-			} else if (hasJournal) {
-				return 'btn-info'
-			} else {
-				return 'btn-light'
-			}
-			
-		}
 	}
 
 	render() {
+		
+		const tileClassName = ({ date, view }) => {
+		
+			// Add class to tiles in month view only
+			if (view === 'month') {
+				
+				const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
+				
+				//console.log(checkDate)
+				//console.log(this.state.validJournalDates)
+
+				// Check if a date React-Calendar wants to check is on the list of dates to add class to
+				const hasJournal = this.state.validJournalDates.find( element => element === checkDate)
+				const hasAI = this.state.validJournalScanDates.find( element => element === checkDate)
+				
+				if (hasAI) {
+					return 'btn btn-success';
+				} else if (hasJournal) {
+					return 'btn btn-warning'
+				} else {
+					// use the default styling...
+					//return 'btn btn-outline-dark'
+				}
+				
+			}
+		}
 		
 		// Entities
 		var entitiesDisplay = [];
@@ -472,14 +486,27 @@ class journalView extends React.Component {
 			<div className="mainView">
 				
 				<div className="container">
+
+					<div className="row">
+						<div className="col-sm-3 m-2">	
+							<button className="btn btn-primary" onClick={this.backButton}>
+								Go Back
+							</button>
+
+						</div>
+						<div className="col-sm m-2">	
+							Page Title Test!
+						</div>
+					</div>
+
 					<div className="row ">
 						<div className="col-lg-3 border m-2">					
 							<div>
 								<Calendar 
 									onChange={this.pickDate}
 									value={this.state.currentDate}
-									tileClassName={this.tileClassName}
-									
+									tileClassName={tileClassName}
+
 									minDetail={'year'}
 									maxDetail={'month'}
 								/>
@@ -591,4 +618,4 @@ class journalView extends React.Component {
 	}
 }
 
-export default journalView;
+export default withRouter(journalView);

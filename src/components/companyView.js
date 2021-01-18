@@ -3,7 +3,12 @@ import axios from "axios";
 
 import Store from "store"
 import Calendar from 'react-calendar'
+import 'react-calendar/dist/Calendar.css';
+
+import { withRouter } from "react-router-dom";
 import { Doughnut, Radar, Bar } from 'react-chartjs-2';
+
+import { ProgressBar } from 'react-bootstrap';
 
 import {getRadarEmotionData, getSentimentData, getConceptsData, getCategoryData} from '../utils';
 import {getRadarEmotionOptions, getSentimentOptions, getConceptsOptions, getCategoryOptions} from '../utils';
@@ -29,6 +34,8 @@ class companyView extends React.Component {
 			
 			currentDate: new Date(),
 			
+			responsePurity: 0,
+			
 			dataCategories: getCategoryData([0], ['']),
 			optionsCategories: getCategoryOptions(),
 			
@@ -48,6 +55,10 @@ class companyView extends React.Component {
         };
 		
 	};
+
+	backButton = () => {
+		this.props.history.goBack()
+	}
 	
 	loadTestData = () => {
 		// And here is our testdata for display
@@ -56,6 +67,8 @@ class companyView extends React.Component {
 			
 			//console.log(AIdata)
 			// This AI data is going to be a Liiiiiittle more complex...
+			
+			//console.log(AIdata.ResponsePurity)
 			
 			// Categories!
 			const catData = AIdata.categories
@@ -140,42 +153,65 @@ class companyView extends React.Component {
 			const entData = AIdata.entities
 			//console.log(entData)
 			
-			/*let entity = []
+			// The current form of the name being the key is probobly EXTREMELY BAD form?
+			// Change that later I guess...
+			let entity = []
 
 			for (index in entData) {
 				const ent = entData[index]
 				//console.log(ent)
+
+				let entEmSum = [0,0,0,0,0]
+				let entRelSum = 0
+				let entSenSum = 0
+				let entConSum = 0
+				maxVal = 0
 				
-				// What about this?
-				//console.log(ent.disambiguation)
-				
-				const entEmotion = [ent.emotion.anger, ent.emotion.disgust, ent.emotion.fear, ent.emotion.joy, ent.emotion.sadness]
-				
-				const senDataScore = ent.sentiment.score
-				const oppData = 1-Math.abs(senDataScore)
-				
-				let arrangedDataScore = [0, 0]
-				if (senDataScore > 0) {
-					arrangedDataScore = [senDataScore, oppData]
-				} else {
-					arrangedDataScore = [oppData, senDataScore]
+				for (i in ent.batchData) {
+					const entData = ent.batchData[i]
+					
+					const entEmotion = [entData.emotion.anger, entData.emotion.disgust, entData.emotion.fear, entData.emotion.joy, entData.emotion.sadness]
+					for( i in entEmSum ){
+						entEmSum[i] += entEmotion[i]
+					}
+					
+					entConSum += entData.confidence
+					entRelSum += entData.relevance
+					entSenSum += entData.sentiment.score
+					
+					maxVal += 1
 				}
+
+				for( i in entEmSum ){
+					entEmSum[i] /= maxVal
+				}
+				
+				entConSum /= maxVal
+				entSenSum /= maxVal
+				entRelSum /= maxVal
+
+				//console.log(entSenSum/maxVal)
+				const entSenOne = 0.5*(entSenSum/maxVal + 1)
+				const entSenOpp = 0.5*(entSenSum/maxVal - 1)
+				
+				let entSenScore = [entSenOne, entSenOpp]
 				
 				const entStore = {
 					id:index,
 					
-					text:ent.text,
+					text:index,
 					type:ent.type,
 					
-					count:ent.count,
-					relevance:ent.relevance,
-					
-					emotion:entEmotion,
-					sentiment:arrangedDataScore,
+					count:ent.batchData.length,
+					relevance:entRelSum,
+					confidence:entConSum,
+
+					emotion:entEmSum,
+					sentiment:entSenScore,
 				}
 				
 				entity.push(entStore)
-			}*/
+			}
 			
 			// Keywords!
 			const keyData = AIdata.keywords
@@ -184,7 +220,8 @@ class companyView extends React.Component {
 
 			for (index in keyData) {
 				const key = keyData[index]
-				
+				//console.log(key)
+
 				//console.log(key.emotion)
 				//console.log(key.sentiment)
 				
@@ -212,9 +249,10 @@ class companyView extends React.Component {
 				}
 				
 				keySenSum /= maxVal
+				keyRelSum /= maxVal
 				
-				const keySenOne = 0.5*(keySenSum + 1) /maxVal
-				const keySenOpp = 0.5*(keySenSum - 1) /maxVal
+				const keySenOne = 0.5*(keySenSum/maxVal + 1) 
+				const keySenOpp = 0.5*(keySenSum/maxVal - 1) 
 				
 				let keySenScore = [keySenOne, keySenOpp]
 				
@@ -265,18 +303,20 @@ class companyView extends React.Component {
 				maxVal += 1
 			}
 						
-			const senOne = 0.5*(senSum + 1) /maxVal
-			const senOpp = 0.5*(senSum - 1) /maxVal
+			const senOne = 0.5*(senSum/maxVal + 1) 
+			const senOpp = 0.5*(senSum/maxVal - 1) 
 			
 			let arrangedDataScore = [senOne, senOpp]
 			
 			this.setState({
 				
+				responsePurity:AIdata.ResponsePurity,
+				
 				dataCategories:getCategoryData(catScores, catLabels),
 				dataConcepts:getConceptsData(conRelevance, conLabels),
 				dataEmotion:getRadarEmotionData(emSum),
 				
-				//dataEntities: entity,
+				dataEntities: entity,
 				dataKeywords: keyword,
 				//dataRelations: relation,
 			
@@ -291,15 +331,16 @@ class companyView extends React.Component {
 	
 	getCookiesValidDates = () => {
 		let getDates = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
-		this.setState({validSummaryDates: getDates['dates']})
+		
+		try {
+			this.setState({validSummaryDates: getDates['dates']})
+		}
+		catch {
+			console.log("Not in the cookies")
+		}
 	}
 	
 	getValidDates = () => {
-		
-		if (this.props.authToken == null) {
-			console.log("Not logged in")
-			return false
-		}
 		
 		if (this.state.currentCompany === "None") {
 			console.log("Select Valid Company!")
@@ -310,7 +351,7 @@ class companyView extends React.Component {
 			headers: { Authorization: `JWT ${this.props.authToken}` }
 		};
 		
-		axios.get("http://10.0.0.60:8000/getCompanyDates?reComp="+this.state.currentCompany, config)
+		axios.get(this.props.APIHost + "/getCompanyDates?reComp="+this.state.currentCompany, config)
 		.then( 	res => {
 				let tempSumArray = []
 				
@@ -334,23 +375,20 @@ class companyView extends React.Component {
 				this.setState({validSummaryDates: tempSumArray})
 		})
 		.catch( err => {
-			console.log(err)
+			if (err.response.status === 401) {
+				this.props.forceLogout()
+				this.props.history.push(this.props.reRouteTarget)
+			}
 		});
 	}
 	
 	getCompanyList = () => {
-
-		// We will change this to its own function eventually...
-		if (this.props.authToken == null) {
-			console.log("Not logged in")
-			return false
-		}
 		
 		const config = {
 			headers: { Authorization: `JWT ${this.props.authToken}` }
 		};
 	
-		axios.get("http://10.0.0.60:8000/getUsersCompanies", config)
+		axios.get(this.props.APIHost +"/getUsersCompanies", config)
 		.then( 	res => {
 				// Should respond with a 1 length thing
 				if (res.data.length > 0) {
@@ -399,7 +437,10 @@ class companyView extends React.Component {
 				}
 			})
 			.catch( err => {
-				console.log(err)
+				if (err.response.status === 401) {
+					this.props.forceLogout()
+					this.props.history.push(this.props.reRouteTarget)
+				}
 			});
 	}
 	
@@ -409,6 +450,9 @@ class companyView extends React.Component {
 			console.log("Select Valid Company!")
 			return false
 		}
+		
+		console.log("requesting date")
+		this.setState({currentDate: selectedDate})
 		
 		// Okay, so check to see if we HAVE the journal entry in our storage
 		// If we do, show that!
@@ -426,22 +470,13 @@ class companyView extends React.Component {
 			// So, we need to get the summary data from the server...
 			// We need the company name we want here, and the user, which we have...
 			
-			// We will change this to its own function eventually...
-			if (this.props.authToken == null) {
-				console.log("Not logged in")
-				return false
-			}
-			
 			const config = {
 				headers: { Authorization: `JWT ${this.props.authToken}` }
 			};
 			
-			console.log("requesting date")
-			this.setState({currentDate: selectedDate})
-			
 			const dateReq = selectedDate.toJSON().split("T")[0]
 			
-			axios.get("http://10.0.0.60:8000/getCompanySummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
+			axios.get(this.props.APIHost +"/getCompanySummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
 			.then( 
 				res => {
 					// What if it is > 1?
@@ -471,33 +506,14 @@ class companyView extends React.Component {
 					// LEts not store it in the cookies for now...
 			})
 			.catch( err => {
-				console.log(err)
+				if (err.response.status === 401) {
+					this.props.forceLogout()
+					this.props.history.push(this.props.reRouteTarget)
+				}
 			});
 		
 		}
 	};
-	
-	tileClassName = ({ date, view }) => {
-		
-		// Add class to tiles in month view only
-		if (view === 'month') {
-			
-			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
-			
-			//console.log(checkDate)
-			//console.log(this.state.validJournalDates)
-
-			// Check if a date React-Calendar wants to check is on the list of dates to add class to
-			const hasSummary = this.state.validSummaryDates.find( element => element === checkDate)
-			
-			if (hasSummary) {
-				return 'btn-dark';
-			} else {
-				return 'btn-light'
-			}
-			
-		}
-	}
 	
 	setCurrentCompany = (event) => {
 	
@@ -505,6 +521,28 @@ class companyView extends React.Component {
 	}
 	
 	render() {
+		
+		const tileClassName = ({ date, view }) => {
+		
+			// Add class to tiles in month view only
+			if (view === 'month') {
+				
+				const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
+				
+				//console.log(checkDate)
+				//console.log(this.state.validJournalDates)
+
+				// Check if a date React-Calendar wants to check is on the list of dates to add class to
+				const hasSummary = this.state.validSummaryDates.find( element => element === checkDate)
+				
+				if (hasSummary) {
+					return 'btn btn-success'
+				} else {
+					//return 'btn btn-outline-dark'
+				}
+				
+			}
+		}
 		
 		var dropDownInternal = []
 		
@@ -533,6 +571,7 @@ class companyView extends React.Component {
 						<th scope="row">{ent.text}</th>
 						<td>{ent.type}</td>
 						<td>{ent.count}</td>
+						<td>{ent.confidence}</td>
 						<td>{ent.relevance}</td>
 						<td> <Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /> </td>
 						<td> <Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /> </td>
@@ -542,9 +581,9 @@ class companyView extends React.Component {
 		}
 		else {
 			entitiesDisplay.push(
-				<p>
-					None Found!
-				</p>
+				<tr key="0">
+					<th scope="row">None Found!</th>
+				</tr>
 			)
 		}
 		
@@ -562,6 +601,7 @@ class companyView extends React.Component {
 					<tr key={key.id}>
 						<th scope="row">{key.text}</th>
 						<td>{key.count}</td>
+						<td>{key.relevance}</td>
 						<td><Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /></td>
 						<td><Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /></td>
 					</tr>
@@ -570,9 +610,9 @@ class companyView extends React.Component {
 		}
 		else {
 			keywordsDisplay.push(
-				<p>
-					None Found!
-				</p>
+				<tr key="0">
+					<th scope="row">None Found!</th>
+				</tr>
 			)
 		}
 		
@@ -595,9 +635,12 @@ class companyView extends React.Component {
 		}
 		else {
 			relationsDisplay.push(
-				<p>
-					None Found!
-				</p>
+				<tr key="0">
+					<th scope="row">Unimplemented!</th>
+					<th scope="row">Unimplemented!</th>
+					<th scope="row">Unimplemented!</th>
+					<th scope="row">Unimplemented!</th>
+				</tr>
 			)
 		}
 		
@@ -606,12 +649,23 @@ class companyView extends React.Component {
 				<div className="container">
 					
 					<div className="row">
+						<div className="col-sm-3 m-2">	
+							<button className="btn btn-primary" onClick={this.backButton}>
+								Go Back
+							</button>
+						</div>
+						<div className="col-sm m-2">	
+							Page Title Test!
+						</div>
+					</div>
+
+					<div className="row">
 						<div className="col-lg-3 border m-2">					
 							<div>
 								<Calendar 
 									onChange={this.pickDate}
 									value={this.state.currentDate}
-									tileClassName={this.tileClassName}
+									tileClassName={tileClassName}
 									
 									minDetail={'year'}
 									maxDetail={'month'}
@@ -645,6 +699,17 @@ class companyView extends React.Component {
 					</div>
 					
 					<div className="row my-2">
+						<div className="col">
+							<div className="progressBar">
+								<h3>Summary Data for date: {this.state.currentDate.toString()}</h3>
+
+								<ProgressBar now={ this.state.responsePurity } label={`${this.state.responsePurity}% Response Rate`} />
+
+							</div>
+						</div>
+					</div>
+					
+					<div className="row my-2">
 						<div className="col border mx-2">
 							<Radar ref={this.chartReference} data={this.state.dataEmotion} options={this.state.optionsEmotions} />
 						</div>
@@ -672,6 +737,7 @@ class companyView extends React.Component {
 								<th scope="col">Name</th>
 								<th scope="col">Type</th>
 								<th scope="col">#Appearances</th>
+								<th scope="col">Confidence Score</th>
 								<th scope="col">Relevance Score</th>
 								<th scope="col">Emotion</th>
 								<th scope="col">Sentiment</th>
@@ -693,6 +759,7 @@ class companyView extends React.Component {
 							<tr>
 								<th scope="col">Word</th>
 								<th scope="col">#Appearances</th>
+								<th scope="col">Relevance Score</th>
 								<th scope="col">Emotion</th>
 								<th scope="col">Sentiment</th>
 							</tr>
@@ -734,4 +801,4 @@ class companyView extends React.Component {
 	}
 }
 
-export default companyView;
+export default withRouter(companyView);

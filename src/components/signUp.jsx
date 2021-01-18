@@ -69,7 +69,7 @@ class signup extends React.Component {
 		
 		//console.log(data)
 
-		/*axios.post("http://10.0.0.60:8000/registerUser/", data )
+		axios.post(this.props.APIHost +"/registerUser/", data )
 		.then( res => { 
 			this.setState({ latestAttept: 200 })
 			console.log("Success")
@@ -79,7 +79,7 @@ class signup extends React.Component {
 			this.setState({ latestAttept: 400 })
 			console.log(err)
 			console.log("Connection failed...")
-		})*/
+		})
 
 		event.preventDefault();
 	}
@@ -127,10 +127,6 @@ class signup extends React.Component {
 					</div>
 					
 					<button type='submit' className='btn btn-dark btn-block'>Submit</button>
-					
-					<p className='forgot-password text-right text-dark'>
-						<a href='10.0.0.60:3000'>Already Registered?</a>
-					</p>
 							
 				</form>
 			

@@ -1,12 +1,22 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Switch, withRouter } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 
-import { Navigation, Footer, Landing, SignIn, SignUp, ViewJournals, WriteJournals, ViewCompany } from "./components";
+import axios from "axios";
+
+import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, ViewJournals, WriteJournals, ViewCompany, SetCompany, MainMenu } from "./components";
 
 import Store from "store"
 
 //import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
+
+// Is THIS a patch for Github Pages react stuff?
+// Maybe...
+// Ill have to test this...
+const basePath = "/serene"
+
+const hostName = "https://cmaster.pythonanywhere.com"
+//const hostName = "10.0.0.60:8000"
 
 class App extends React.Component {
 	
@@ -14,15 +24,14 @@ class App extends React.Component {
 		super(props);
 		this.state = {
           
-		  currentUser: null,
-		  sessionToken: null,
+		  currentUser: undefined,
+		  sessionToken: undefined,
 
         };
 	}
 	
 	componentDidMount() {
 		this.loadFromCookies();
-		
 	};
 	
 	loadFromCookies = () => {
@@ -46,34 +55,126 @@ class App extends React.Component {
 		return true
 	}
 	
+	// Test out refreshing the token...
+	// Should do this every page reload...
+	refresh = () => {
+		const data = {
+			token: this.state.sessionToken,
+		};
+		
+		axios.post(hostName + "/apiTokenRefresh/", data)
+		.then( 	res => {
+			//console.log(res)
+			
+			// If we get here then we should have a new token
+			//console.log(res.data.token)
+			console.log("Token refreshed")
+			// A little bit unnecessary but hey...
+			this.setToken( res.data.token, this.state.currentUser)
+			
+		})
+		.catch( err => {
+			console.log(err)
+			// Check for a specific error?
+			
+			this.redirectToSignin()
+		});
+	}
+
+	// Should move this over to the UTIL...
+	logout = () => {
+		this.setState({ sessionToken: undefined, currentUser: undefined })
+
+		Store.remove('lastUser')
+	}
+	
+	// maybe I should move all the AXIOS stuff to its own file...
+	
 	render() {
+
 		return (
 			<Router>
 				<div className="App">
+			
 					<Navigation 
 						currentUser={this.state.currentUser}
+						basePath={basePath}
+
+						clearLogin={this.setToken}
 					/>
 						
 					<Switch>
-						<Route path="/" exact component={() => <Landing 
+						<Route path={basePath+"/"} exact component={() => <Landing 
+								APIHost={hostName}
 								
 							/>} />
-						<Route path="/signin" exact component={() => <SignIn 
-								tokenSetter={this.setToken}
+						<Route path={basePath+"/signin"} exact component={() => <SignIn 
+								loginSave={this.setToken}
+								APIHost={hostName}
+
+								reRouteTarget={basePath+"/menu"}
+								forgotPath={basePath+"/forgot"}
 							/>} />
-						<Route path="/signup" exact component={() => <SignUp 
+						<Route path={basePath+"/signup"} exact component={() => <SignUp 
+								APIHost={hostName}
+								reRouteTarget={basePath+"/signin"}
 						
 							/>} />
-						<Route path="/read" exact component={() => <ViewJournals 
+						<Route path={basePath+"/forgot"} exact component={() => <Forgot 
+								APIHost={hostName}
+								
+								reRouteTarget={basePath+"/signin"}
+							/>} />
+
+						<Route path={basePath+"/menu"} exact component={() => <MainMenu 
+								APIHost={hostName}
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+
+								reRouteTarget={basePath+"/"}
+
+								journalWriteDirect={basePath+"/write"}
+								journalReadDirect={basePath+"/read"}
+								companyReadDirect={basePath+"/companyCheck"}
+								companySettingDirect={basePath+"/companySet"}	
+
+
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
 							/>} />
-						<Route path="/write" exact component={() => <WriteJournals 
+
+						<Route path={basePath+"/read"} exact component={() => <ViewJournals 
+								APIHost={hostName}
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+								forceLogout={this.logout}
+								
+								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
 							/>} />
-						<Route path="/company" exact component={() => <ViewCompany 
+						<Route path={basePath+"/write"} exact component={() => <WriteJournals 
+								APIHost={hostName}
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+								
 								authToken={this.state.sessionToken}
 							/>} />
+						<Route path={basePath+"/companyCheck"} exact component={() => <ViewCompany 
+								APIHost={hostName}
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+								
+								authToken={this.state.sessionToken}
+							/>} />
+							
+						<Route path={basePath+"/companySet"} exact component={() => <SetCompany 
+								APIHost={hostName}
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+								
+								authToken={this.state.sessionToken}
+							/>} />
+
 					</Switch>
 
 					<Footer 
