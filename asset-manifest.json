@@ -1,24 +1,24 @@
 {
   "files": {
-    "main.css": "/serene/static/css/main.3a4e0354.chunk.css",
-    "main.js": "/serene/static/js/main.26af001b.chunk.js",
-    "main.js.map": "/serene/static/js/main.26af001b.chunk.js.map",
-    "runtime-main.js": "/serene/static/js/runtime-main.0b5798eb.js",
-    "runtime-main.js.map": "/serene/static/js/runtime-main.0b5798eb.js.map",
-    "static/css/2.36e368f0.chunk.css": "/serene/static/css/2.36e368f0.chunk.css",
-    "static/js/2.ae3596ed.chunk.js": "/serene/static/js/2.ae3596ed.chunk.js",
-    "static/js/2.ae3596ed.chunk.js.map": "/serene/static/js/2.ae3596ed.chunk.js.map",
-    "static/js/3.ec297d43.chunk.js": "/serene/static/js/3.ec297d43.chunk.js",
-    "static/js/3.ec297d43.chunk.js.map": "/serene/static/js/3.ec297d43.chunk.js.map",
-    "index.html": "/serene/index.html",
-    "static/css/2.36e368f0.chunk.css.map": "/serene/static/css/2.36e368f0.chunk.css.map",
-    "static/css/main.3a4e0354.chunk.css.map": "/serene/static/css/main.3a4e0354.chunk.css.map",
-    "static/js/2.ae3596ed.chunk.js.LICENSE.txt": "/serene/static/js/2.ae3596ed.chunk.js.LICENSE.txt"
+    "main.css": "/scenere/static/css/main.3a4e0354.chunk.css",
+    "main.js": "/scenere/static/js/main.26af001b.chunk.js",
+    "main.js.map": "/scenere/static/js/main.26af001b.chunk.js.map",
+    "runtime-main.js": "/scenere/static/js/runtime-main.5843efda.js",
+    "runtime-main.js.map": "/scenere/static/js/runtime-main.5843efda.js.map",
+    "static/css/2.36e368f0.chunk.css": "/scenere/static/css/2.36e368f0.chunk.css",
+    "static/js/2.69e2ea2d.chunk.js": "/scenere/static/js/2.69e2ea2d.chunk.js",
+    "static/js/2.69e2ea2d.chunk.js.map": "/scenere/static/js/2.69e2ea2d.chunk.js.map",
+    "static/js/3.ec297d43.chunk.js": "/scenere/static/js/3.ec297d43.chunk.js",
+    "static/js/3.ec297d43.chunk.js.map": "/scenere/static/js/3.ec297d43.chunk.js.map",
+    "index.html": "/scenere/index.html",
+    "static/css/2.36e368f0.chunk.css.map": "/scenere/static/css/2.36e368f0.chunk.css.map",
+    "static/css/main.3a4e0354.chunk.css.map": "/scenere/static/css/main.3a4e0354.chunk.css.map",
+    "static/js/2.69e2ea2d.chunk.js.LICENSE.txt": "/scenere/static/js/2.69e2ea2d.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
-    "static/js/runtime-main.0b5798eb.js",
+    "static/js/runtime-main.5843efda.js",
     "static/css/2.36e368f0.chunk.css",
-    "static/js/2.ae3596ed.chunk.js",
+    "static/js/2.69e2ea2d.chunk.js",
     "static/css/main.3a4e0354.chunk.css",
     "static/js/main.26af001b.chunk.js"
   ]
