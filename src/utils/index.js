@@ -21,6 +21,10 @@ export const isLoggedIn = () => {
 // Lets try this for the Graph Data...
 // See if this works out okay...
 // The options may be overkill though...
+
+
+// Initial tests show good results, So I should merge these into as few functions as I can....
+// Right now its too many...
 export const getRadarEmotionData = (inputData) => {
 	
 	const data = {
@@ -189,9 +193,233 @@ export const getCategoryOptions = () => {
 	return options
 }
 
+// Now we can test to see how this would actually look.
+export const testMaxMin = (inputMax, inputAve, inputMin) => {
+	const data = {
+		labels: ['Joy', 'Anger', 'Sadness', 'Disgust', 'Fear'],
+			datasets: [ 
+			{
+				label: 'Max',
+				data: inputMax,
+				backgroundColor: 'rgba(99, 255, 132, 0.2)',
+				borderColor: 'rgba(99, 255, 132, 1)',
+				borderWidth: 1,
+			},
+			{
+				label: 'Ave',
+				data: inputAve,
+				backgroundColor: 'rgba(99, 132, 255, 0.2)',
+				borderColor: 'rgba(99, 132, 255, 1)',
+				borderWidth: 1,
+			},
+			{
+				label: 'Min',
+				data: inputMin,
+				backgroundColor: 'rgba(255, 99, 132, 0.2)',
+				borderColor: 'rgba(255, 99, 132, 1)',
+				borderWidth: 1,
+			},
+		],
+	}
+	
+	return data
+}
 
-// This is where my template stuff here?
-export const getDoughData = (inputData, inputData2) => {
+// How can I make this not terrible back here?
+export const testBarMulti = (inputData) => {
+	const data = {
+	labels: ['Joy', 'Anger', 'Sadness', 'Disgust', 'Fear'],
+	datasets: [
+			{
+			label: '% Above Threshold',
+			data: inputData,
+			backgroundColor: [
+				'rgba(255, 99, 132, 0.2)',
+				'rgba(54, 162, 235, 0.2)',
+				'rgba(255, 206, 86, 0.2)',
+				'rgba(75, 192, 192, 0.2)',
+				'rgba(153, 102, 255, 0.2)',
+				'rgba(255, 159, 64, 0.2)',
+			],
+			borderColor: [
+				'rgba(255, 99, 132, 1)',
+				'rgba(54, 162, 235, 1)',
+				'rgba(255, 206, 86, 1)',
+				'rgba(75, 192, 192, 1)',
+				'rgba(153, 102, 255, 1)',
+				'rgba(255, 159, 64, 1)',
+			],
+				borderWidth: 1,
+			},
+		],
+	}
+	
+	return data
+}
+export const testBarMultiOptions = () => {
+	const options = {
+		scales: {
+			yAxes: [{
+					ticks: {
+						beginAtZero: true,
+						suggestedMin: 0,
+						suggestedMax: 1,
+					},
+				},
+			],
+		},
+	}
+	
+	return options
+}
+
+export const stackedBarData = (inputData1, inputData2, inputData3) => {
+	const data = {
+		labels: ['Value'],
+		datasets: [
+			{
+				label: 'Minimum',
+				data: inputData1,
+				backgroundColor: 'rgb(255, 99, 132)',
+			},
+			{
+				label: 'Average',
+				data: inputData2,
+				backgroundColor: 'rgb(54, 162, 235)',
+			},
+			{
+				label: 'Maximum',
+				data: inputData3,
+				backgroundColor: 'rgb(75, 192, 192)',
+			},
+		],
+	}
+	
+	return data
+}
+export const stackedBarOptions = () => {
+	const options = {
+		scales: {
+			yAxes: [
+				{
+					//stacked: true,
+					ticks: {
+						beginAtZero: true,
+						suggestedMin: -1,
+						suggestedMax: 1,
+					},
+				},
+			],
+			xAxes: [
+				{
+					//stacked: true,
+				},
+			],
+		},
+	}
+	
+	return options
+}
+
+export const stackedBarData2Test = (inputData1, inputData2, inputData3) => {
+	const data = {
+		labels: ['Relevance', 'Sentiment'],
+		datasets: [
+			{
+				label: 'Minimum',
+				data: inputData1,
+				backgroundColor: 'rgb(255, 99, 132)',
+			},
+			{
+				label: 'Average',
+				data: inputData2,
+				backgroundColor: 'rgb(54, 162, 235)',
+			},
+			{
+				label: 'Maximum',
+				data: inputData3,
+				backgroundColor: 'rgb(75, 192, 192)',
+			},
+		],
+	}
+	
+	return data
+}
+
+export const stackedBarData3Test = (inputData1, inputData2, inputData3) => {
+	const data = {
+		labels: ['Confidence', 'Relevance', 'Sentiment'],
+		datasets: [
+			{
+				label: 'Minimum',
+				data: inputData1,
+				backgroundColor: 'rgb(255, 99, 132)',
+			},
+			{
+				label: 'Average',
+				data: inputData2,
+				backgroundColor: 'rgb(54, 162, 235)',
+			},
+			{
+				label: 'Maximum',
+				data: inputData3,
+				backgroundColor: 'rgb(75, 192, 192)',
+			},
+		],
+	}
+	
+	return data
+}
+
+export const sentimentBarData = (inputData) => {
+	const data = {
+		labels: ['Positive', 'Negative'],
+		datasets: [
+			{
+			label: '% Above Threshold',
+			data: inputData,
+			backgroundColor: [
+				'rgba(255, 99, 132, 0.2)',
+				'rgba(54, 162, 235, 0.2)',
+				'rgba(255, 206, 86, 0.2)',
+				'rgba(75, 192, 192, 0.2)',
+				'rgba(153, 102, 255, 0.2)',
+				'rgba(255, 159, 64, 0.2)',
+			],
+			borderColor: [
+				'rgba(255, 99, 132, 1)',
+				'rgba(54, 162, 235, 1)',
+				'rgba(255, 206, 86, 1)',
+				'rgba(75, 192, 192, 1)',
+				'rgba(153, 102, 255, 1)',
+				'rgba(255, 159, 64, 1)',
+			],
+				borderWidth: 1,
+			},
+		],
+	}
+	
+	return data
+}
+export const sentimentBarOptions = () => {
+	const options = {
+		scales: {
+			yAxes: [{
+					ticks: {
+						beginAtZero: true,
+						suggestedMin: 0,
+						suggestedMax: 1,
+					},
+				},
+			],
+		},
+	}
+	
+	return options
+}
+
+// This is where my template stuff is ---------------------------------------------------------------
+export const getDoughData = (inputData) => {
 	const data = {
 		labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
 		datasets: [
@@ -334,6 +562,7 @@ export const getBarOptions = () => {
 			yAxes: [{
 					ticks: {
 						beginAtZero: true,
+						
 					},
 				},
 			],
@@ -379,4 +608,312 @@ export const getScatterOptions = () => {
 	}
 	
 	return options
+}
+
+// THIS IS EXAMPLE COMPANY TEST DATA!!!
+const makeCompanyDaydata = () => {
+	
+	let dayData = {
+			emotion: { 
+				max:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()}, 
+				min:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()}, 
+				ave:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+				
+				threshold:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+			},
+			sentiment: {
+				max:2*Math.random()-1, 
+				min:2*Math.random()-1, 
+				ave:2*Math.random()-1,
+				
+				thresholdPos:Math.random(),
+				thresholdNeg:Math.random(),
+			},
+			entities: [
+				{text:"Example Entity", 
+					count:12,
+					type:"Whatever",
+					confidence:{ 
+						max:Math.random(), 
+						min:Math.random(), 
+						ave:Math.random(),
+						
+						std:Math.random(),
+					},
+					relevance:{
+						max:Math.random(),
+						min:Math.random(),
+						ave:Math.random(),
+						
+						std:Math.random(),
+					},
+					emotion:{
+						max:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						min:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						ave:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						
+						std:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+					}, 
+					sentiment:{
+						max:2*Math.random()-1, 
+						min:2*Math.random()-1, 
+						ave:2*Math.random()-1,
+						
+						std:Math.random(),
+					},
+				}, 
+			],
+			keywords: [
+				{text:"Example Keyword", 
+					count:6, 
+					
+					relevance:{
+						max:Math.random(),
+						min:Math.random(),
+						ave:Math.random(),
+						
+						std:Math.random(),
+					}, 
+					emotion:{
+						max:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						min:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						ave:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+						
+						std:{joy:Math.random(), anger:Math.random(), sadness:Math.random(), disgust:Math.random(), fear:Math.random()},
+					}, 
+					sentiment:{
+						max:2*Math.random()-1, 
+						min:2*Math.random()-1, 
+						ave:2*Math.random()-1,
+						
+						std:Math.random(),
+					},
+				},
+			],
+			relations: [
+				{type:"didTo", 
+					count:4, 
+					score:{
+						max:2*Math.random()-1, 
+						min:2*Math.random()-1, 
+						ave:2*Math.random()-1,
+						
+						std:Math.random(),
+					}, 
+					arguments:[{text:"person1"},{text:"person2"}] 
+				}
+			],
+		}
+	return dayData
+}
+
+export const makeCompanyTestData = () => {
+	
+	const testData = {
+		p1:{ name:"Prompt 1 Full Sentance",
+			responsePurity:90,
+			mon: makeCompanyDaydata(),
+			tue: makeCompanyDaydata(),
+			wed: makeCompanyDaydata(),
+			thu: makeCompanyDaydata(),
+			fri: makeCompanyDaydata(),
+			sat: makeCompanyDaydata(),
+			sun: makeCompanyDaydata(),
+			allDay: makeCompanyDaydata(),
+		},
+		p2:{ name:"Prompt 2 Full Sentance",
+			responsePurity:50,
+			mon:makeCompanyDaydata(),
+			tue:makeCompanyDaydata(),
+			wed:makeCompanyDaydata(),
+			thu:makeCompanyDaydata(),
+			fri:makeCompanyDaydata(),
+			sat:makeCompanyDaydata(),
+			sun:makeCompanyDaydata(),
+			allDay:makeCompanyDaydata(),
+		},
+		p3:{ name:"Prompt 3 Full Sentance",
+			responsePurity:10,
+			mon: makeCompanyDaydata(),
+			tue: makeCompanyDaydata(),
+			wed: makeCompanyDaydata(),
+			thu: makeCompanyDaydata(),
+			fri: makeCompanyDaydata(),
+			sat: makeCompanyDaydata(),
+			sun: makeCompanyDaydata(),
+			allDay: makeCompanyDaydata(),
+		},
+		p4:{ name:"Prompt 4 Full Sentance",
+			responsePurity:75,
+			mon: makeCompanyDaydata(),
+			tue: makeCompanyDaydata(),
+			wed: makeCompanyDaydata(),
+			thu: makeCompanyDaydata(),
+			fri: makeCompanyDaydata(),
+			sat: makeCompanyDaydata(),
+			sun: makeCompanyDaydata(),
+			allDay: makeCompanyDaydata(),
+		},
+	}
+			
+	return testData
+}
+export const makeCompanyTestDataOtherFormat = () => {
+	
+	const testData = {
+		mon: {
+			responsePurity: 90,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			},
+		},
+		tue: {
+			responsePurity: 23,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			},
+		},
+		wed: {
+			responsePurity: 55,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			},
+		},
+		thu: {
+			responsePurity: 78,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			},
+		},
+		fri: {
+			responsePurity: 34,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			}
+		},
+		sat: {
+			responsePurity: 90,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			}
+		},
+		sun: {
+			responsePurity: 90,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			}
+		},
+		allDay: {
+			responsePurity: 90,
+			p1: {
+				name:"Prompt 1 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p2: {
+				name:"Prompt 2 Full Name",
+				data: makeCompanyDaydata(),
+			},
+			p3: {
+				name:"Prompt 3 Full Name!!2",
+				data: makeCompanyDaydata(),
+			},
+			p4: {
+				name:"Prompt 4 Full Name",
+				data: makeCompanyDaydata(),
+			}
+		}
+	}
+			
+	return testData
 }

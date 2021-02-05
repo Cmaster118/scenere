@@ -16,6 +16,18 @@ class navigation extends React.Component {
 		this.props.clearLogin()
 	}
 	
+	/*
+	<li className={'nav-item'}  key='30'>
+		<Link className="nav-link" to={basePath+"/test"}>
+			!!TestDisplay 1!!
+		</Link>
+	</li>
+	<li className={'nav-item'}  key='31'>
+		<Link className="nav-link" to={basePath+"/test2"}>
+			!!TestDisplay 2!!
+		</Link>
+	</li>*/
+	
 	render() {
 		const basePath = this.props.basePath
 
@@ -68,7 +80,7 @@ class navigation extends React.Component {
 				<nav className="navbar navbar-expand-lg navbar-dark bg-dark">
 					<div className="container">
 						<Link className="navbar-brand" to={basePath+"/"}>
-							Project Serene
+							Project Scenere
 						</Link>
 						
 						<button
@@ -86,6 +98,7 @@ class navigation extends React.Component {
 
 						<div className="collapse navbar-collapse" id="navbarResponsive">
 							<ul className="navbar-nav ml-auto">
+							
 								{iconButton}
 								<li className={'nav-link'}>	
 									Current User: 

@@ -11,10 +11,13 @@ import'bootstrap/dist/js/bootstrap.bundle.min';
 
 //import '@trendmicro/react-sidenav/dist/react-sidenav.css';
 
+//<React.StrictMode>
+//</React.StrictMode>,
+
 ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  
+	<App />,
+  
   document.getElementById('root')
 );
 

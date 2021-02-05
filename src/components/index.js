@@ -14,3 +14,6 @@ export { default as WriteJournals } from "./journalMake";
 
 export { default as ViewCompany } from "./companyView";
 export { default as SetCompany } from "./companySettings";
+
+export { default as Test } from "./testStuff";
+export { default as Test2 } from "./testStuff2";

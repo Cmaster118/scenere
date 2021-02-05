@@ -8,7 +8,7 @@ class footer extends React.Component {
 
         };
 	}
-	
+	// fixed-bottom
 	render() {
 		return (
 			<div className="footer">

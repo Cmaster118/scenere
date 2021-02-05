@@ -60,8 +60,10 @@ class journalView extends React.Component {
 	
 	componentDidMount() {
 		
-		this.loadFromCookies();
-		
+		let result = this.loadFromCookies();
+		if (!result) {
+			this.getJournalDates()
+		}
 	};
 	
 	loadFromCookies = () => {
@@ -74,9 +76,10 @@ class journalView extends React.Component {
 		try{
 			this.setState({validJournalScanDates: journalDates.AIDates, validJournalDates: journalDates.journalDates})
 			console.log("Got the journal data from the cookies")
-			
+			return true
 		} catch{
-			//console.log("No cookies to load the data from")
+			console.log("No cookies to load the data from")
+			return false
 		}
 	};
 	
@@ -292,6 +295,9 @@ class journalView extends React.Component {
 				
 				this.setState({validJournalScanDates: tempAIArray, validJournalDates: tempJoArray})
 				
+				// Save this new set to the cookies...
+				this.saveToCookies()
+				
 		})
 		.catch( err => {
 			if (err.response.status === 401) {
@@ -329,8 +335,7 @@ class journalView extends React.Component {
 			// And and edit history... but that is for later
 			
 			const config = {
-				//headers: { Authorization: `JWT ${this.props.authToken}` }
-				headers: { Authorization: `JWT asdkjdsakjldsajklsd` }
+				headers: { Authorization: `JWT ${this.props.authToken}` }
 			};
 			
 			console.log("requesting date")
@@ -599,10 +604,8 @@ class journalView extends React.Component {
 					<div className="row my-2">
 						<div className="col-lg-2 border mx-2">
 							<p> Debug! </p>
-							<button onClick={this.loadTestData}> Load Data </button>
-							<button onClick={this.getJournalDates}> Get dates </button>
-							<button onClick={this.saveToCookies}> Save dates </button>
-							<button onClick={this.loadFromCookies}> Load dates </button>
+							<button onClick={this.loadTestData}> Load Stored AI Data </button>
+							<button onClick={this.getJournalDates}> Force Dates Update </button>
 						</div>
 					</div>
 					

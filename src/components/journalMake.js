@@ -2,8 +2,8 @@ import React from "react";
 import axios from "axios";
 
 import { withRouter } from "react-router-dom";
-//import Store from "store"
-import {Editor, EditorState, RichUtils, ContentState} from 'draft-js';
+import Store from "store"
+import {Editor, EditorState, ContentState, RichUtils, convertToRaw } from 'draft-js';
 
 const styles = {
   editor: {
@@ -11,6 +11,94 @@ const styles = {
     minHeight: '6em'
   }
 };
+
+// START OF EXAMPLE CODE FROM THE DRAFT.JS!!!!!
+class StyleButton extends React.Component {
+	constructor() {
+		super();
+		this.onToggle = (e) => {
+			//console.log(this.props.style)
+			e.preventDefault();
+			this.props.onToggle(this.props.style);
+		};
+	}
+
+	render() {
+		let className = 'btn btn-outline-primary';
+		if (this.props.active) {
+			className += ' active';
+		}
+
+		return (
+			<button className={className} onClick={this.onToggle}>
+				{this.props.label}
+			</button>
+		);
+	}
+}
+
+const BLOCK_TYPES = [
+	{label: 'H1', style: 'header-one'},
+	{label: 'H2', style: 'header-two'},
+	{label: 'H3', style: 'header-three'},
+	{label: 'H4', style: 'header-four'},
+	{label: 'H5', style: 'header-five'},
+	{label: 'H6', style: 'header-six'},
+	//{label: 'Blockquote', style: 'blockquote'},
+	{label: 'UL', style: 'unordered-list-item'},
+	{label: 'OL', style: 'ordered-list-item'},
+	//{label: 'Code Block', style: 'code-block'},
+];
+
+const BlockStyleControls = (props) => {
+	const {editorState} = props;
+	const selection = editorState.getSelection();
+	const blockType = editorState
+	  .getCurrentContent()
+	  .getBlockForKey(selection.getStartKey())
+	  .getType();
+
+	return (
+		<div className="RichEditor-controls">
+			{BLOCK_TYPES.map((type) =>
+				<StyleButton
+					key={type.label}
+					active={type.style === blockType}
+					label={type.label}
+					onToggle={props.onToggle}
+					style={type.style}
+				/>
+			)}
+		</div>
+	);
+};
+
+const INLINE_STYLES = [
+	{label: 'Bold', style: 'BOLD'},
+	{label: 'Italic', style: 'ITALIC'},
+	{label: 'Underline', style: 'UNDERLINE'},
+	//{label: 'Monospace', style: 'CODE'},
+];
+
+const InlineStyleControls = (props) => {
+	const currentStyle = props.editorState.getCurrentInlineStyle();
+	
+	return (
+		<div className="RichEditor-controls">
+			{INLINE_STYLES.map((type) =>
+				<StyleButton
+					key={type.label}
+					active={currentStyle.has(type.style)}
+					label={type.label}
+					onToggle={props.onToggle}
+					style={type.style}
+				/>
+			)}
+		</div>
+	);
+};
+
+// END OF THE EXAMPLE CODE!!!
 
 class journalView extends React.Component {
 	
@@ -25,12 +113,19 @@ class journalView extends React.Component {
 			messages: "Creating journal for: " + today.toJSON().split("T")[0],
 			
 			editorState: EditorState.createEmpty(),
+			
 			journalPlaceolder: "",
 
         };
 		
 		// This doesnt look right... Fix this later I guess
-		this.onChange = (editorState) => this.setState({editorState});
+		this.onChange = (incomingState) => {
+			//console.log(incomingState)
+			this.setState({
+				editorState:incomingState,
+			})	
+		}
+		
 		this.setEditor = (editor) => {
 			this.editor = editor;
 		};
@@ -80,20 +175,49 @@ class journalView extends React.Component {
 			}
 		})
 	}
-
-	changeJournal = (content) => {
+	
+	loadToday = () => {
+		let test2 = Store.get("TodayTest")
 		
-		//let currentContent = this.state.editorState.getCurrentContent()
+		console.log(this.state.editorState.getCurrentContent().getBlocksAsArray())
+		console.log(test2)
 		
-		let newContent = ContentState.createFromText( content )
-		let newState = EditorState.createWithContent( newContent )
+		let test = this.state.editorState.getCurrentContent().getBlocksAsArray()
 		
-		this.setState( {editorState: newState} )
+		let next = ContentState.createFromBlockArray(test)
 		
-	};
+		this.setState({
+			
+			editorState: EditorState.createWithContent(next)
+		})
+	}
+	
+	cookieToday = () => {
+		console.log('content state', convertToRaw(this.state.editorState.getCurrentContent()));
+		//Store.set( "TodayTest", this.state.editorState.getCurrentContent().getBlocksAsArray() )
+	}
 
 	onBoldClick = () => {
 		this.onChange(RichUtils.toggleInlineStyle(this.state.editorState, 'BOLD'));
+	}
+	// Example code... Can I alter this to be more my style?
+	// It works, so its okay for now...
+	toggleBlockType = (blockType) => {
+		this.onChange(
+			RichUtils.toggleBlockType(
+				this.state.editorState,
+				blockType
+			)
+		);
+	}
+	
+	toggleInlineStyle = (inlineStyle) => {
+		this.onChange(
+            RichUtils.toggleInlineStyle(
+				this.state.editorState,
+				inlineStyle
+            )
+        );
 	}
 	
 	handleKeyCommand = (command, editorState) => {
@@ -131,18 +255,33 @@ class journalView extends React.Component {
 				
 					<div className="row">
 						<div className="col border mx-2 my-2">		
-							<button onClick={this.onBoldClick.bind(this)}>Bold</button>
+							
+							<BlockStyleControls
+								editorState={this.state.editorState}
+								onToggle={this.toggleBlockType}
+							/>
+							<InlineStyleControls
+								editorState={this.state.editorState}
+								onToggle={this.toggleInlineStyle}
+							/>
+							
 							<div style={styles.editor} >
 								<Editor
 								  ref={this.setEditor}
+								  
 								  editorState={this.state.editorState}
 								  onChange={this.onChange}
-								  handleKeyCommand={this.handleKeyCommand}
 								  
+								  handleKeyCommand={this.handleKeyCommand}
 								  placeholder={this.state.journalPlaceolder}
 								/>
 							</div>
-							<button onClick={this.saveJournal}> Save current Journal entry </button>
+							
+							<button className="btn btn-outline-primary" onClick={this.saveJournal}> Save current Journal entry </button>
+							
+							<button className="btn btn-outline-primary" onClick={this.loadToday}> Load Today's Data </button>
+							
+							<button className="btn btn-outline-primary" onClick={this.cookieToday}> Cookie Today's Data </button>
 						</div>
 					</div>
 					
