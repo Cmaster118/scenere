@@ -23,6 +23,45 @@ export const isLoggedIn = () => {
 // The options may be overkill though...
 
 
+// First version of a Line graph with Arbitrary everything...
+export const arbitraryLineData = (inputXAxis, inputDataList) => {
+	
+	let builtData = []
+	let dataIndex = 0
+	for (dataIndex in inputDataList) {
+		builtData.push({
+			label: inputDataList[dataIndex].label,
+			data: inputDataList[dataIndex].data,
+			fill: false,
+			backgroundColor: 'rgb(99, 255, 132)',
+			borderColor: 'rgba(255, 132, 99, 0.2)',
+		})
+	}
+	
+	const data = {
+		labels: inputXAxis,
+		datasets: builtData,
+	}
+	
+	return data
+}
+
+export const arbitraryLineOptions = () => {
+	const options = {
+		scales: {
+			yAxes: [
+				{
+					ticks: {
+						beginAtZero: true,
+					},
+				},
+			],
+		},
+	}
+	
+	return options
+}
+
 // Initial tests show good results, So I should merge these into as few functions as I can....
 // Right now its too many...
 export const getRadarEmotionData = (inputData) => {
@@ -231,7 +270,7 @@ export const testBarMulti = (inputData) => {
 	labels: ['Joy', 'Anger', 'Sadness', 'Disgust', 'Fear'],
 	datasets: [
 			{
-			label: '% Above Threshold',
+			label: '# Above Threshold',
 			data: inputData,
 			backgroundColor: [
 				'rgba(255, 99, 132, 0.2)',
@@ -376,7 +415,7 @@ export const sentimentBarData = (inputData) => {
 		labels: ['Positive', 'Negative'],
 		datasets: [
 			{
-			label: '% Above Threshold',
+			label: '# Above Threshold',
 			data: inputData,
 			backgroundColor: [
 				'rgba(255, 99, 132, 0.2)',
@@ -707,57 +746,6 @@ const makeCompanyDaydata = () => {
 	return dayData
 }
 
-export const makeCompanyTestData = () => {
-	
-	const testData = {
-		p1:{ name:"Prompt 1 Full Sentance",
-			responsePurity:90,
-			mon: makeCompanyDaydata(),
-			tue: makeCompanyDaydata(),
-			wed: makeCompanyDaydata(),
-			thu: makeCompanyDaydata(),
-			fri: makeCompanyDaydata(),
-			sat: makeCompanyDaydata(),
-			sun: makeCompanyDaydata(),
-			allDay: makeCompanyDaydata(),
-		},
-		p2:{ name:"Prompt 2 Full Sentance",
-			responsePurity:50,
-			mon:makeCompanyDaydata(),
-			tue:makeCompanyDaydata(),
-			wed:makeCompanyDaydata(),
-			thu:makeCompanyDaydata(),
-			fri:makeCompanyDaydata(),
-			sat:makeCompanyDaydata(),
-			sun:makeCompanyDaydata(),
-			allDay:makeCompanyDaydata(),
-		},
-		p3:{ name:"Prompt 3 Full Sentance",
-			responsePurity:10,
-			mon: makeCompanyDaydata(),
-			tue: makeCompanyDaydata(),
-			wed: makeCompanyDaydata(),
-			thu: makeCompanyDaydata(),
-			fri: makeCompanyDaydata(),
-			sat: makeCompanyDaydata(),
-			sun: makeCompanyDaydata(),
-			allDay: makeCompanyDaydata(),
-		},
-		p4:{ name:"Prompt 4 Full Sentance",
-			responsePurity:75,
-			mon: makeCompanyDaydata(),
-			tue: makeCompanyDaydata(),
-			wed: makeCompanyDaydata(),
-			thu: makeCompanyDaydata(),
-			fri: makeCompanyDaydata(),
-			sat: makeCompanyDaydata(),
-			sun: makeCompanyDaydata(),
-			allDay: makeCompanyDaydata(),
-		},
-	}
-			
-	return testData
-}
 export const makeCompanyTestDataOtherFormat = () => {
 	
 	const testData = {
@@ -916,4 +904,31 @@ export const makeCompanyTestDataOtherFormat = () => {
 	}
 			
 	return testData
+}
+
+const timeLength = 365
+
+// Lets mess around with this...
+export const generateTestEHIX = () => {
+	
+	let textX = []
+	
+	let i;
+	for (i=-timeLength*2; i < 0; i++) {
+		textX.push(i)
+	}
+	
+	return textX
+}
+
+export const generateTestEHIY = () => {
+	
+	let textY = []
+	
+	let i;
+	for (i=0; i < timeLength*2; i++) {
+		textY.push((i/1000)*Math.sin(3.141592654*i/360))
+	}
+	
+	return textY
 }

@@ -23,7 +23,7 @@ const AIAspect = [
     { name: 'Sentiment', value: 'sentiment' },
     { name: 'Entities', value: 'entities' },
 	{ name: 'Keywords', value: 'keywords' },
-	{ name: 'Relations', value: 'relations' },
+	//{ name: 'Relations', value: 'relations' },
 ];
 // This is also garunteed...
 const daySet = [
@@ -60,11 +60,44 @@ class companyViewSummary extends React.Component {
 			dropMessage: 'Select Company=>',
 			companyList: [],
 			
-			// hmmmm
+			currentCompany: "None",
+			// What company are is the dataset for?
+			dataCompany: undefined,
+			// What week is the dataset for?
+			dataDate: undefined,
+			// The actual dataset
 			dataSet: {mon:{},tue:{},wed:{},thu:{},fri:{},sat:{},sun:{},allDay:{}},
 			
-			messages:"Display based on the previous stucture, but with much more buttons and graph examples!",
+			messages:"Waiting for Summary Weekday Selection...",
         };
+	}
+	
+	componentDidMount() {
+		this.loadCompanyData()
+	};
+	
+	loadCompanyData = () => {
+		// Get the list of companies from the cookies
+		let result = this.getCookiesListData();
+		if (!result) {
+			// If it failed, we go get it from the server...
+			this.getCompanyList()
+		}
+	}
+	
+	loadDatesData = () => {
+		
+		// Get the list of companies from the cookies
+		let result = this.getCookiesValidDates();
+		if (!result) {
+			// If it failed, we go get it from the server...
+			this.getValidDates()
+		}
+	}
+	
+	flushCookies = () => {
+		Store.remove(this.props.currentUser+'-companyList')
+		Store.remove(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
 	}
 	
 	backButton = () => {
@@ -85,17 +118,6 @@ class companyViewSummary extends React.Component {
 		this.setState({
 			seletedDay:event.currentTarget.value
 		});
-	}
-	
-	changeRequest = () => {
-		//console.log( Store.get("testData") )
-		
-		//let overwriteData = this.state.dataSet
-		//console.log(overwriteData)
-		
-		this.setState({
-			//dataSet:overwriteData
-		})
 	}
 	
 	// Get Company List from the server
@@ -167,21 +189,11 @@ class companyViewSummary extends React.Component {
 		
 		try {
 			this.setState({companyList: getDates['theList']})
+			return true
 		}
 		catch {
 			console.log("Not in the cookies")
-		}
-	}
-	
-	// Dates Stuff...
-	getCookiesValidDates = () => {
-		let getDates = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
-		
-		try {
-			this.setState({validSummaryDates: getDates['dates']})
-		}
-		catch {
-			console.log("Not in the cookies")
+			return false
 		}
 	}
 	
@@ -250,73 +262,108 @@ class companyViewSummary extends React.Component {
 		});
 	}
 	
-	pickDate = (selectedDate) => {
-		// Try this for now, get the week from the server, load that data set into the memory...
-		if (this.state.currentCompany === "None") {
-			console.log("Select Valid Company!")
+	// Dates Stuff...
+	getCookiesValidDates = () => {
+		let getDates = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
+		
+		try {
+			this.setState({validSummaryDates: getDates['dates']})
+			return true
+		}
+		catch {
+			console.log("Not in the cookies")
 			return false
 		}
+	}
+	
+	pickDate = (selectedDate) => {
+		let todayWeekday = (selectedDate.getDay()-1)
+		if (todayWeekday < 0) {
+			todayWeekday = 6
+		}
 		
-		console.log("requesting date")
-		this.setState({currentDate: selectedDate})
+		//console.log(this.state.seletedDay)
+		//console.log(daySet[selectedDate.getDay()-1].value)
 		
-		const config = {
-			headers: { Authorization: `JWT ${this.props.authToken}` }
-		};
+		let copiedDate = new Date(selectedDate.getTime());
 
-		selectedDate.setDate(selectedDate.getDate()-selectedDate.getDay()+1)
-		const dateReq = selectedDate.toJSON().split("T")[0]
+		copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
+		const dateReq = copiedDate.toJSON().split("T")[0]
 		
-		axios.get(this.props.APIHost +"/getCompanyWeekSummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
-		.then( 
-			res => {
-				// What if it is > 1?
-				if (res.data.length > 0) {
-					console.log("obtained a company summary")
-					
-					// Check for matching stuff on this end?
-					//console.log(res.data[0].summaryResult)
-					// Save in the cookies for non-login access...
-					//Store.set('testSummaryData', res.data[0].summaryResult)
-					
-					//console.log(res.data)
-					
-					let incomingDict = {
-						mon:res.data[0].monResult,
-						tue:res.data[0].tueResult,
-						wed:res.data[0].wedResult,
-						thu:res.data[0].thuResult,
-						fri:res.data[0].friResult,
-						sat:res.data[0].satResult,
-						sun:res.data[0].sunResult,
-						allDay:res.data[0].summaryResult,
-					}
-					
-					this.setState({
-						dataSet:incomingDict
-					})
-					
-				}
-				else{
-					console.log("No entry for that day")
-					this.setState( {
-						messages: "No entry for that day",
-						companyDisp: ":/",
-					})
-				}
-				// LEts not store it in the cookies for now...
+		// Either way, we HAVE to set the correct variables to what day we are doing...
+		this.setState({
+			currentDate: selectedDate,
+			seletedDay: daySet[ todayWeekday ].value,
 		})
-		.catch( err => {
-			if (err.response.status === 401) {
-				this.props.forceLogout()
-				this.props.history.push(this.props.reRouteTarget)
+		
+		// We are NOT in the same week, or we are NOT the same company, so we MUST do a API call
+		if (!(this.state.dataDate === dateReq) || !(this.state.dataCompany === this.state.currentCompany) ) {
+					
+			// The following will get the data from the server.....
+			if (this.state.currentCompany === "None") {
+				console.log("Select Valid Company!")
+				return false
 			}
-		});
+			
+			console.log("requesting date")
+
+			const config = {
+				headers: { Authorization: `JWT ${this.props.authToken}` }
+			};
+			
+			axios.get(this.props.APIHost +"/getCompanyWeekSummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
+			.then( 
+				res => {
+					// What if it is > 1?
+					if (res.data.length > 0) {
+						console.log("obtained a company summary")
+						
+						// Check for matching stuff on this end?
+						//console.log(res.data[0].summaryResult)
+						// Save in the cookies for non-login access...
+						//Store.set('testSummaryData', res.data[0].summaryResult)
+						
+						//console.log(res.data)
+						
+						let incomingDict = {
+							mon:res.data[0].monResult,
+							tue:res.data[0].tueResult,
+							wed:res.data[0].wedResult,
+							thu:res.data[0].thuResult,
+							fri:res.data[0].friResult,
+							sat:res.data[0].satResult,
+							sun:res.data[0].sunResult,
+							allDay:res.data[0].summaryResult,
+						}
+						
+						this.setState({
+							dataSet:incomingDict,
+							messages: "Displaying entry for week of: " + dateReq,
+						})
+						
+					}
+					else{
+						console.log("No entry for that day")
+						this.setState( {
+							messages: "No entry for that day",
+						})
+					}
+					// LEts not store it in the cookies for now...
+			})
+			.catch( err => {
+				if (err.response.status === 401) {
+					this.props.forceLogout()
+					this.props.history.push(this.props.reRouteTarget)
+				}
+			});
+		}
 	}
 	
 	setCurrentCompany = (event) => {
-	
-		this.setState({dropMessage: event.target.value, currentCompany: event.target.value})
+		this.setState(
+			{dropMessage: event.target.value, currentCompany: event.target.value},
+			this.loadDatesData
+		)
 	}
 	
 	// Rendering this with Bootstrap React.... To see if there is anything really interesting I can do with it
@@ -338,11 +385,10 @@ class companyViewSummary extends React.Component {
 		// Check to see if the lower states exist...
 		
 		let displayStats = [];
-		let promptName = "NO DATA FOUND!";
-		
+		let promptName = "not valid prompt";
 		
 		// This will trip if we have data
-		if (!(dayData === null)) {
+		if (!(dayData === null) && !(dayData === undefined)) {
 			
 			let key;
 			for (key in dayData) {
@@ -357,12 +403,14 @@ class companyViewSummary extends React.Component {
 				promptList = [{name:"No Prompts", value:"None"}]
 			}
 			
+			//console.log(currentPrompt)
+			//console.log(dayData)
 			let sanityCheck = currentPrompt in dayData
 			if (sanityCheck) {
 				// Switch state this bugger...
 				promptName = dayData[currentPrompt]["name"]
 				let dataSet = dayData[currentPrompt]["data"][currentAspect]
-				let purity = dayData.responsePurity
+				let purity = dayData[currentPrompt]["responsePurity"]
 				
 				displayStats.push(
 					<div className="row m-2" key="1">
@@ -380,9 +428,9 @@ class companyViewSummary extends React.Component {
 						let emoAve = parseEmotion( dataSet.ave )
 						let emoMin = parseEmotion( dataSet.min )
 						
-						console.log(dataSet.max)
-						console.log(dataSet.ave)
-						console.log(dataSet.min)
+						//console.log(dataSet.max)
+						//console.log(dataSet.ave)
+						//console.log(dataSet.min)
 						
 						const dataRadarTest = testMaxMin( emoMax, emoAve, emoMin )
 						const radarOptionsTest = getRadarEmotionOptions()
@@ -458,11 +506,11 @@ class companyViewSummary extends React.Component {
 					
 						for (index in dataSet) {
 							let entity = dataSet[index]
-							console.log(entity)
+							//console.log(entity)
 							
 							let emoMax = parseEmotion( entity.emotion.max )
-							let emoAve = parseEmotion( entity.emotion.min )
-							let emoMin = parseEmotion( entity.emotion.ave )
+							let emoAve = parseEmotion( entity.emotion.ave )
+							let emoMin = parseEmotion( entity.emotion.min )
 							
 							let emoData = testMaxMin( emoMax, emoAve, emoMin )
 							let emoOptions = getRadarEmotionOptions()
@@ -517,8 +565,8 @@ class companyViewSummary extends React.Component {
 							//const dataKeyOptions = stackedBarOptions()
 							
 							let emoMax = parseEmotion( keyData.emotion.max )
-							let emoAve = parseEmotion( keyData.emotion.min )
-							let emoMin = parseEmotion( keyData.emotion.ave )
+							let emoAve = parseEmotion( keyData.emotion.ave )
+							let emoMin = parseEmotion( keyData.emotion.min )
 							
 							const dataRadar = testMaxMin( emoMax, emoAve, emoMin )
 							const dataRadarOptions = getRadarEmotionOptions()
@@ -643,7 +691,7 @@ class companyViewSummary extends React.Component {
 		}
 		
 		return (
-			<div className="testStuff">
+			<div className="companyView">
 				<div className="container">
 				
 					<div className="row">
@@ -670,94 +718,97 @@ class companyViewSummary extends React.Component {
 								/>
 							</div>
 						</div>
-						<div className="col border m-2">					
-							<p>{this.state.messages}</p>
-						</div>
-					</div>
-					
-					<div className="row">
-						<div className="col">
-							<div className="dropdown">
-							  <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							  {this.state.dropMessage}
-							  </button>
-							  <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
-								{dropDownInternal}
-							  </div>
+						<div className="col border m-2">		
+							<div className="row m-2">
+								<div className="col">
+									<div className="dropdown">
+									  <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+									  {this.state.dropMessage}
+									  </button>
+									  <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
+										{dropDownInternal}
+									  </div>
+									</div>
+								</div>
+								<div className="col">
+									<button className="btn btn-outline-danger" onClick={this.loadCompanyData}> Reload Company Data </button>
+									<button className="btn btn-outline-danger" onClick={this.loadDatesData}> Reload Dates </button>
+									<button className="btn btn-outline-danger" onClick={this.flushCookies}> Flush Cookie Data </button>
+								</div>
 							</div>
-						</div>
-						<div className="col">
-							<button onClick={this.getCompanyList}> Get Comp List (server)</button>
-							<button onClick={this.getCookiesListData}> Get Comp List (cookies)</button>
 							
-							<button onClick={this.getValidDates}> Get Valid Dates (server)</button>
-							<button onClick={this.getCookiesValidDates}> Get Valid Dates (cookies)</button>
+							<div className="row m-2">
+								<div className="col">		
+									<p>{this.state.messages}</p>
+								</div>
+							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{daySet.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="secondary"
+											name="radio"
+											value={radio.value}
+											checked={this.state.seletedDay === radio.value}
+											onChange={this.selectDay}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{promptList.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="primary"
+											name="radio"
+											value={radio.value}
+											checked={this.state.selectedPrompt === radio.value}
+											onChange={this.selectPrompt}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{AIAspect.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="info"
+											name="radio"
+											value={radio.value}
+											checked={this.state.selectedAspect === radio.value}
+											onChange={this.selectAI}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
 						</div>
 					</div>
 					
 					<div className="row m-2">
 						<div className="col">
-							<ButtonGroup toggle>
-								{daySet.map((radio, idx) => (
-								<ToggleButton
-									key={idx}
-									type="radio"
-									variant="secondary"
-									name="radio"
-									value={radio.value}
-									checked={this.state.seletedDay === radio.value}
-									onChange={this.selectDay}
-									>
-									{radio.name}
-								</ToggleButton>
-								))}
-							</ButtonGroup>
-						</div>
-					</div>
-					
-					<div className="row m-2">
-						<div className="col">
-							<ButtonGroup toggle>
-								{promptList.map((radio, idx) => (
-								<ToggleButton
-									key={idx}
-									type="radio"
-									variant="primary"
-									name="radio"
-									value={radio.value}
-									checked={this.state.selectedPrompt === radio.value}
-									onChange={this.selectPrompt}
-									>
-									{radio.name}
-								</ToggleButton>
-								))}
-							</ButtonGroup>
-						</div>
-					</div>
-					
-					<div className="row m-2">
-						<div className="col">
-							<ButtonGroup toggle>
-								{AIAspect.map((radio, idx) => (
-								<ToggleButton
-									key={idx}
-									type="radio"
-									variant="info"
-									name="radio"
-									value={radio.value}
-									checked={this.state.selectedAspect === radio.value}
-									onChange={this.selectAI}
-									>
-									{radio.name}
-								</ToggleButton>
-								))}
-							</ButtonGroup>
-						</div>
-					</div>
-					
-					<div className="row m-2">
-						<div className="col">
-							Showing Data for {promptName}
+							Showing Data for prompt: {promptName}
 						</div>
 					</div>
 					

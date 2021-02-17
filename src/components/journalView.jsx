@@ -282,7 +282,7 @@ class journalView extends React.Component {
 					
 					// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
 					// CHANGE THIS!!!
-					const newDate = new Date(res.data[item].createdDate)
+					const newDate = new Date(res.data[item].forDate)
 					
 					const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)
 					
@@ -518,8 +518,19 @@ class journalView extends React.Component {
 							</div>
 						</div>
 						<div className="col border m-2">					
-							<p>{this.state.messages}</p>
-							<p>{this.state.journalDisp}</p>
+							<div className="row my-2">
+								<div className="col">
+									<p>{this.state.messages}</p>
+									<p>{this.state.journalDisp}</p>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div className="row my-2">
+						<div className="col-lg-2">
+							<p> Debug! </p>
+							<button onClick={this.loadTestData}> Load Stored AI Data </button>
+							<button onClick={this.getJournalDates}> Force Dates Update </button>
 						</div>
 					</div>
 					<div className="row my-2">
@@ -601,21 +612,12 @@ class journalView extends React.Component {
 						</tbody>
 					</table>
 					
-					<div className="row my-2">
-						<div className="col-lg-2 border mx-2">
-							<p> Debug! </p>
-							<button onClick={this.loadTestData}> Load Stored AI Data </button>
-							<button onClick={this.getJournalDates}> Force Dates Update </button>
-						</div>
-					</div>
-					
 					<div className="row  my-2">
 						<p>
 							PADDING
 						</p>
 					</div>
 				</div>
-				
 			</div>
 		);
 	}

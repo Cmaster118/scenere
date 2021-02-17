@@ -17,11 +17,6 @@ class navigation extends React.Component {
 	}
 	
 	/*
-	<li className={'nav-item'}  key='30'>
-		<Link className="nav-link" to={basePath+"/test"}>
-			!!TestDisplay 1!!
-		</Link>
-	</li>
 	<li className={'nav-item'}  key='31'>
 		<Link className="nav-link" to={basePath+"/test2"}>
 			!!TestDisplay 2!!
@@ -98,6 +93,13 @@ class navigation extends React.Component {
 
 						<div className="collapse navbar-collapse" id="navbarResponsive">
 							<ul className="navbar-nav ml-auto">
+							
+								<li className={'nav-item'}  key='30'>
+									<Link className="nav-link" to={basePath+"/test/1"}>
+										!!TestDisplay 1!!
+									</Link>
+								</li>
+
 							
 								{iconButton}
 								<li className={'nav-link'}>	

@@ -3,7 +3,8 @@ import axios from "axios";
 
 import { withRouter } from "react-router-dom";
 import Store from "store"
-import {Editor, EditorState, ContentState, RichUtils, convertToRaw } from 'draft-js';
+import {Editor, EditorState, RichUtils, convertToRaw, convertFromRaw } from 'draft-js';
+//ContentState
 
 const styles = {
   editor: {
@@ -139,12 +140,14 @@ class journalView extends React.Component {
 	// Lets test a POST request then!
 	saveJournal = () => {
 		
+		const randomID = Math.random().toString(16).substr(2, 8);
+		
 		const config = {
 			headers: { Authorization: `JWT ${this.props.authToken}` }
 		};
 		
 		const data = {
-			shorthand: 'made from the website (random code needed)',
+			shorthand: 'made from the website: '+randomID,
 			
 			// This is my workaround before I learn what ACTUALLY TO DO HERE
 			author: '',
@@ -177,24 +180,17 @@ class journalView extends React.Component {
 	}
 	
 	loadToday = () => {
-		let test2 = Store.get("TodayTest")
-		
-		console.log(this.state.editorState.getCurrentContent().getBlocksAsArray())
-		console.log(test2)
-		
-		let test = this.state.editorState.getCurrentContent().getBlocksAsArray()
-		
-		let next = ContentState.createFromBlockArray(test)
+		let loadedEditor = convertFromRaw(Store.get("TodayTest"))
+		//console.log(loadedEditor)
 		
 		this.setState({
-			
-			editorState: EditorState.createWithContent(next)
+			editorState: EditorState.createWithContent(loadedEditor)
 		})
 	}
 	
 	cookieToday = () => {
-		console.log('content state', convertToRaw(this.state.editorState.getCurrentContent()));
-		//Store.set( "TodayTest", this.state.editorState.getCurrentContent().getBlocksAsArray() )
+		//console.log('content state', convertToRaw(this.state.editorState.getCurrentContent()));
+		Store.set( "TodayTest", convertToRaw(this.state.editorState.getCurrentContent()) )
 	}
 
 	onBoldClick = () => {

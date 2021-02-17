@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 
 import axios from "axios";
 
-import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, ViewJournals, WriteJournals, ViewCompany, SetCompany, MainMenu, Test, Test2 } from "./components";
+import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, ViewJournals, WriteJournals, ViewCompany, SetCompany, MainMenu, Test} from "./components";
 
 import Store from "store"
 
@@ -108,7 +108,7 @@ class App extends React.Component {
 						
 					<Switch>
 					
-						<Route path={basePath+"/test"} exact component={() => <Test 
+						<Route path={basePath+"/test"} component={() => <Test 
 								APIHost={hostName}
 								forceLogout={this.logout}
 								
@@ -119,16 +119,12 @@ class App extends React.Component {
 								authToken={this.state.sessionToken}
 								
 							/>} />
-						<Route path={basePath+"/test2"} exact component={() => <Test2 
-								APIHost={hostName}
-								forceLogout={this.logout}
-								
-							/>} />
 					
 						<Route path={basePath+"/"} exact component={() => <Landing 
 								APIHost={hostName}
 								
 							/>} />
+							
 						<Route path={basePath+"/signin"} exact component={() => <SignIn 
 								loginSave={this.setToken}
 								APIHost={hostName}
@@ -136,11 +132,13 @@ class App extends React.Component {
 								reRouteTarget={basePath+"/menu"}
 								forgotPath={basePath+"/forgot"}
 							/>} />
+							
 						<Route path={basePath+"/signup"} exact component={() => <SignUp 
 								APIHost={hostName}
 								reRouteTarget={basePath+"/signin"}
 						
 							/>} />
+							
 						<Route path={basePath+"/forgot"} exact component={() => <Forgot 
 								APIHost={hostName}
 								
@@ -170,6 +168,7 @@ class App extends React.Component {
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
 							/>} />
+							
 						<Route path={basePath+"/write"} exact component={() => <WriteJournals 
 								APIHost={hostName}
 								tokenRefresh={this.refresh}
@@ -177,6 +176,7 @@ class App extends React.Component {
 								
 								authToken={this.state.sessionToken}
 							/>} />
+							
 						<Route path={basePath+"/companyCheck"} exact component={() => <ViewCompany 
 								APIHost={hostName}
 								forceLogout={this.logout}
