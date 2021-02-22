@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 
 import axios from "axios";
 
-import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, ViewJournals, WriteJournals, ViewCompany, SetCompany, MainMenu } from "./components";
+import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, ViewJournals, WriteJournals, ViewCompany, SetCompany, MainMenu, Test} from "./components";
 
 import Store from "store"
 
@@ -13,7 +13,7 @@ import './App.css'
 // Is THIS a patch for Github Pages react stuff?
 // Maybe...
 // Ill have to test this...
-const basePath = "/serene"
+const basePath = "/scenere"
 
 const hostName = "https://cmaster.pythonanywhere.com"
 //const hostName = "10.0.0.60:8000"
@@ -41,7 +41,7 @@ class App extends React.Component {
 			this.setState({ currentUser: lastUserSet.user, sessionToken: lastUserSet.session }) 
 		}
 		catch{
-			console.log("No user based cookies")
+			console.log("User was NOT found in the storage")
 		};
 	}
 	
@@ -72,12 +72,15 @@ class App extends React.Component {
 			// A little bit unnecessary but hey...
 			this.setToken( res.data.token, this.state.currentUser)
 			
+			return true
 		})
 		.catch( err => {
 			console.log(err)
 			// Check for a specific error?
 			
-			this.redirectToSignin()
+			this.logout()
+			
+			return false
 		});
 	}
 
@@ -104,10 +107,24 @@ class App extends React.Component {
 					/>
 						
 					<Switch>
+					
+						<Route path={basePath+"/test"} component={() => <Test 
+								APIHost={hostName}
+								forceLogout={this.logout}
+								
+								currentUser={this.state.currentUser}
+								
+								tokenRefresh={this.refresh}
+								reRouteTarget={basePath+"/signin"}
+								authToken={this.state.sessionToken}
+								
+							/>} />
+					
 						<Route path={basePath+"/"} exact component={() => <Landing 
 								APIHost={hostName}
 								
 							/>} />
+							
 						<Route path={basePath+"/signin"} exact component={() => <SignIn 
 								loginSave={this.setToken}
 								APIHost={hostName}
@@ -115,11 +132,13 @@ class App extends React.Component {
 								reRouteTarget={basePath+"/menu"}
 								forgotPath={basePath+"/forgot"}
 							/>} />
+							
 						<Route path={basePath+"/signup"} exact component={() => <SignUp 
 								APIHost={hostName}
 								reRouteTarget={basePath+"/signin"}
 						
 							/>} />
+							
 						<Route path={basePath+"/forgot"} exact component={() => <Forgot 
 								APIHost={hostName}
 								
@@ -131,13 +150,10 @@ class App extends React.Component {
 								tokenRefresh={this.refresh}
 								reRouteTarget={basePath+"/signin"}
 
-								reRouteTarget={basePath+"/"}
-
 								journalWriteDirect={basePath+"/write"}
 								journalReadDirect={basePath+"/read"}
 								companyReadDirect={basePath+"/companyCheck"}
 								companySettingDirect={basePath+"/companySet"}	
-
 
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
@@ -152,6 +168,7 @@ class App extends React.Component {
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
 							/>} />
+							
 						<Route path={basePath+"/write"} exact component={() => <WriteJournals 
 								APIHost={hostName}
 								tokenRefresh={this.refresh}
@@ -159,11 +176,15 @@ class App extends React.Component {
 								
 								authToken={this.state.sessionToken}
 							/>} />
+							
 						<Route path={basePath+"/companyCheck"} exact component={() => <ViewCompany 
 								APIHost={hostName}
+								forceLogout={this.logout}
+								
+								currentUser={this.state.currentUser}
+								
 								tokenRefresh={this.refresh}
 								reRouteTarget={basePath+"/signin"}
-								
 								authToken={this.state.sessionToken}
 							/>} />
 							

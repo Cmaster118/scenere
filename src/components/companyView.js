@@ -1,387 +1,126 @@
 import React from "react";
 import axios from "axios";
 
+import { withRouter } from "react-router-dom";
+import { ButtonGroup, ToggleButton } from 'react-bootstrap';
+
 import Store from "store"
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 
-import { withRouter } from "react-router-dom";
-import { Doughnut, Radar, Bar } from 'react-chartjs-2';
-
 import { ProgressBar } from 'react-bootstrap';
 
-import {getRadarEmotionData, getSentimentData, getConceptsData, getCategoryData} from '../utils';
-import {getRadarEmotionOptions, getSentimentOptions, getConceptsOptions, getCategoryOptions} from '../utils';
+import { Radar, Bar } from 'react-chartjs-2';
+import { testMaxMin, testBarMulti, stackedBarData3Test, stackedBarData2Test, stackedBarData, sentimentBarData } from '../utils';
+import { getRadarEmotionOptions, testBarMultiOptions, stackedBarOptions, sentimentBarOptions } from '../utils';
+//import { makeCompanyTestData, makeCompanyTestDataOtherFormat } from "../utils";
 
+// Move all of the functions here to a seperate file, a repository, so that I can fast make layouts sometime
 
-class companyView extends React.Component {
+// This is garunteed
+const AIAspect = [
+    { name: 'Emotion', value: 'emotion' },
+    { name: 'Sentiment', value: 'sentiment' },
+    { name: 'Entities', value: 'entities' },
+	{ name: 'Keywords', value: 'keywords' },
+	//{ name: 'Relations', value: 'relations' },
+];
+// This is also garunteed...
+const daySet = [
+    { name: 'Monday', value: 'mon' },
+    { name: 'Tuesday', value: 'tue' },
+    { name: 'Wednesday', value: 'wed' },
+	{ name: 'Thursday', value: 'thu' },
+	{ name: 'Friday', value: 'fri' },
+	{ name: 'Saturday', value: 'sat' },
+	{ name: 'Sunday', value: 'sun' },
+	{ name: 'All', value: 'allDay' },
+];
+
+// This is very lean...
+const parseEmotion = (emotionData) => {
+	
+	let derp = [emotionData.joy, emotionData.anger, emotionData.sadness, emotionData.disgust, emotionData.fear]
+	return derp;
+}
+
+class companyViewSummary extends React.Component {
 	
 	constructor(props) {
         super(props);
-		
-		this.state = {
-			// Change this up to be a bit better,merge things together...
-			dropMessage: 'Select Company=>',
-			currentCompany: "None",
-		
-			companyList: [],
+        this.state = {
 			
-			// These are the dates that we know have valid Summary Entries...
-			validSummaryDates: [],
-			
-			messages: "Waiting for user input...",
-			companyDisp:'',
+			selectedPrompt:"p1",
+			selectedAspect:"emotion",
+			seletedDay:"mon",
 			
 			currentDate: new Date(),
+			validSummaryDates: [],
 			
-			responsePurity: 0,
+			dropMessage: 'Select Company=>',
+			companyList: [],
 			
-			dataCategories: getCategoryData([0], ['']),
-			optionsCategories: getCategoryOptions(),
+			currentCompany: "None",
+			// What company are is the dataset for?
+			dataCompany: undefined,
+			// What week is the dataset for?
+			dataDate: undefined,
+			// The actual dataset
+			dataSet: {mon:{},tue:{},wed:{},thu:{},fri:{},sat:{},sun:{},allDay:{}},
 			
-			dataConcepts: getConceptsData([0], ['']),
-			optionsConcepts: getConceptsOptions(),
-			
-			dataEntities: [],
-			dataKeywords: [],
-			dataRelations: [],
-			
-			dataEmotion: getRadarEmotionData([0]),
-			optionsEmotions: getRadarEmotionOptions(),
-			
-			dataSentiment: getSentimentData([0]),
-			optionsSentiment: getSentimentOptions(),
-			
+			messages:"Waiting for Summary Weekday Selection...",
         };
-		
+	}
+	
+	componentDidMount() {
+		this.loadCompanyData()
 	};
-
+	
+	loadCompanyData = () => {
+		// Get the list of companies from the cookies
+		let result = this.getCookiesListData();
+		if (!result) {
+			// If it failed, we go get it from the server...
+			this.getCompanyList()
+		}
+	}
+	
+	loadDatesData = () => {
+		
+		// Get the list of companies from the cookies
+		let result = this.getCookiesValidDates();
+		if (!result) {
+			// If it failed, we go get it from the server...
+			this.getValidDates()
+		}
+	}
+	
+	flushCookies = () => {
+		Store.remove(this.props.currentUser+'-companyList')
+		Store.remove(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
+	}
+	
 	backButton = () => {
 		this.props.history.goBack()
 	}
 	
-	loadTestData = () => {
-		// And here is our testdata for display
-		let AIdata = Store.get('testSummaryData')
-		//try{
-			
-			//console.log(AIdata)
-			// This AI data is going to be a Liiiiiittle more complex...
-			
-			//console.log(AIdata.ResponsePurity)
-			
-			// Categories!
-			const catData = AIdata.categories
-			
-			let catLabels = []
-			let catScores = []
-			
-			var index;
-			var batchIndex;
-			for (index in catData) {
-				const cat = catData[index]
-				
-				var maxVal = 0
-				var relSum = 0
-				for (batchIndex in cat.batchData) {
-					const catRel = cat.batchData[batchIndex]
-					// For now, we will average this...
-					relSum += catRel.score
-					maxVal += 1
-				}
-				relSum /= maxVal
-				
-				catLabels.push(index)
-				catScores.push(relSum)
-			}
-			
-			// Concepts!
-			const conData = AIdata.concepts
-			//console.log(conData)
-			let conLabels = []
-			let conRelevance = []
-			let conDatabase = []
-			
-			var i
-			
-			for (index in conData) {
-				const con = conData[index]
-				
-				maxVal = 0
-				let conSum = 0
-				
-				for (i in con.batchData) {
-					conSum += con.batchData[i]
-					maxVal += 1
-				}
-				
-				conSum /= maxVal
-				
-				conLabels.push(index)
-				conRelevance.push(conSum)
-				conDatabase.push(con.dbpedia_resource)
-			}
-			
-			// Emotions!
-			
-			// Doin average for now!
-			maxVal = 0
-			var emSum = [0,0,0,0,0]
-			var emSet = []
-			
-			const emDataObj = AIdata.emotion
-			for (index in emDataObj) {
-				const emData = emDataObj[index]
-				const totalData = [emData.anger, emData.disgust, emData.fear, emData.joy, emData.sadness]
-				
-				maxVal += 1
-				for( i in emSum ){
-					emSum[i] += totalData[i]
-				}
-				
-				emSet.push(totalData)
-				
-			}
-			for( i in emSum ){
-				emSum[i] /= maxVal
-			}
-			
-			// Redo this for later...
-			emSet.unshift(emSum)
-			
-			// Entities!
-			const entData = AIdata.entities
-			//console.log(entData)
-			
-			// The current form of the name being the key is probobly EXTREMELY BAD form?
-			// Change that later I guess...
-			let entity = []
-
-			for (index in entData) {
-				const ent = entData[index]
-				//console.log(ent)
-
-				let entEmSum = [0,0,0,0,0]
-				let entRelSum = 0
-				let entSenSum = 0
-				let entConSum = 0
-				maxVal = 0
-				
-				for (i in ent.batchData) {
-					const entData = ent.batchData[i]
-					
-					const entEmotion = [entData.emotion.anger, entData.emotion.disgust, entData.emotion.fear, entData.emotion.joy, entData.emotion.sadness]
-					for( i in entEmSum ){
-						entEmSum[i] += entEmotion[i]
-					}
-					
-					entConSum += entData.confidence
-					entRelSum += entData.relevance
-					entSenSum += entData.sentiment.score
-					
-					maxVal += 1
-				}
-
-				for( i in entEmSum ){
-					entEmSum[i] /= maxVal
-				}
-				
-				entConSum /= maxVal
-				entSenSum /= maxVal
-				entRelSum /= maxVal
-
-				//console.log(entSenSum/maxVal)
-				const entSenOne = 0.5*(entSenSum/maxVal + 1)
-				const entSenOpp = 0.5*(entSenSum/maxVal - 1)
-				
-				let entSenScore = [entSenOne, entSenOpp]
-				
-				const entStore = {
-					id:index,
-					
-					text:index,
-					type:ent.type,
-					
-					count:ent.batchData.length,
-					relevance:entRelSum,
-					confidence:entConSum,
-
-					emotion:entEmSum,
-					sentiment:entSenScore,
-				}
-				
-				entity.push(entStore)
-			}
-			
-			// Keywords!
-			const keyData = AIdata.keywords
-			
-			let keyword = []
-
-			for (index in keyData) {
-				const key = keyData[index]
-				//console.log(key)
-
-				//console.log(key.emotion)
-				//console.log(key.sentiment)
-				
-				let keyEmSum = [0,0,0,0,0]
-				let keyRelSum = 0
-				let keySenSum = 0
-				maxVal = 0
-				
-				for (i in key.batchData) {
-					const keyData = key.batchData[i]
-					
-					const keyEmotion = [keyData.emotion.anger, keyData.emotion.disgust, keyData.emotion.fear, keyData.emotion.joy, keyData.emotion.sadness]
-					for( i in keyEmSum ){
-						keyEmSum[i] += keyEmotion[i]
-					}
-					
-					keyRelSum += keyData.relevance
-					keySenSum += keyData.sentiment.score
-					
-					maxVal += 1
-				}
-				
-				for( i in keyEmSum ){
-					keyEmSum[i] /= maxVal
-				}
-				
-				keySenSum /= maxVal
-				keyRelSum /= maxVal
-				
-				const keySenOne = 0.5*(keySenSum/maxVal + 1) 
-				const keySenOpp = 0.5*(keySenSum/maxVal - 1) 
-				
-				let keySenScore = [keySenOne, keySenOpp]
-				
-				const keyStore = {
-					id:index,
-					
-					text:index,
-					count:key.totalCount,
-					relevance:keyRelSum,
-					
-					emotion:keyEmSum,
-					sentiment:keySenScore,
-				}
-				
-				keyword.push(keyStore)
-			}
-			
-			// Relations!
-			/*let relation = []
-			
-			const relDat = AIdata.relations
-			//console.log(relDat)
-
-			for (index in relDat) {
-				const rel = relDat[index]
-				
-				// Probobly combine these?
-				
-				const relStore = {
-					id: index,
-					init:rel.arguments[0].text,
-					action:rel.type,
-					target:rel.arguments[1].text,
-					score:rel.score,
-				}
-				
-				relation.push(relStore)
-
-			}*/
-		
-			maxVal = 0
-			let senSum = 0
-		
-			// Sentiment!
-			const senDataScore = AIdata.sentiment
-			for (index in senDataScore) {
-				senSum += senDataScore[index].score
-				maxVal += 1
-			}
-						
-			const senOne = 0.5*(senSum/maxVal + 1) 
-			const senOpp = 0.5*(senSum/maxVal - 1) 
-			
-			let arrangedDataScore = [senOne, senOpp]
-			
-			this.setState({
-				
-				responsePurity:AIdata.ResponsePurity,
-				
-				dataCategories:getCategoryData(catScores, catLabels),
-				dataConcepts:getConceptsData(conRelevance, conLabels),
-				dataEmotion:getRadarEmotionData(emSum),
-				
-				dataEntities: entity,
-				dataKeywords: keyword,
-				//dataRelations: relation,
-			
-				dataSentiment:getSentimentData(arrangedDataScore),
-				
-			})
-			
-		//} catch{
-			//console.log("Error!")
-		//}
+	selectPrompt = (event) => {
+		this.setState({
+			selectedPrompt:event.currentTarget.value
+		});
 	}
-	
-	getCookiesValidDates = () => {
-		let getDates = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
-		
-		try {
-			this.setState({validSummaryDates: getDates['dates']})
-		}
-		catch {
-			console.log("Not in the cookies")
-		}
+	selectAI = (event) => {
+		this.setState({
+			selectedAspect:event.currentTarget.value
+		});
 	}
-	
-	getValidDates = () => {
-		
-		if (this.state.currentCompany === "None") {
-			console.log("Select Valid Company!")
-			return false
-		}
-		
-		const config = {
-			headers: { Authorization: `JWT ${this.props.authToken}` }
-		};
-		
-		axios.get(this.props.APIHost + "/getCompanyDates?reComp="+this.state.currentCompany, config)
-		.then( 	res => {
-				let tempSumArray = []
-				
-				console.log("Got Valid Dates!")
-				Store.remove(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
-
-				var item = ""
-				for (item in res.data){
-					
-					// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
-					// CHANGE THIS!!!
-					const newDate = new Date(res.data[item].forDate)
-					const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)
-				
-					tempSumArray.push( checkDate )
-				}
-				
-				Store.set(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates', {'dates':tempSumArray})
-				//console.log(tempSumArray)
-				
-				this.setState({validSummaryDates: tempSumArray})
-		})
-		.catch( err => {
-			if (err.response.status === 401) {
-				this.props.forceLogout()
-				this.props.history.push(this.props.reRouteTarget)
-			}
+	selectDay = (event) => {
+		this.setState({
+			seletedDay:event.currentTarget.value
 		});
 	}
 	
+	// Get Company List from the server
 	getCompanyList = () => {
 		
 		const config = {
@@ -430,6 +169,7 @@ class companyView extends React.Component {
 						}							
 					}
 					
+					Store.set(this.props.currentUser+'-companyList', {'theList':adding})
 					this.setState({companyList: adding})
 				}
 				else {
@@ -444,39 +184,134 @@ class companyView extends React.Component {
 			});
 	}
 	
-	pickDate = (selectedDate) => {
+	getCookiesListData = () => {
+		let getDates = Store.get(this.props.currentUser+'-companyList')
+		
+		try {
+			this.setState({companyList: getDates['theList']})
+			return true
+		}
+		catch {
+			console.log("Not in the cookies")
+			return false
+		}
+	}
+	
+	getValidDates = () => {
 		
 		if (this.state.currentCompany === "None") {
 			console.log("Select Valid Company!")
 			return false
 		}
 		
-		console.log("requesting date")
-		this.setState({currentDate: selectedDate})
+		const config = {
+			headers: { Authorization: `JWT ${this.props.authToken}` }
+		};
 		
-		// Okay, so check to see if we HAVE the journal entry in our storage
-		// If we do, show that!
+		axios.get(this.props.APIHost + "/getCompanyWeekDates?reComp="+this.state.currentCompany, config)
+		.then( 	res => {
+				let tempSumArray = []
+				
+				console.log("Got Valid Dates!")
+				Store.remove(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
+
+				var item = ""
+				for (item in res.data){
+					
+					// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
+					// CHANGE THIS!!!
+					const newDate = new Date(res.data[item].forDate)
+					let checkDate = 0
+				
+					// This is the "Anchor Date"
+					if (res.data[item].hasMon) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1) )
+					}
+					if (res.data[item].hasTue) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+2) )
+					}
+					if (res.data[item].hasWed) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+3) )
+					}
+					if (res.data[item].hasThu) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+4) )
+					}
+					if (res.data[item].hasFri) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+5) )
+					}
+					if (res.data[item].hasSat) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+6) )
+					}
+					if (res.data[item].hasSun) {
+						tempSumArray.push( checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+7) )
+					}
+					
+					tempSumArray.push( checkDate )
+				}
+				
+				Store.set(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates', {'dates':tempSumArray})
+				//console.log(tempSumArray)
+				
+				this.setState({validSummaryDates: tempSumArray})
+		})
+		.catch( err => {
+			if (err.response.status === 401) {
+				this.props.forceLogout()
+				this.props.history.push(this.props.reRouteTarget)
+			}
+		});
+	}
 	
-		// Change this so that it is for the currentuser, I got that up here done, but LETS TRY
-		let summaryData = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-Summary-'+selectedDate)
+	// Dates Stuff...
+	getCookiesValidDates = () => {
+		let getDates = Store.get(this.props.currentUser+'-'+this.state.currentCompany+'-ValidDates')
 		
-		try{
+		try {
+			this.setState({validSummaryDates: getDates['dates']})
+			return true
+		}
+		catch {
+			console.log("Not in the cookies")
+			return false
+		}
+	}
+	
+	pickDate = (selectedDate) => {
+		let todayWeekday = (selectedDate.getDay()-1)
+		if (todayWeekday < 0) {
+			todayWeekday = 6
+		}
+		
+		//console.log(this.state.seletedDay)
+		//console.log(daySet[selectedDate.getDay()-1].value)
+		
+		let copiedDate = new Date(selectedDate.getTime());
+
+		copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
+		const dateReq = copiedDate.toJSON().split("T")[0]
+		
+		// Either way, we HAVE to set the correct variables to what day we are doing...
+		this.setState({
+			currentDate: selectedDate,
+			seletedDay: daySet[ todayWeekday ].value,
+		})
+		
+		// We are NOT in the same week, or we are NOT the same company, so we MUST do a API call
+		if (!(this.state.dataDate === dateReq) || !(this.state.dataCompany === this.state.currentCompany) ) {
+					
+			// The following will get the data from the server.....
+			if (this.state.currentCompany === "None") {
+				console.log("Select Valid Company!")
+				return false
+			}
 			
-			// TO DO, THIS ONE!
-			console.log(summaryData.content)
-			console.log("Got the summary entry from storage?!")
-		} catch{
-			
-			// So, we need to get the summary data from the server...
-			// We need the company name we want here, and the user, which we have...
-			
+			console.log("requesting date")
+
 			const config = {
 				headers: { Authorization: `JWT ${this.props.authToken}` }
 			};
 			
-			const dateReq = selectedDate.toJSON().split("T")[0]
-			
-			axios.get(this.props.APIHost +"/getCompanySummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
+			axios.get(this.props.APIHost +"/getCompanyWeekSummary/?reqDate="+dateReq+"&reComp="+this.state.currentCompany, config)
 			.then( 
 				res => {
 					// What if it is > 1?
@@ -486,21 +321,31 @@ class companyView extends React.Component {
 						// Check for matching stuff on this end?
 						//console.log(res.data[0].summaryResult)
 						// Save in the cookies for non-login access...
-						Store.set('testSummaryData', res.data[0].summaryResult)
+						//Store.set('testSummaryData', res.data[0].summaryResult)
 						
-						this.loadTestData();
+						//console.log(res.data)
 						
-						this.setState( {
-							messages: "Showing " + this.state.currentCompany + ": Summary Entry for: " + this.state.currentDate.toString(),
-							companyDisp: ">:(",
-						} )
+						let incomingDict = {
+							mon:res.data[0].monResult,
+							tue:res.data[0].tueResult,
+							wed:res.data[0].wedResult,
+							thu:res.data[0].thuResult,
+							fri:res.data[0].friResult,
+							sat:res.data[0].satResult,
+							sun:res.data[0].sunResult,
+							allDay:res.data[0].summaryResult,
+						}
+						
+						this.setState({
+							dataSet:incomingDict,
+							messages: "Displaying entry for week of: " + dateReq,
+						})
 						
 					}
 					else{
 						console.log("No entry for that day")
 						this.setState( {
 							messages: "No entry for that day",
-							companyDisp: ":/",
 						})
 					}
 					// LEts not store it in the cookies for now...
@@ -511,16 +356,306 @@ class companyView extends React.Component {
 					this.props.history.push(this.props.reRouteTarget)
 				}
 			});
-		
 		}
-	};
-	
-	setCurrentCompany = (event) => {
-	
-		this.setState({dropMessage: event.target.value, currentCompany: event.target.value})
 	}
 	
+	setCurrentCompany = (event) => {
+		this.setState(
+			{dropMessage: event.target.value, currentCompany: event.target.value},
+			this.loadDatesData
+		)
+	}
+	
+	// Rendering this with Bootstrap React.... To see if there is anything really interesting I can do with it
+	// So far it doesnt look all that different 
 	render() {
+		
+		let tableDisplay = []
+		let index;
+		
+		// Read the data from our state machine,
+		const currentPrompt = this.state.selectedPrompt
+		const currentDay = this.state.seletedDay
+		const currentAspect = this.state.selectedAspect
+		
+		let promptList = []
+		
+		// At least this is garunteed to exist
+		let dayData = this.state.dataSet[currentDay]
+		// Check to see if the lower states exist...
+		
+		let displayStats = [];
+		let promptName = "not valid prompt";
+		
+		// This will trip if we have data
+		if (!(dayData === null) && !(dayData === undefined)) {
+			
+			let key;
+			for (key in dayData) {
+
+				if ( !(dayData[key].name === undefined) ) {
+					promptList.push( {name:dayData[key].name, value:key} )
+				}
+			}
+			
+			// At this point if the array is still empty,we have nothing...
+			if (promptList.length === 0) {
+				promptList = [{name:"No Prompts", value:"None"}]
+			}
+			
+			//console.log(currentPrompt)
+			//console.log(dayData)
+			let sanityCheck = currentPrompt in dayData
+			if (sanityCheck) {
+				// Switch state this bugger...
+				promptName = dayData[currentPrompt]["name"]
+				let dataSet = dayData[currentPrompt]["data"][currentAspect]
+				let purity = dayData[currentPrompt]["responsePurity"]
+				
+				displayStats.push(
+					<div className="row m-2" key="1">
+						<div className="col">
+							<div className="progressBar">
+								<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
+							</div>
+						</div>
+					</div>
+				)
+				
+				switch(currentAspect) {
+					case "emotion":
+						let emoMax = parseEmotion( dataSet.max )
+						let emoAve = parseEmotion( dataSet.ave )
+						let emoMin = parseEmotion( dataSet.min )
+						
+						//console.log(dataSet.max)
+						//console.log(dataSet.ave)
+						//console.log(dataSet.min)
+						
+						const dataRadarTest = testMaxMin( emoMax, emoAve, emoMin )
+						const radarOptionsTest = getRadarEmotionOptions()
+						
+						let emoThresh = parseEmotion( dataSet.threshold )
+						const dataBarTest = testBarMulti( emoThresh )
+						const barOptionsTest = testBarMultiOptions()
+						
+						displayStats.push(
+							<div className="row m-2" key="2">
+								<div className="col">
+									<div className="card">
+										<div className="card-header">
+											Averages + Max and min?
+										</div>
+										<div className="card-body">
+											<Radar ref={this.chartReference} data={dataRadarTest} options={radarOptionsTest} />
+										</div>
+									</div>
+								</div>
+								<div className="col">
+									<div className="card">
+										<div className="card-header">
+											"How many have hit this threshold"?
+										</div>
+										<div className="card-body">
+											<Bar ref={this.chartReference} data={dataBarTest} options={barOptionsTest} />
+										</div>
+									</div>
+								</div>
+							</div>
+						)
+						
+						break;
+					case 'sentiment':
+					
+						const dataBarStack = stackedBarData( [dataSet.min], [dataSet.ave], [dataSet.max] )
+						const barStackOptions = stackedBarOptions()
+						
+						let dataTresh = [dataSet.thresholdPos, dataSet.thresholdNeg]
+						const dataBarNorm = sentimentBarData( dataTresh )
+						const barOptionsNorm = sentimentBarOptions()
+					
+						displayStats.push(
+							<div className="row m-2" key="2">
+								<div className="col">
+									<div className="card">
+										<div className="card-header">
+											Sentiment Values
+										</div>
+										<div className="card-body">
+											<Bar ref={this.chartReference} data={dataBarStack} options={barStackOptions} />
+										</div>
+									</div>
+								</div>
+								<div className="col">
+									<div className="card">
+										<div className="card-header">
+											"How many have hit this threshold"?
+										</div>
+										<div className="card-body">
+											<Bar ref={this.chartReference} data={dataBarNorm} options={barOptionsNorm} />
+										</div>
+									</div>
+								</div>
+							</div>
+						)
+					
+						break;
+					case 'entities':
+					
+						//console.log(dataSet)
+					
+						for (index in dataSet) {
+							let entity = dataSet[index]
+							//console.log(entity)
+							
+							let emoMax = parseEmotion( entity.emotion.max )
+							let emoAve = parseEmotion( entity.emotion.ave )
+							let emoMin = parseEmotion( entity.emotion.min )
+							
+							let emoData = testMaxMin( emoMax, emoAve, emoMin )
+							let emoOptions = getRadarEmotionOptions()
+							
+							const dataEntSent = stackedBarData3Test( 
+								[entity.confidence.min, entity.relevance.min, entity.sentiment.min],
+								[entity.confidence.ave, entity.relevance.ave, entity.sentiment.ave],
+								[entity.confidence.max, entity.relevance.max, entity.sentiment.max],
+							)
+							const dataEntOptions = stackedBarOptions()
+							
+							tableDisplay.push(
+								<tr key={index}>
+									<th scope="row">{entity.text}</th>
+									<td>{entity.type}</td>
+									<td>{entity.count}</td>
+									<td colSpan="3"><Bar ref={this.chartReference} data={dataEntSent} options={dataEntOptions} /></td>
+									<td><Radar ref={this.chartReference} data={emoData} options={emoOptions} /></td>
+								</tr>
+							)
+						}
+						
+						displayStats.push(
+							<table className="table" key="2">
+								<thead>
+									<tr>
+										<th scope="col">Name</th>
+										<th scope="col">Type</th>
+										<th scope="col">#Appearances</th>
+										<th scope="col">Confidence</th>
+										<th scope="col">Relevance</th>
+										<th scope="col">Sentiment</th>
+										<th scope="col">Emotion</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									{tableDisplay}
+								</tbody>
+							</table>
+						)
+					
+						break;
+					case 'keywords':
+					
+						//console.log(dataSet)
+						
+						for (index in dataSet) {
+							let keyData = dataSet[index]
+							
+							//const dataKeySent = stackedBarData( [keyData.sentiment.min], [keyData.sentiment.ave], [keyData.sentiment.max] )
+							//const dataKeyOptions = stackedBarOptions()
+							
+							let emoMax = parseEmotion( keyData.emotion.max )
+							let emoAve = parseEmotion( keyData.emotion.ave )
+							let emoMin = parseEmotion( keyData.emotion.min )
+							
+							const dataRadar = testMaxMin( emoMax, emoAve, emoMin )
+							const dataRadarOptions = getRadarEmotionOptions()
+							
+							const dataKeySent = stackedBarData2Test(
+								[keyData.relevance.min, keyData.sentiment.min], 
+								[keyData.relevance.ave, keyData.sentiment.ave], 
+								[keyData.relevance.max, keyData.sentiment.max] 
+							)
+							const dataKeyOptions = stackedBarOptions()
+							
+							tableDisplay.push(
+								<tr key={index}>
+									<th scope="row">{keyData.text}</th>
+									<td>{keyData.count}</td>
+									<td colSpan="2"><Bar ref={this.chartReference} data={dataKeySent} options={dataKeyOptions} /></td>
+									<td><Radar ref={this.chartReference} data={dataRadar} options={dataRadarOptions} /></td>
+								</tr>
+							)
+						}
+					
+						displayStats.push(
+							<table className="table" key="2">
+								<thead>
+									<tr>
+										<th scope="col">Name</th>
+										<th scope="col">#Appearances</th>
+										<th scope="col">Relevance Score</th>
+										<th scope="col">Sentiment</th>
+										<th scope="col">Emotion</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									{tableDisplay}
+								</tbody>
+							</table>
+						)
+						
+						break;
+					case 'relations':
+					
+						//console.log(dataSet)
+						
+						for (index in dataSet) {
+							let relData = dataSet[index]
+							
+							const scoreData = stackedBarData( [relData.score.min], [relData.score.ave], [relData.score.max] )
+							const scoreOptions = sentimentBarOptions()
+							
+							tableDisplay.push(
+								<tr key={index}>
+									<th scope="row">{relData.count}</th>
+									<td>{relData.arguments[0].text}</td>
+									<td>{relData.type}</td>
+									<td>{relData.arguments[1].text}</td>
+									<td style={{width:"30%"}}><Bar ref={this.chartReference} data={scoreData} options={scoreOptions} /></td>
+								</tr>
+							)
+						}
+					
+						displayStats.push(
+							<table className="table" key="2">
+								<thead>
+									<tr>
+										<th scope="col">#Appearances</th>
+										<th scope="col">Actor</th>
+										<th scope="col">Action</th>
+										<th scope="col">Target</th>
+										<th scope="col">Score</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									{tableDisplay}
+								</tbody>
+							</table>
+						)
+					
+						break;
+					default:
+						console.log("Invalid AI selection somehow")
+				}
+			}
+		}
+		else {
+			// There was NO DATA in the day here, so we have to display nothing...
+			promptList = [{name:"No Prompts", value:"None"}]
+		}
 		
 		const tileClassName = ({ date, view }) => {
 		
@@ -546,7 +681,6 @@ class companyView extends React.Component {
 		
 		var dropDownInternal = []
 		
-		let index;
 		for (index in this.state.companyList) {
 			let comp = this.state.companyList[index]
 			dropDownInternal.push( 
@@ -556,98 +690,10 @@ class companyView extends React.Component {
 			)
 		}
 		
-		// Entities
-		var entitiesDisplay = [];
-		
-		if (this.state.dataEntities.length > 0) { 
-			for (index in this.state.dataEntities) {
-				const ent = this.state.dataEntities[index]
-				
-				const emotionData = getRadarEmotionData(ent.emotion)
-				const sentimentData = getSentimentData(ent.sentiment)
-				
-				entitiesDisplay.push(
-					<tr key={ent.id}>
-						<th scope="row">{ent.text}</th>
-						<td>{ent.type}</td>
-						<td>{ent.count}</td>
-						<td>{ent.confidence}</td>
-						<td>{ent.relevance}</td>
-						<td> <Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /> </td>
-						<td> <Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /> </td>
-					</tr>
-				)
-			}
-		}
-		else {
-			entitiesDisplay.push(
-				<tr key="0">
-					<th scope="row">None Found!</th>
-				</tr>
-			)
-		}
-		
-		// Keywords
-		var keywordsDisplay = [];
-		
-		if (this.state.dataKeywords.length > 0) { 
-			for (index in this.state.dataKeywords) {
-				const key = this.state.dataKeywords[index]
-				
-				const emotionData = getRadarEmotionData(key.emotion)
-				const sentimentData = getSentimentData(key.sentiment)
-				
-				keywordsDisplay.push(
-					<tr key={key.id}>
-						<th scope="row">{key.text}</th>
-						<td>{key.count}</td>
-						<td>{key.relevance}</td>
-						<td><Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /></td>
-						<td><Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /></td>
-					</tr>
-				)
-			}
-		}
-		else {
-			keywordsDisplay.push(
-				<tr key="0">
-					<th scope="row">None Found!</th>
-				</tr>
-			)
-		}
-		
-		// R E L A T I O N S
-		var relationsDisplay = [];
-		
-		if (this.state.dataRelations.length > 0) { 
-		
-			for (index in this.state.dataRelations) {
-				const rel = this.state.dataRelations[index]
-				relationsDisplay.push(
-					<tr key={rel.id}>
-						<th scope="row">{rel.init}</th>
-						<td>{rel.action}</td>
-						<td>{rel.target}</td>
-						<td>{rel.score}</td>
-					</tr>
-				)
-			}
-		}
-		else {
-			relationsDisplay.push(
-				<tr key="0">
-					<th scope="row">Unimplemented!</th>
-					<th scope="row">Unimplemented!</th>
-					<th scope="row">Unimplemented!</th>
-					<th scope="row">Unimplemented!</th>
-				</tr>
-			)
-		}
-		
 		return (
 			<div className="companyView">
 				<div className="container">
-					
+				
 					<div className="row">
 						<div className="col-sm-3 m-2">	
 							<button className="btn btn-primary" onClick={this.backButton}>
@@ -658,147 +704,125 @@ class companyView extends React.Component {
 							Page Title Test!
 						</div>
 					</div>
-
-					<div className="row">
+					
+					<div className="row m-2">
 						<div className="col-lg-3 border m-2">					
 							<div>
 								<Calendar 
 									onChange={this.pickDate}
 									value={this.state.currentDate}
 									tileClassName={tileClassName}
-									
+
 									minDetail={'year'}
 									maxDetail={'month'}
 								/>
 							</div>
 						</div>
-						<div className="col border m-2">					
-							<p>{this.state.messages}</p>
-							<p>{this.state.companyDisp}</p>
-						</div>
-					</div>
-					
-					<div className="row">
-						<div className="col">
-							<div className="dropdown">
-							  <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							  {this.state.dropMessage}
-							  </button>
-							  <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
-								{dropDownInternal}
-							  </div>
+						<div className="col border m-2">		
+							<div className="row m-2">
+								<div className="col">
+									<div className="dropdown">
+									  <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+									  {this.state.dropMessage}
+									  </button>
+									  <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
+										{dropDownInternal}
+									  </div>
+									</div>
+								</div>
+								<div className="col">
+									<button className="btn btn-outline-danger" onClick={this.loadCompanyData}> Reload Company Data </button>
+									<button className="btn btn-outline-danger" onClick={this.loadDatesData}> Reload Dates </button>
+									<button className="btn btn-outline-danger" onClick={this.flushCookies}> Flush Cookie Data </button>
+								</div>
 							</div>
-						</div>
-						<div className="col">
-							<button onClick={this.loadTestData}> Get Summary Test </button>
-						
-							<button onClick={this.getCompanyList}> Get Comp List </button>
-							<button onClick={this.getValidDates}> Get Valid Dates (server)</button>
-							<button onClick={this.getCookiesValidDates}> Get Valid Dates (cookies)</button>
-						</div>
-					</div>
-					
-					<div className="row my-2">
-						<div className="col">
-							<div className="progressBar">
-								<h3>Summary Data for date: {this.state.currentDate.toString()}</h3>
-
-								<ProgressBar now={ this.state.responsePurity } label={`${this.state.responsePurity}% Response Rate`} />
-
+							
+							<div className="row m-2">
+								<div className="col">		
+									<p>{this.state.messages}</p>
+								</div>
 							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{daySet.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="secondary"
+											name="radio"
+											value={radio.value}
+											checked={this.state.seletedDay === radio.value}
+											onChange={this.selectDay}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{promptList.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="primary"
+											name="radio"
+											value={radio.value}
+											checked={this.state.selectedPrompt === radio.value}
+											onChange={this.selectPrompt}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
+							<div className="row m-2">
+								<div className="col">
+									<ButtonGroup toggle>
+										{AIAspect.map((radio, idx) => (
+										<ToggleButton
+											key={idx}
+											type="radio"
+											variant="info"
+											name="radio"
+											value={radio.value}
+											checked={this.state.selectedAspect === radio.value}
+											onChange={this.selectAI}
+											>
+											{radio.name}
+										</ToggleButton>
+										))}
+									</ButtonGroup>
+								</div>
+							</div>
+							
 						</div>
 					</div>
 					
-					<div className="row my-2">
-						<div className="col border mx-2">
-							<Radar ref={this.chartReference} data={this.state.dataEmotion} options={this.state.optionsEmotions} />
-						</div>
-						<div className="col border mx-2">
-							<Doughnut ref={this.chartReference} data={this.state.dataSentiment} options={this.state.optionsSentiment} />
-						</div>
-					</div>
-					<div className="row  my-2">
-						<div className="col border mx-2">
-							<Bar ref={this.chartReference} data={this.state.dataCategories} options={this.state.optionsCategories} />
-						</div>
-						<div className="col border mx-2">
-							<Bar ref={this.chartReference} data={this.state.dataConcepts} options={this.state.optionsConcepts} />
-						</div>
-					</div>
-					
-					<div className="row my-2">
+					<div className="row m-2">
 						<div className="col">
-							<h3>Entities!</h3>
+							Showing Data for prompt: {promptName}
 						</div>
 					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Name</th>
-								<th scope="col">Type</th>
-								<th scope="col">#Appearances</th>
-								<th scope="col">Confidence Score</th>
-								<th scope="col">Relevance Score</th>
-								<th scope="col">Emotion</th>
-								<th scope="col">Sentiment</th>
-							</tr>
-						</thead>
-						
-						<tbody>
-							{entitiesDisplay}
-						</tbody>
-					</table>
 					
-					<div className="row my-2">
-						<div className="col">
-							<h3>Keywords!</h3>
-						</div>
-					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Word</th>
-								<th scope="col">#Appearances</th>
-								<th scope="col">Relevance Score</th>
-								<th scope="col">Emotion</th>
-								<th scope="col">Sentiment</th>
-							</tr>
-						</thead>
-						
-						<tbody>
-							{keywordsDisplay}
-						</tbody>
-					</table>
-					
-					<div className="row my-2">
-						<div className="col">
-							<h3>Relations!</h3>
-						</div>
-					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Thing</th>
-								<th scope="col">Action</th>
-								<th scope="col">Target</th>
-								<th scope="col">Score</th>
-							</tr>
-						</thead>
-						
-						<tbody>
-							{relationsDisplay}
-						</tbody>
-					</table>
+					{displayStats}
 					
 					<div className="row  my-2">
 						<p>
-							PADDING
+							
 						</p>
 					</div>
 				</div>
 			</div>
-		)
+		);
 	}
 }
 
-export default withRouter(companyView);
+export default withRouter(companyViewSummary);

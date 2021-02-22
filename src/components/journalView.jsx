@@ -60,8 +60,10 @@ class journalView extends React.Component {
 	
 	componentDidMount() {
 		
-		this.loadFromCookies();
-		
+		let result = this.loadFromCookies();
+		if (!result) {
+			this.getJournalDates()
+		}
 	};
 	
 	loadFromCookies = () => {
@@ -74,9 +76,10 @@ class journalView extends React.Component {
 		try{
 			this.setState({validJournalScanDates: journalDates.AIDates, validJournalDates: journalDates.journalDates})
 			console.log("Got the journal data from the cookies")
-			
+			return true
 		} catch{
-			//console.log("No cookies to load the data from")
+			console.log("No cookies to load the data from")
+			return false
 		}
 	};
 	
@@ -279,7 +282,7 @@ class journalView extends React.Component {
 					
 					// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
 					// CHANGE THIS!!!
-					const newDate = new Date(res.data[item].createdDate)
+					const newDate = new Date(res.data[item].forDate)
 					
 					const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)
 					
@@ -291,6 +294,9 @@ class journalView extends React.Component {
 				}
 				
 				this.setState({validJournalScanDates: tempAIArray, validJournalDates: tempJoArray})
+				
+				// Save this new set to the cookies...
+				this.saveToCookies()
 				
 		})
 		.catch( err => {
@@ -329,8 +335,7 @@ class journalView extends React.Component {
 			// And and edit history... but that is for later
 			
 			const config = {
-				//headers: { Authorization: `JWT ${this.props.authToken}` }
-				headers: { Authorization: `JWT asdkjdsakjldsajklsd` }
+				headers: { Authorization: `JWT ${this.props.authToken}` }
 			};
 			
 			console.log("requesting date")
@@ -513,8 +518,19 @@ class journalView extends React.Component {
 							</div>
 						</div>
 						<div className="col border m-2">					
-							<p>{this.state.messages}</p>
-							<p>{this.state.journalDisp}</p>
+							<div className="row my-2">
+								<div className="col">
+									<p>{this.state.messages}</p>
+									<p>{this.state.journalDisp}</p>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div className="row my-2">
+						<div className="col-lg-2">
+							<p> Debug! </p>
+							<button onClick={this.loadTestData}> Load Stored AI Data </button>
+							<button onClick={this.getJournalDates}> Force Dates Update </button>
 						</div>
 					</div>
 					<div className="row my-2">
@@ -596,23 +612,12 @@ class journalView extends React.Component {
 						</tbody>
 					</table>
 					
-					<div className="row my-2">
-						<div className="col-lg-2 border mx-2">
-							<p> Debug! </p>
-							<button onClick={this.loadTestData}> Load Data </button>
-							<button onClick={this.getJournalDates}> Get dates </button>
-							<button onClick={this.saveToCookies}> Save dates </button>
-							<button onClick={this.loadFromCookies}> Load dates </button>
-						</div>
-					</div>
-					
 					<div className="row  my-2">
 						<p>
 							PADDING
 						</p>
 					</div>
 				</div>
-				
 			</div>
 		);
 	}
