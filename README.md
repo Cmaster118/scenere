@@ -1,1 +1,3 @@
-This is the first attempt at a Journalling website...
+# serene
+
+First attempt at a Journalling site!
