@@ -31,13 +31,13 @@ class navigation extends React.Component {
 
 		if (this.props.currentUser === undefined) {
 			iconButton = [
-				(<li className={'nav-item'} key='0'>
+				(<li className={'nav-item'} key='1'>
 					<Link className="nav-link" to={basePath+"/signup"}>
 						Sign Up
 					</Link>
 				</li>),
 
-				(<li className={'nav-item'}  key='1'>
+				(<li className={'nav-item'}  key='2'>
 					<Link className="nav-link" to={basePath+"/signin"}>
 						Sign In
 					</Link>
@@ -45,35 +45,49 @@ class navigation extends React.Component {
 			]
 
 			userDisplay = (
-				<li className={'nav-item'}  key='2'>	
-					<Link className="nav-link" to={basePath+"/menu"}>
+				<li className={'nav-item'}  key='3'>	
+					<Link className="nav-link" to={basePath+"/dashboard"}>
 						None
 					</Link>
 				</li>
 			)
 		}
 		else {
-			iconButton = (
-				<li className={'nav-item'}  key='3'>
+			iconButton = [
+				(<li className={'nav-item'}  key='1'>	
+					<Link className="nav-link" to={basePath+"/dashboard"}>
+						Dashboard
+					</Link>
+				</li>),
+			
+				(<li className={'nav-item'}  key='2'>
 					<Link className="nav-link" to={basePath+"/"} onClick={this.triggerLogout}>
 						Sign Out
 					</Link>
-				</li>
-			)
+				</li>)
+			]
 
 			userDisplay = (
-				<li className={'nav-item'}  key='4'>	
-					<Link className="nav-link" to={basePath+"/menu"}>
+				<li className={'nav-item'}  key='5'>	
+					<Link className="nav-link" to={basePath+"/dashboard"}>
 						{this.props.currentUser}
 					</Link>
 				</li>
 			)
 		}
+		
+		/*
+		<li className={'nav-item'}  key='10'>	
+			<Link className="nav-link" to={basePath+"/contact"}>
+				Contact Us Test
+			</Link>
+		</li>
+		*/
 
 		return (
 			<div className="navigation">
 				<nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-					<div className="container">
+					<div className="container-fluid">
 						<Link className="navbar-brand" to={basePath+"/"}>
 							Project Scenere
 						</Link>
@@ -94,16 +108,11 @@ class navigation extends React.Component {
 						<div className="collapse navbar-collapse" id="navbarResponsive">
 							<ul className="navbar-nav ml-auto">
 							
-								<li className={'nav-item'}  key='30'>
-									<Link className="nav-link" to={basePath+"/test/1"}>
-										!!TestDisplay 1!!
-									</Link>
-								</li>
-
-							
 								{iconButton}
-								<li className={'nav-link'}>	
-									Current User: 
+								<li className={'nav-item'}  key='1'>	
+									<div className="nav-link">
+										Current User:
+									</div>
 								</li>
 								{userDisplay}
 							</ul>

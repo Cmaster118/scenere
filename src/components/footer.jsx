@@ -15,7 +15,7 @@ class footer extends React.Component {
 				<footer className="py-3 bg-dark fixed-bottom">
 					<div className="container">
 						<p className="m-0 text-center text-white">
-							Copyright &copy; Nightingale Technologies 2020
+							Copyright &copy; Nightingale Technologies 2021
 						</p>
 					</div>
 				</footer>
