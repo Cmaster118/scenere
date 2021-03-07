@@ -212,8 +212,6 @@ const journalView = (props) => {
 		errorCheckingClass =' bg-danger'
 	}		
 	
-	let currentSet = [selectedPerms, selectedDivision, selectedID]
-	
 	// Example code... Can I alter this to be more my style?
 	// It works, so its okay for now...
 	const toggleBlockType = (blockType) => {
