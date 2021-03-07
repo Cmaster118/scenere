@@ -1,22 +1,4 @@
-// Use this or localstorage?
-import Store from "store"
-
-// Maybe I should put ALL the storage stuff here...
-export const login = (tokenKey, username) => {
-	Store.set('jwtSession', {user:username, token:tokenKey})
-}
-
-export const logout = () => {
-	Store.remove('jwtSession')
-}
-
-export const isLoggedIn = () => {
-	if (Store.get('jwtSession')) {
-		return true;
-	}
-	
-	return false;
-}
+export * from "./axiosAPI"
 
 // Lets try this for the Graph Data...
 // See if this works out okay...
@@ -67,7 +49,7 @@ export const arbitraryLineOptions = () => {
 export const getRadarEmotionData = (inputData) => {
 	
 	const data = {
-		labels: ['Anger', 'Disgust', 'Fear', 'Joy', 'Sadness'],
+		labels: ['Joy', 'Anger', 'Sadness', 'Disgust', 'Fear'],
 			datasets: [ 
 			{
 				label: 'Confidence Levels',
@@ -457,7 +439,7 @@ export const sentimentBarOptions = () => {
 	return options
 }
 
-// This is where my template stuff is ---------------------------------------------------------------
+// -------------------------------This is where my template stuff is ---------------------------------------------------------------
 export const getDoughData = (inputData) => {
 	const data = {
 		labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],

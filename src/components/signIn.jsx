@@ -1,7 +1,8 @@
 import React from "react";
-import axios from "axios";
 
 import { Link, withRouter } from 'react-router-dom';
+
+import { APISignIn } from "../utils";
 
 import Store from "store"
 
@@ -29,13 +30,13 @@ class signIn extends React.Component {
 			// Just note that this is probobly a bad idea...
 			password: '',
 			
-			remember: false,
+			remember: true,
 			
         };
 	}
 	
 	componentDidMount() {
-		this.loadFromCookies();
+		//this.loadFromCookies();
 	};
 	
 	loadFromCookies = () => {
@@ -60,45 +61,26 @@ class signIn extends React.Component {
 		this.setState( {remember: event.target.value} )
 	}
 	
-	handleSubmit = event => {
-		//console.log("Login Triggered")
-		
-		// THIS IS TERRIBLE SECIRTY! WILL SECURE THE PASSWORD IN PLAIN TEXT!
-		if(this.state.remember) {
-			Store.set('rememberUser', {user:this.state.username , pass: this.state.password })
-			console.log("User data Stored")
-		}
-		
-		const data = {
-			username: this.state.username,
-			password: this.state.password
-		};
-		
-		//console.log(data)
-
-		axios.post(this.props.APIHost +"/apiTokenAuth/", data )
-		.then( res => { 
-			this.setState({ latestAttempt: 200 })
-			const result = this.props.loginSave( res.data.token, this.state.username )
-			console.log("Success")
+	handleSubmitSuccess = (incomingToken) => {
+		//console.log(this.state.remember)
+		const sanityCheck = this.props.loginSave( incomingToken, this.state.username, this.state.remember )
+		if (sanityCheck) {
+			console.log("Token registered")
 			
-			if (result) {
-				console.log("Token registered")
-				
-				// Change this to a dashboard lookin thing
-				this.props.history.push(this.props.reRouteTarget)
-			}
-			else {
-				console.log("Token Failed..?")
-			}
-		})
-		.catch( err => {
-			// Change this depending on the error...
-			this.setState({ latestAttempt: 400 })
-			console.log(err)
-			console.log("Connection failed...")
-		})
-
+			// Change this to a dashboard lookin thing
+			this.props.history.push(this.props.reRouteTarget)
+		}
+		else {
+			console.log("Token Failed..?")
+		}
+	}
+	handleSubmitFailure = (errorResult) => {
+		console.log("Connection failed...")
+		this.setState({ latestAttempt: 400 })
+	}
+	handleSubmit = event => {
+		
+		APISignIn(this.props.APIHost, this.state.username, this.state.password, this.handleSubmitSuccess, this.handleSubmitFailure)
 		event.preventDefault();
 	}
 	

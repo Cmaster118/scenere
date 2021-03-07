@@ -1,626 +1,370 @@
 import React from "react";
-import axios from "axios";
 
-import Store from "store"
+//import { useEffect } from "react"
+
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
-import { Doughnut, Radar, Bar } from 'react-chartjs-2';
+import { Radar, Bar } from 'react-chartjs-2';
+
+import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
 import { withRouter } from "react-router-dom";
 
 //import {isLoggedIn} from '../utils';
-import {getRadarEmotionData, getSentimentData, getConceptsData, getCategoryData} from '../utils';
-import {getRadarEmotionOptions, getSentimentOptions, getConceptsOptions, getCategoryOptions} from '../utils';
+import {getRadarEmotionData } from '../utils';
+import {getRadarEmotionOptions, stackedBarOptions} from '../utils';
 
-class journalView extends React.Component {
+import { stackedBarData3Test, stackedBarData2Test, stackedBarData } from '../utils';
 
-	constructor(props) {
-        super(props);
+// This is very lean...
+const parseEmotion = (emotionData) => {
+	
+	let derp = [emotionData.joy, emotionData.anger, emotionData.sadness, emotionData.disgust, emotionData.fear]
+	return derp;
+}
+
+// Maybe I should move this to getting it from the data...
+const AIAspect = [
+    { name: 'Emotion', value: 'emotion' },
+    { name: 'Sentiment', value: 'sentiment' },
+    { name: 'Entities', value: 'entities' },
+	{ name: 'Keywords', value: 'keywords' },
+	//{ name: 'Relations', value: 'relations' },
+];
+
+// This doesnt look right... Fix this later I guess
+/*this.onChange = (editorState) => this.setState({editorState});
+this.setEditor = (editor) => {
+	this.editor = editor;
+};*/
+
+// Perhaps the journal would be set here instead?
+// I CAN use hooks if need be. So I will note that to try once I get this up and running...
+// And can check performance...
+
+// Main Function
+const JournalView = (props) => {
 		
-		this.state = {
-			messages: "Waiting for user input...",
-			journalData: "",
+	const tileClassName = ({ date, view }) => {
+	
+		// Add class to tiles in month view only
+		if (view === 'month') {
 			
-			currentDate: new Date(),
-			
-			// These are the dates that we know have valid Journal entries
-			validJournalDates: [],
-			// These are the dates that we know have a valid Journal, AND an valid AI response!
-			validJournalScanDates: [],
-			
-			dataCategories: getCategoryData([0], ['']),
-			optionsCategories: getCategoryOptions(),
-			
-			dataConcepts: getConceptsData([0],['']),
-			optionsConcepts: getConceptsOptions(),
-			
-			dataEntities: [],
-			dataKeywords: [],
-			dataRelations: [],
-			
-			dataEmotion: getRadarEmotionData([0]),
-			optionsEmotions: getRadarEmotionOptions(),
-			
-			dataSentiment: getSentimentData([0]),
-			optionsSentiment: getSentimentOptions(),
+			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
 
-        };
-		
-		// This doesnt look right... Fix this later I guess
-		this.onChange = (editorState) => this.setState({editorState});
-		this.setEditor = (editor) => {
-			this.editor = editor;
-		};
-		
-	};
-
-	backButton = () => {
-		this.props.history.goBack()
+			// Check if a date React-Calendar wants to check is on the list of dates to add class to
+			const hasJournal = props.validJournalDates.find( element => element === checkDate)
+			const hasAI = props.validJournalScanDates.find( element => element === checkDate)
+			
+			if (hasAI) {
+				return 'btn btn-success';
+			} else if (hasJournal) {
+				return 'btn btn-warning'
+			} else {
+				// use the default styling...
+				//return 'btn btn-outline-dark'
+			}
+			
+		}
 	}
 	
-	componentDidMount() {
-		
-		let result = this.loadFromCookies();
-		if (!result) {
-			this.getJournalDates()
-		}
-	};
+	let displayPromptSentance = "Displaying Data for Journal with prompt: " + props.selectedPrompt
 	
-	loadFromCookies = () => {
-		// Security here given our user....
-		// console.log(this.props.currentUser)
-		
-		// Change this so that it is for the currentuser, I got that up here done, but LETS TRY
-		let journalDates = Store.get(this.props.currentUser+'-ValidDates')
-		
-		try{
-			this.setState({validJournalScanDates: journalDates.AIDates, validJournalDates: journalDates.journalDates})
-			console.log("Got the journal data from the cookies")
-			return true
-		} catch{
-			console.log("No cookies to load the data from")
-			return false
-		}
-	};
+	let index;
 	
-	loadTestData = () => {
-		// And here is our testdata for display
-		let AIdata = Store.get('testData')
-		//try{
-			//console.log(AIdata)
-			
-			// Categories!
-			const catData = AIdata.categories
-			
-			let catLabels = []
-			let catScores = []
-			
-			var index;
-			for (index in catData) {
-				const cat = catData[index]
-				//console.log(cat)
-				
-				catLabels.push(cat.label)
-				catScores.push(cat.score)
-			}
-			
-			// Concepts!
-			const conData = AIdata.concepts
-			
-			let conLabels = []
-			let conRelevance = []
-			let conDatabase = []
-			
-			for (index in conData) {
-				const con = conData[index]
-				
-				conLabels.push(con.text)
-				conRelevance.push(con.relevance)
-				conDatabase.push(con.dbpedia_resource)
-			}
-			
-			// Emotions!
-			const emDataObj = AIdata.emotion.document.emotion
-			const emData = [emDataObj.anger, emDataObj.disgust, emDataObj.fear, emDataObj.joy, emDataObj.sadness]
-			
-			// Entities!
-			const entData = AIdata.entities
-			
-			let entity = []
-
-			for (index in entData) {
-				const ent = entData[index]
-				//console.log(ent)
-				
-				// What about this?
-				//console.log(ent.disambiguation)
-				
-				const entEmotion = [ent.emotion.anger, ent.emotion.disgust, ent.emotion.fear, ent.emotion.joy, ent.emotion.sadness]
-				
-				const senDataScore = ent.sentiment.score
-				const oppData = 1-Math.abs(senDataScore)
-				
-				let arrangedDataScore = [0, 0]
-				if (senDataScore > 0) {
-					arrangedDataScore = [senDataScore, oppData]
-				} else {
-					arrangedDataScore = [oppData, senDataScore]
-				}
-				
-				const entStore = {
-					id:index,
-					
-					text:ent.text,
-					type:ent.type,
-					
-					count:ent.count,
-					relevance:ent.relevance,
-					
-					emotion:entEmotion,
-					sentiment:arrangedDataScore,
-				}
-				
-				entity.push(entStore)
-			}
-			
-			// Keywords!
-			const keyData = AIdata.keywords
-			
-			let keyword = []
-
-			for (index in keyData) {
-				const key = keyData[index]
-				
-				//console.log(key.emotion)
-				//console.log(key.sentiment)
-				
-				const keyEmotion = [key.emotion.anger, key.emotion.disgust, key.emotion.fear, key.emotion.joy, key.emotion.sadness]
-				
-				const senDataScore = key.sentiment.score
-				const oppData = 1-Math.abs(senDataScore)
-				
-				let arrangedDataScore = [0, 0]
-				if (senDataScore > 0) {
-					arrangedDataScore = [senDataScore, oppData]
-				} else {
-					arrangedDataScore = [oppData, senDataScore]
-				}
-				
-				const keyStore = {
-					id:index,
-					
-					text:key.text,
-					count:key.count,
-					relevance:key.relevance,
-					
-					emotion:keyEmotion,
-					sentiment:arrangedDataScore,
-				}
-				
-				keyword.push(keyStore)
-			}
-			
-			// Relations!
-			let relation = []
-			
-			const relDat = AIdata.relations
-
-			for (index in relDat) {
-				const rel = relDat[index]
-				
-				// Probobly combine these?
-				
-				const relStore = {
-					id: index,
-					init:rel.arguments[0].text,
-					action:rel.type,
-					target:rel.arguments[1].text,
-					score:rel.score,
-				}
-				
-				relation.push(relStore)
-
-				// How do I Show this?
-			}
-			
-			// Sentiment!
-			const senDataScore = AIdata.sentiment.document.score
-			
-			const senOne = 0.5*(senDataScore + 1)
-			const senOpp = 0.5*(senDataScore - 1)
-			
-			let arrangedDataScore = [senOne, senOpp]
-
-			this.setState({
-				
-				dataCategories:getCategoryData(catScores, catLabels),
-				dataConcepts:getConceptsData(conRelevance, conLabels),
-				dataEmotion:getRadarEmotionData(emData),
-				
-				dataEntities: entity,
-				dataKeywords: keyword,
-				dataRelations: relation,
-			
-				dataSentiment:getSentimentData(arrangedDataScore),
-				
-			})
-			
-		//} catch{
-			//console.log("Error!")
-		//}
-	}
+	let dayData = props.dataSet
+	let promptList = []
 	
-	saveToCookies = () => {
-		
-		Store.set(this.props.currentUser+'-ValidDates', { journalDates:this.state.validJournalDates, AIDates:this.state.validJournalScanDates })
-		console.log("Saved to cookies!")
-	};
+	let tableDisplay = []
+	let displayStats = []
+	//let promptName = "Invalid Prompt"
 	
-	getJournalDates = () => {
+	if (!(dayData === null) && !(dayData === undefined)) {
 		
-		const config = {
-			headers: { Authorization: `JWT ${this.props.authToken}` }
-		};
-		
-		// IF ANY GETS FAILS DUE TO BAD TOKEN, WE NEED TO SEND IT UP THE CHAIN TO DO SOMETHING ABOUT IT
-		
-		// So, this will give you EVERY SINGLE VALID ENTRY WE HAVE
-		// WITHOUT. I REPEAT. WITHOUT THE JOURNAL CONTENT
-		axios.get(this.props.APIHost +"/getJournalDates", config)
-		.then( 
-			res => {
-				
-				console.log("Got Data!")
-				
-				let tempAIArray = []
-				let tempJoArray = []
-				
-				Store.remove(this.props.currentUser+'-ValidDates')
+		let key;
+		for (key in dayData) {
 
-				var item = ""
-				for (item in res.data){
+			if ( !(dayData[key].name === undefined) ) {
+				promptList.push( {name:dayData[key].name, value:key} )
+			}
+		}
+		
+		// At this point if the array is still empty,we have nothing...
+		if (promptList.length === 0) {
+			promptList = [{name:"No Prompts", value:"None"}]
+		}
+		
+		let sanityCheck = props.selectedAspect in dayData
+		if (sanityCheck) {
+			//promptName = dayData[props.selectedPrompt]["name"]
+			//displayPromptSentance = "Showing Data for prompt: " + promptName
+			
+			//let dataSet = dayData[props.selectedPrompt]["data"][props.selectedAspect]
+			let dataSet = dayData[props.selectedAspect]
+			
+			switch(props.selectedAspect) {
+				case 'emotion':
+					let emoValue = parseEmotion( dataSet.document.emotion )
 					
-					// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
-					// CHANGE THIS!!!
-					const newDate = new Date(res.data[item].forDate)
-					
-					const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)
-					
-					if (res.data[item].hasAI) {
-						tempAIArray.push( checkDate )
-					} else {
-						tempJoArray.push( checkDate )
-					}
-				}
+					let dataDocEmo = getRadarEmotionData( emoValue )
+					let emoOptions = getRadarEmotionOptions()
 				
-				this.setState({validJournalScanDates: tempAIArray, validJournalDates: tempJoArray})
-				
-				// Save this new set to the cookies...
-				this.saveToCookies()
-				
-		})
-		.catch( err => {
-			if (err.response.status === 401) {
-				this.props.forceLogout()
-				this.props.history.push(this.props.reRouteTarget)
-			}
-		});
-		
-		return false
-	};
-	
-	pickDate = (selectedDate) => {
-		
-		console.log("requesting date")
-		this.setState({currentDate: selectedDate})
-		
-		// Okay, so check to see if we HAVE the journal entry in our storage
-		// If we do, show that!
-	
-		// Change this so that it is for the currentuser, I got that up here done, but LETS TRY
-		let journal = Store.get(this.props.currentUser+'-Journal-'+selectedDate)
-		
-		try{
-			
-			// TO DO, THIS ONE!
-			console.log(journal.content)
-			
-			console.log("Got the Journal entry from storage?!")
-		} catch{
-			//console.log("No cookies to load the data from")
-		
-			// If we DONT, ask the server
-			// need to be able to check if it was changed...
-			// Probobly need to add a "last Edited" field...
-			// And and edit history... but that is for later
-			
-			const config = {
-				headers: { Authorization: `JWT ${this.props.authToken}` }
-			};
-			
-			console.log("requesting date")
-			this.setState({currentDate: selectedDate})
-			
-			const dateReq = selectedDate.toJSON().split("T")[0]
-			
-			axios.get(this.props.APIHost +"/getUserJournal/?reqDate="+dateReq, config)
-			.then( 
-				res => {
-					// What if it is > 1?
-					if (res.data.length > 0) {
-						console.log("obtained a journal entry")
-						
-						if (res.data[0].hasAI) {
-							console.log("Saved to the storage")
-							
-							// Save in the cookies for non-login access...
-							Store.set('testData', res.data[0].AIresult)
-							
-							this.loadTestData()
-						}
-						
-						this.setState( {
-							messages: "Showing Journal Entry for: " + this.state.currentDate.toString(),
-							journalDisp: res.data[0].content,
-						} )
-						
-					}
-					else{
-						console.log("No entry for that day")
-						this.setState( {
-							messages: "No entry for that day",
-							journalDisp: "",
-						})
-					}
-					// LEts not store it in the cookies for now...
-			})
-			.catch( err => {
-				
-				if (err.response.status === 401) {
-					this.props.forceLogout()
-					this.props.history.push(this.props.reRouteTarget)
-				}
-				
-			});
-		
-		}
-	};
-	
-	forceCalenderUpdateTest = () => {
-		
-	}
-
-	render() {
-		
-		const tileClassName = ({ date, view }) => {
-		
-			// Add class to tiles in month view only
-			if (view === 'month') {
-				
-				const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
-				
-				//console.log(checkDate)
-				//console.log(this.state.validJournalDates)
-
-				// Check if a date React-Calendar wants to check is on the list of dates to add class to
-				const hasJournal = this.state.validJournalDates.find( element => element === checkDate)
-				const hasAI = this.state.validJournalScanDates.find( element => element === checkDate)
-				
-				if (hasAI) {
-					return 'btn btn-success';
-				} else if (hasJournal) {
-					return 'btn btn-warning'
-				} else {
-					// use the default styling...
-					//return 'btn btn-outline-dark'
-				}
-				
-			}
-		}
-		
-		// Entities
-		var entitiesDisplay = [];
-		
-		if (this.state.dataEntities.length > 0) { 
-			var index;
-			for (index in this.state.dataEntities) {
-				const ent = this.state.dataEntities[index]
-				
-				const emotionData = getRadarEmotionData(ent.emotion)
-				const sentimentData = getSentimentData(ent.sentiment)
-				
-				entitiesDisplay.push(
-					<tr key={ent.id}>
-						<th scope="row">{ent.text}</th>
-						<td>{ent.type}</td>
-						<td>{ent.count}</td>
-						<td>{ent.relevance}</td>
-						<td> <Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /> </td>
-						<td> <Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /> </td>
-					</tr>
-				)
-			}
-		}
-		else {
-		}
-		
-		// Keywords
-		var keywordsDisplay = [];
-		
-		if (this.state.dataKeywords.length > 0) { 
-			for (index in this.state.dataKeywords) {
-				const key = this.state.dataKeywords[index]
-				
-				const emotionData = getRadarEmotionData(key.emotion)
-				const sentimentData = getSentimentData(key.sentiment)
-				
-				keywordsDisplay.push(
-					<tr key={key.id}>
-						<th scope="row">{key.text}</th>
-						<td>{key.count}</td>
-						<td><Radar ref={this.chartReference} data={emotionData} options={this.state.optionsEmotions} /></td>
-						<td><Doughnut ref={this.chartReference} data={sentimentData} options={this.state.optionsSentiment} /></td>
-					</tr>
-				)
-			}
-		}
-		else {
-		}
-		
-		// R E L A T I O N S
-		var relationsDisplay = [];
-		
-		if (this.state.dataRelations.length > 0) { 
-		
-			for (index in this.state.dataRelations) {
-				const rel = this.state.dataRelations[index]
-				relationsDisplay.push(
-					<tr key={rel.id}>
-						<th scope="row">{rel.init}</th>
-						<td>{rel.action}</td>
-						<td>{rel.target}</td>
-						<td>{rel.score}</td>
-					</tr>
-				)
-			}
-		}
-		else {
-		}
-		
-		return (
-			<div className="mainView">
-				
-				<div className="container">
-
-					<div className="row">
-						<div className="col-sm-3 m-2">	
-							<button className="btn btn-primary" onClick={this.backButton}>
-								Go Back
-							</button>
-
-						</div>
-						<div className="col-sm m-2">	
-							Page Title Test!
-						</div>
-					</div>
-
-					<div className="row ">
-						<div className="col-lg-3 border m-2">					
-							<div>
-								<Calendar 
-									onChange={this.pickDate}
-									value={this.state.currentDate}
-									tileClassName={tileClassName}
-
-									minDetail={'year'}
-									maxDetail={'month'}
-								/>
+					displayStats.push(
+						<div className="row m-2" key="2">
+							<div className="col-3">
+							</div>
+							<div className="col">
+								<div className="card">
+									<div className="card-header">
+										Emotion Values
+									</div>
+									<div className="card-body">
+										<Radar data={dataDocEmo} options={emoOptions} />
+									</div>
+								</div>
+							</div>
+							<div className="col-3">
 							</div>
 						</div>
-						<div className="col border m-2">					
-							<div className="row my-2">
-								<div className="col">
-									<p>{this.state.messages}</p>
-									<p>{this.state.journalDisp}</p>
+					)
+				break;
+				case 'sentiment':
+					const dataBarStack = stackedBarData( [dataSet.document.score] )
+					const barStackOptions = stackedBarOptions()
+				
+					displayStats.push(
+						<div className="row m-2" key="2">
+							<div className="col-3">
+							</div>
+							<div className="col">
+								<div className="card">
+									<div className="card-header">
+										Sentiment Values
+									</div>
+									<div className="card-body">
+										<Bar data={dataBarStack} options={barStackOptions} />
+									</div>
+								</div>
+							</div>
+							<div className="col-3">
+							</div>
+						</div>
+					)
+				break;
+				case 'entities':
+					
+					//console.log(dataSet)
+					for (index in dataSet) {
+						let entity = dataSet[index]
+						//console.log(entity)
+						
+						let emoVal = parseEmotion( entity.emotion )
+						
+						let emoData = getRadarEmotionData( emoVal)
+						let emoOptions = getRadarEmotionOptions()
+						
+						const dataEntSent = stackedBarData3Test( 
+							[entity.confidence, entity.relevance, entity.sentiment],
+						)
+						const dataEntOptions = stackedBarOptions()
+						
+						tableDisplay.push(
+							<tr key={index}>
+								<th scope="row">{entity.text}</th>
+								<td>{entity.type}</td>
+								<td>{entity.count}</td>
+								<td colSpan="3"><Bar data={dataEntSent} options={dataEntOptions} /></td>
+								<td><Radar data={emoData} options={emoOptions} /></td>
+							</tr>
+						)
+					}
+					
+					displayStats.push(
+						<table className="table" key="2">
+							<thead>
+								<tr>
+									<th scope="col">Name</th>
+									<th scope="col">Type</th>
+									<th scope="col">#Appearances</th>
+									<th scope="col">Confidence</th>
+									<th scope="col">Relevance</th>
+									<th scope="col">Sentiment</th>
+									<th scope="col">Emotion</th>
+								</tr>
+							</thead>
+							
+							<tbody>
+								{tableDisplay}
+							</tbody>
+						</table>
+					)
+				break;
+				case 'keywords':
+				
+					for (index in dataSet) {
+						let keyData = dataSet[index]
+						
+						let emoVal = parseEmotion( keyData.emotion )
+						
+						const dataRadar = getRadarEmotionData( emoVal )
+						const dataRadarOptions = getRadarEmotionOptions()
+						
+						const dataKeySent = stackedBarData2Test(
+							[keyData.relevance, keyData.sentiment], 
+						)
+						const dataKeyOptions = stackedBarOptions()
+						
+						tableDisplay.push(
+							<tr key={index}>
+								<th scope="row">{keyData.text}</th>
+								<td>{keyData.count}</td>
+								<td colSpan="2"><Bar data={dataKeySent} options={dataKeyOptions} /></td>
+								<td><Radar data={dataRadar} options={dataRadarOptions} /></td>
+							</tr>
+						)
+					}
+				
+					displayStats.push(
+						<table className="table" key="2">
+							<thead>
+								<tr>
+									<th scope="col">Name</th>
+									<th scope="col">#Appearances</th>
+									<th scope="col">Relevance Score</th>
+									<th scope="col">Sentiment</th>
+									<th scope="col">Emotion</th>
+								</tr>
+							</thead>
+							
+							<tbody>
+								{tableDisplay}
+							</tbody>
+						</table>
+					)
+				break;
+				default:
+						console.log("Invalid AI selection somehow")
+			}
+		}
+		else {
+			promptList = [{name:"No Prompts", value:"None"}]
+		}
+	}
+	else {
+		promptList = [{name:"No Prompts", value:"None"}]
+	}
+
+	return (
+		<div className="mainView">
+			
+			<div className="container">
+
+				<div className="row m-2">
+					<div className="col-lg-3 m-2">					
+						<div>
+							<Calendar 
+								onChange={props.pickDate}
+								value={props.currentDate}
+								tileClassName={tileClassName}
+
+								minDetail={'year'}
+								maxDetail={'month'}
+							/>
+						</div>
+					</div>
+					<div className="col m-2">					
+						
+						<div className="card">
+							<div className="card-header">
+								<div>{props.displayMessage}</div>
+							</div>
+							<div className="card-body">
+								<div className="row m-2">
+									<div className="col">
+										
+									</div>
+								</div>
+							
+								<div className="row m-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{promptList.map((radio, idx) => (
+											<ToggleButton
+												key={idx}
+												type="radio"
+												variant="primary"
+												name="radio"
+												value={radio.value}
+												checked={props.selectedPrompt === radio.value}
+												onChange={props.setPrompt}
+												>
+												{radio.name}
+											</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
+								</div>
+								
+								<div className="row m-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{AIAspect.map((radio, idx) => (
+											<ToggleButton
+												key={idx}
+												type="radio"
+												variant="info"
+												name="radio"
+												value={radio.value}
+												checked={props.selectedAspect === radio.value}
+												onChange={props.setAI}
+												>
+												{radio.name}
+											</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
 								</div>
 							</div>
 						</div>
-					</div>
-					<div className="row my-2">
-						<div className="col-lg-2">
-							<p> Debug! </p>
-							<button onClick={this.loadTestData}> Load Stored AI Data </button>
-							<button onClick={this.getJournalDates}> Force Dates Update </button>
-						</div>
-					</div>
-					<div className="row my-2">
-						<div className="col border mx-2">
-							<Radar ref={this.chartReference} data={this.state.dataEmotion} options={this.state.optionsEmotions} />
-						</div>
-						<div className="col border mx-2">
-							<Doughnut ref={this.chartReference} data={this.state.dataSentiment} options={this.state.optionsSentiment} />
-						</div>
-					</div>
-					<div className="row  my-2">
-						<div className="col border mx-2">
-							<Bar ref={this.chartReference} data={this.state.dataCategories} options={this.state.optionsCategories} />
-						</div>
-						<div className="col border mx-2">
-							<Bar ref={this.chartReference} data={this.state.dataConcepts} options={this.state.optionsConcepts} />
-						</div>
-					</div>
-					
-					<div className="row my-2">
-						<div className="col">
-							<h3>Entities!</h3>
-						</div>
-					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Name</th>
-								<th scope="col">Type</th>
-								<th scope="col">#Appearances</th>
-								<th scope="col">Relevance Score</th>
-								<th scope="col">Emotion</th>
-								<th scope="col">Sentiment</th>
-							</tr>
-						</thead>
 						
-						<tbody>
-							{entitiesDisplay}
-						</tbody>
-					</table>
-					
-					<div className="row my-2">
-						<div className="col">
-							<h3>Keywords!</h3>
-						</div>
-					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Word</th>
-								<th scope="col">#Appearances</th>
-								<th scope="col">Emotion</th>
-								<th scope="col">Sentiment</th>
-							</tr>
-						</thead>
-						
-						<tbody>
-							{keywordsDisplay}
-						</tbody>
-					</table>
-					
-					<div className="row my-2">
-						<div className="col">
-							<h3>Relations!</h3>
-						</div>
-					</div>
-					<table className="table">
-						<thead>
-							<tr>
-								<th scope="col">Thing</th>
-								<th scope="col">Action</th>
-								<th scope="col">Target</th>
-								<th scope="col">Score</th>
-							</tr>
-						</thead>
-						
-						<tbody>
-							{relationsDisplay}
-						</tbody>
-					</table>
-					
-					<div className="row  my-2">
-						<p>
-							PADDING
-						</p>
 					</div>
 				</div>
+				
+				<div className="row m-2">
+					<div className="col">
+						<div className="card">
+							<div className="card-header">
+								<div>Journal Contents:</div>
+							</div>
+							<div className="card-body">
+								<p>{props.currentJournal}</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div className="row m-2">
+					<div className="col">
+						<div className="card">
+							<div className="card-header">
+								<div>{displayPromptSentance}</div>
+							</div>
+							<div className="card-body">
+								<p>{displayStats}</p>
+							</div>
+						</div>
+						
+					</div>
+				</div>
+
+				<div className="row  my-2">
+					<p>
+						
+					</p>
+				</div>
 			</div>
-		);
-	}
+		</div>
+	);
 }
 
-export default withRouter(journalView);
+export default withRouter(JournalView);

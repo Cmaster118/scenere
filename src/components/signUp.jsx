@@ -1,5 +1,8 @@
 import React from "react";
-import axios from "axios";
+
+import { APISignIn, APISignUp, APIResendValidator } from "../utils";
+
+import { withRouter} from "react-router-dom";
 
 class signup extends React.Component {
 	
@@ -7,12 +10,22 @@ class signup extends React.Component {
         super(props);
         this.state = {
 			
-			username: '',
-			email: '',
-			password: '',
-			password2: '',
-			firstName: '',
-			lastName: '',
+			username: 'dummyUser',
+			email: 'jjwallace314@gmail.com',
+			password: 'dummyPassword',
+			password2: 'dummyPassword',
+			firstName: 'Dummy',
+			lastName: 'User',
+			
+			// Well, I can expand this to be better on our end...
+			usernameError:false,
+			usernameErrorDetail: 'Username is unavalible',
+			
+			emailError:false,
+			emailErrorDetail: 'Email is invalid/taken',
+			
+			passwordError:false,
+			passwordErrorDetail:'Passwords do not match!',
 			
 			checkField: false,
         };
@@ -32,7 +45,10 @@ class signup extends React.Component {
 	}
 	
 	pass2FieldChange = (event) => {
-		this.setState( {password2: event.target.value} )
+		this.setState({
+			password2: event.target.value,
+			passwordError: event.target.value !== this.state.password,
+		})
 	}
 	
 	firstNameFieldChange = (event) => {
@@ -47,92 +63,185 @@ class signup extends React.Component {
 		this.setState( {checkField: event.target.value} )
 	}
 	
-	handleSubmit = event => {
+	// CHAIN STEP 3! 
+	nowSendEmailCallback = () => {
+		// Change this to the validator view
+		this.props.history.push(this.props.reRouteTarget)
+	}
+	nowSendEmailFailure = () => {
+		// If we fail here, we are totally boned...
+		console.log("Oh no. We failed")
+	}
+	nowSendEmail = (newToken) => {
+		// Now sending the validator email...
+		APIResendValidator(this.props.APIHost, newToken, this.nowSendEmailCallback, this.nowSendEmailFailure)
+	}
+	
+	// Chain Step 2!
+	
+	// I can probobly use this as a intemediary to straight get the incoming token instead of tossing it back up to App.js...
+	nowSignInCallback = (incomingToken) => {
+		const sanityCheck = this.props.loginSave( incomingToken, this.state.username, false )
+		if (sanityCheck) {
+			console.log("Token registered")
+			this.nowSendEmail(incomingToken)
+		}
+		else {
+			console.log("Token Failed..?")
+		}
+	}
+	nowSignInFailure = () => {
+		// O h n o
+		console.log("Connection failed...")
+	}
+	nowSignIn = () => {
+		APISignIn(this.props.APIHost, this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
+	}
+	
+	handleSignUpSubmitCallback = (responseStatus) => {
+		if (responseStatus === 201) {
+			//this.props.history.push(this.props.reRouteTarget)
+			console.log("Successful Sign up, now signing in...")
+			this.nowSignIn()
+		}
+	}
+	handleSignUpSubmitFailure = (errorStatus, errorData) => {
+		if (errorStatus === 400) {
+			for (let index in errorData) {
+				//console.log(index)
+				//console.log(errorData[index])
+				// This is ultratrash............. Redo this
+				if (index === "username") {
+					this.setState({
+						usernameError:true,
+						usernameErrorDetail:errorData[index]
+					})
+				}
+				if (index === "email") {
+					this.setState({
+						emailError:true,
+						emailErrorDetail:errorData[index]
+					})
+				}
+				if (index === "password") {
+					this.setState({
+						passwordError:true,
+						passwordErrorDetail:errorData[index]
+					})
+				}
+			}
+		}
+	}
+	handleSignUpSubmit = (event) => {
 		
-		if (this.state.checkField) {
+		if (!this.state.checkField) {
 			console.log("Field was not checked")
 		}
+		else {
+			APISignUp(this.props.APIHost, this.state.username, this.state.password, this.state.password2, this.state.email, this.state.firstName, this.state.lastName, this.handleSignUpSubmitCallback, this.handleSignUpSubmitFailure)
+		}
 		
-		const data = {
-			username: this.state.username,
-			
-			password: this.state.password,
-			password2: this.state.password2,
-			
-			email: this.state.email,
-			
-			first_name: this.state.firstName,
-			last_name: this.state.firstName,
-		};
-		
-		//DISABLE SIGNUP FOR NOW
-		
-		//console.log(data)
-
-		axios.post(this.props.APIHost +"/registerUser/", data )
-		.then( res => { 
-			this.setState({ latestAttept: 200 })
-			console.log("Success")
-		})
-		.catch( err => {
-			// Change this depending on the error...
-			this.setState({ latestAttept: 400 })
-			console.log(err)
-			console.log("Connection failed...")
-		})
-
 		event.preventDefault();
 	}
 	
 	render() {
-		return (
+		let usernameClass = 'form-control'
+		if (this.state.usernameError) {
+			usernameClass += ' bg-warning'
+		}
 		
-			<div className="container">
-				<form  onSubmit={this.handleSubmit}>
-					<h3>Sign Up</h3>
-					
-					<div className='form-group'>
-						<label>Username</label>
-						<input type='text' className='form-control' value={this.state.username} onChange={this.usernameFieldChange} placeholder='Enter Username' />
-					</div>
-					
-					<div className='form-group'>
-						<label>Email Address</label>
-						<input type='email' className='form-control' value={this.state.email} onChange={this.emailFieldChange} placeholder='Enter email' />
-					</div>
-					
-					<div className='form-group'>
-						<label>Password</label>
-						<input type='password' className='form-control' value={this.state.password} onChange={this.passFieldChange} placeholder='Enter password' />
-					</div>
-					
-					<div className='form-group'>
-						<label>Confirm Password</label>
-						<input type='password' className='form-control' value={this.state.password2} onChange={this.pass2FieldChange} placeholder='Confirm password' />
-					</div>
-					
-					<div className='form-group'>
-						<label>First Name</label>
-						<input type='text' className='form-control' value={this.state.firstName} onChange={this.firstNameFieldChange} placeholder='First Name' />
-					</div>
-					
-					<div className='form-group'>
-						<label>Last Name</label>
-						<input type='text' className='form-control' value={this.state.lastName} onChange={this.lastnameFieldChange} placeholder='Last Name' />
-					</div>
-
-					<div className='form-group'>
-						<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.checkField} onChange={this.checkFieldChange} />
-						<label className='form-control-label' htmlFor='customCheck1' >Legal stuff? Not sure...</label>
-					</div>
-					
-					<button type='submit' className='btn btn-dark btn-block'>Submit</button>
-							
-				</form>
+		let emailClass = 'form-control'
+		if (this.state.emailError) {
+			emailClass += ' bg-warning'
+		}
+		
+		let passwordClass = 'form-control'
+		if (this.state.passwordError) {
+			passwordClass += ' bg-warning'
+		}
+		
+		return (
 			
+			<div className="signUp">
+				<div className="container">		
+					<div className="row">
+						<div className="col">
+							<h3>Sign Up</h3>
+						</div>
+					</div>	
+					<form onSubmit={this.handleSignUpSubmit}>
+						<div id="align-left">
+							<div className="row">
+								<div className="col">
+									<div className='form-group'>
+										<label id="label-left">Username</label>
+										<input type='text' className={usernameClass} value={this.state.username} onChange={this.usernameFieldChange} placeholder='Enter Username' />
+										<p className="text-danger">{this.state.usernameError ? this.state.usernameErrorDetail:""}</p>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='form-group'>
+										<label id="align-left">Email Address</label>
+										<input type='email' className={emailClass} value={this.state.email} onChange={this.emailFieldChange} placeholder='Enter email' />
+										<p className="text-danger">{this.state.emailError ? this.state.emailErrorDetail:""}</p>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">		
+									<div className='form-group'>
+										<label id="align-left">Password</label>
+										<input type='password' className={passwordClass} value={this.state.password} onChange={this.passFieldChange} placeholder='Enter password' />
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">		
+									<div className='form-group'>
+										<label id="align-left">Confirm Password</label>
+										<input type='password' className={passwordClass} value={this.state.password2} onChange={this.pass2FieldChange} placeholder='Confirm password' />
+										<p className="text-danger">{this.state.passwordError ? this.state.passwordErrorDetail:""}</p>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">		
+									<div className='form-group'>
+										<label id="align-left">First Name</label>
+										<input type='text' className='form-control' value={this.state.firstName} onChange={this.firstNameFieldChange} placeholder='First Name' />
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">		
+									<div className='form-group'>
+										<label id="align-left">Last Name</label>
+										<input type='text' className='form-control' value={this.state.lastName} onChange={this.lastnameFieldChange} placeholder='Last Name' />
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<div className="row">
+							<div className="col">
+								<div className='form-group'>
+									<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.checkField} onChange={this.checkFieldChange} />
+									<label className='form-control-label' htmlFor='customCheck1' >Legal stuff?</label>
+								</div>
+							</div>
+						</div>
+						<div className="row">
+							<div className="col">		
+								<button type='submit' className='btn btn-dark btn-block'>Submit</button>
+							</div>
+						</div>		
+					</form>
+				</div>
 			</div>
 		);
 	}
 }
 
-export default signup;
+export default withRouter(signup);
