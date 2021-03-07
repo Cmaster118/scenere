@@ -17,8 +17,8 @@ import './App.css'
 // Ill have to test this...
 const basePath = "/scenere"
 
-//const hostName = "https://cmaster.pythonanywhere.com"
-const hostName = "http://10.0.0.60:8000"
+const hostName = "https://cmaster.pythonanywhere.com"
+//const hostName = "http://10.0.0.60:8000"
 
 class App extends React.Component {
 	
