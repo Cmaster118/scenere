@@ -1,6 +1,7 @@
 import React from "react";
 
 import { withRouter } from 'react-router-dom';
+import { APIForgotEmailSend, APIForgotEmailValidate, APIForgotEmailChangePassword } from "../utils";
 
 class forgotPassword extends React.Component {
 		
@@ -8,24 +9,42 @@ class forgotPassword extends React.Component {
         super(props);
         this.state = {
 
-			email: '',
-
-			resetToken: '',
-
+			// This page is one that we need to if the user cannot log in..
+			// We need to send them to their emails, and then back to here...
+			// However, we CANNOT RELY on them being logged in...
+			
+			// So, therefore.... We shall see if doing the email auth when not logged in will do better or worse...
+			// If it somehow works better, then I should think of changing the auth page....
 			currentState: 0,
+
+			email: '',
+			resetToken: '',
 
 			password1:'',
 			password2:'',
 
-			passwordsSame: false
+			passwordsSameError: false,
+			
+			networkError: false,
+			
+			emailError: false,
+			emailErrorDetail: '',
+			
+			tokenError: false,
+			tokenErrorDetail: '',
+			
+			passwordError: false,
+			passwordErrorDetail: '',
+			
+			uncaughtError: false,
 						
         };
 		
 	}
 
 	componentDidMount() {
-		this.setState( 
-			{email: '',
+		this.setState({
+			email: '',
 			resetToken: '',
 			password1: '',
 			password2: ''},
@@ -45,52 +64,165 @@ class forgotPassword extends React.Component {
 		this.setState( {currentState: 1} )
 	}
 
+	sendEmailSuccess = (successCode, successData) => {
+		console.log("Email Send Success")
+		this.setState({
+			currentState: 1,
+			networkError: false,
+			uncaughtError: false,
+		})
+	}
+	sendEmailFailure = (errorCodes, errorDatas) => {
+		console.log("Email Send Failure")
+		let errorSet = [false, false]
+		let errorSetData = ["", ""]
+		let extra = false
+		
+		for (let index in errorCodes) {
+			if (errorCodes[index] > errorSet.length) {
+				extra = true
+			}
+			else {
+				errorSet[ errorCodes[index] ] = true
+				errorSetData[ errorCodes[index] ] = errorDatas[index]
+			}
+		}
+		
+		this.setState({
+			networkError:errorSet[0],
+			emailError:errorSet[1],
+			uncaughtError:extra,
+			
+			emailErrorDetail:errorSetData[1],
+		})
+	}
 	sendEmail = () => {
-		this.setState( {currentState: 1} )
+		console.log("Sending the Email Here...")
+		APIForgotEmailSend(this.props.APIHost, this.state.email, this.sendEmailSuccess, this.sendEmailFailure)
 	}
 
-	checkValue = () => {
-		this.setState( {currentState: 2} )
+	checkTokenSuccess = (successCode) => {
+		console.log("Token Matched!")
+		this.setState({
+			currentState: 2,
+			networkError: false,
+			uncaughtError: false,
+		})
 	}
-
-	checkPasswords = () => {
-		// I can use the API for this...
+	checkTokenFailure = (errorCodes, errorDatas) => {
+		console.log("Token Failed!")
+		let errorSet = [false, false]
+		let errorSetData = ["", ""]
+		let extra = false
+		
+		for (let index in errorCodes) {
+			if (errorCodes[index] > errorSet.length) {
+				extra = true
+			}
+			else {
+				errorSet[ errorCodes[index] ] = true
+				errorSetData[ errorCodes[index] ] = errorDatas[index]
+			}
+		}
+		
+		this.setState({
+			networkError:errorSet[0],
+			tokenError:errorSet[1],
+			uncaughtError:extra,
+			
+			tokenErrorDetail:errorSetData[1],
+		})
+	}
+	checkToken = () => {
+		console.log("Send Token Here...")
+		APIForgotEmailValidate(this.props.APIHost, this.state.resetToken, this.checkTokenSuccess, this.checkTokenFailure)
+	}
+	
+	submitPasswordSuccess = (successCode) => {
+		console.log("Password Reset Success!")
+		this.setState({
+			currentState: 3,
+			networkError: false,
+			uncaughtError: false,
+		})
+	}
+	submitPasswordFailure = (errorCodes, errorDatas) => {
+		let errorSet = [false, false]
+		let errorSetData = ["", ""]
+		let extra = false
+		
+		for (let index in errorCodes) {
+			if (errorCodes[index] > errorSet.length) {
+				extra = true
+			}
+			else {
+				errorSet[ errorCodes[index] ] = true
+				errorSetData[ errorCodes[index] ] = errorDatas[index]
+			}
+		}
+		
+		this.setState({
+			networkError:errorSet[0],
+			passwordError:errorSet[1],
+			uncaughtError:extra,
+			
+			passwordErrorDetail:errorSetData[1],
+		})
+	}
+	submitPasswords = () => {
+		// I can use the API for this...	
+		console.log("Checking Passwords...")
 		if (this.arePasswordsSame()) {
-			this.setState( {currentState: 3} )
+			console.log("Passwords Checked out!")
+			APIForgotEmailChangePassword(this.props.APIHost, this.state.resetToken, this.state.password1, this.state.password2, this.submitPasswordSuccess, this.submitPasswordFailure)
+		}
+		else {
+			console.log("Passwords Failed!")
 		}
 	}
-
+	
 
 	emailFieldChange = (event) => {
-		this.setState( {email: event.target.value} )
+		this.setState({
+			email: event.target.value
+		})
 	}
 
 	tokenFieldChange = (event) => {
-		this.setState( {resetToken: event.target.value} )
-
-		this.arePasswordsSame()
+		this.setState({
+			resetToken: event.target.value
+		})
 	}
 	
 	pass1FieldChange = (event) => {
-		this.setState( {password1: event.target.value} )
-
-		//this.arePasswordsSame()
+		this.setState({
+			password1: event.target.value
+		})
 	}
 
 	pass2FieldChange = (event) => {
-		this.setState( {password2: event.target.value} )
-
-		this.arePasswordsSame()
+		this.setState({
+			password2: event.target.value,
+			passwordsSameError: event.target.value !== this.state.password1,
+		})
 	}
-
-
+	
 	render() {
 
 		let currentField = null
 		let currentButton = null
 		let currentMessage = null
 
+		// Enter Email For Recovery State
 		if (this.state.currentState === 0) {
+			
+			if (this.state.networkError) {
+				
+			}
+			if (this.state.emailError) {
+				
+			}
+			
 			currentMessage = (
 				<div className="row">
 					<div className="col">
@@ -107,7 +239,7 @@ class forgotPassword extends React.Component {
 					<div className="col">
 						<div className='form-group'>
 							<label>Email Address</label>
-							<input type='text' className='form-control' value={this.state.email} onChange={this.emailFieldChange} placeholder='Enter email' />
+							<input type='email' className='form-control' value={this.state.email} onChange={this.emailFieldChange} placeholder='Enter email' />
 						</div>
 					</div>
 				</div>
@@ -134,7 +266,15 @@ class forgotPassword extends React.Component {
 			]
 				
 		}
+		// Enter Token From Email State
 		else if (this.state.currentState === 1) {
+			
+			if (this.state.networkError) {
+				
+			}
+			if (this.state.tokenError) {
+				
+			}
 
 			currentMessage = (
 				<div className="col">
@@ -156,24 +296,32 @@ class forgotPassword extends React.Component {
 
 			currentButton = (
 				<div className="col">
-					<button className="btn btn-primary" onClick={this.checkValue}>
-						Check...
+					<button className="btn btn-primary" onClick={this.checkToken}>
+						Check Code
 					</button>
 				</div>
 			)
 		}
+		// Enter New Passwords State
 		else if (this.state.currentState === 2) {
 	
+			if (this.state.networkError) {
+				
+			}
+			if (this.state.passwordError) {
+				
+			}
+	
 			currentMessage = [
-				<div className="row"> 
+				<div className="row" key={1}> 
 					<div className="col">
 						<p> Enter your new password! </p>
 					</div>
 				</div>
 			]
-			if (!this.arePasswordsSame()) {
+			if (this.state.passwordsSameError) {
 				currentMessage.push(
-					<div className="row"> 
+					<div className="row" key={2}> 
 						<div className="col">
 							<p className="text-danger"> Passwords do not match! </p>
 						</div>
@@ -183,19 +331,19 @@ class forgotPassword extends React.Component {
 
 			currentField = [
 				( 
-					<div className="row"> 
+					<div className="row" key={3}> 
 						<div className="col">
 							<div className='form-group'>
-								<input type='text' className='form-control' value={this.state.resetToken} onChange={this.pass1FieldChange} placeholder='Enter Password' />
+								<input type='password' className='form-control' value={this.state.password1} onChange={this.pass1FieldChange} placeholder='Enter Password' />
 							</div>
 						</div>
 					</div>
 				),
 				(
-					<div className="row"> 
+					<div className="row" key={4}> 
 						<div className="col">
 							<div className='form-group'>
-								<input type='text' className='form-control' value={this.state.resetToken} onChange={this.pass2FieldChange} placeholder='Re-enter Password' />
+								<input type='password' className='form-control' value={this.state.password2} onChange={this.pass2FieldChange} placeholder='Re-enter Password' />
 							</div>
 						</div>
 					</div>	
@@ -204,14 +352,15 @@ class forgotPassword extends React.Component {
 			currentButton = (
 				<div className="row"> 
 					<div className="col">
-						<button className="btn btn-primary" onClick={this.checkPasswords}>
-							Check...
+						<button className="btn btn-primary" onClick={this.submitPasswords}>
+							Submit
 						</button>
 					</div>
 				</div>
 			)
 		}
-		else if (this.state.currentState === 2) {
+		// Thank You State
+		else if (this.state.currentState === 3) {
 			currentMessage = (
 				<div className="row"> 
 					<div className="col">
@@ -234,12 +383,14 @@ class forgotPassword extends React.Component {
 
 		return (
 			<div className='container-sm'>
+				
 				<div className="row">
 					<div className="col">
 						<h3> Forgot your password? </h3>
 					</div>
 				</div>
 
+				{/*Change to proper Submit Form...*/}
 				{currentMessage}
 				{currentField}
 				{currentButton}

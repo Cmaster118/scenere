@@ -10,12 +10,14 @@ class signup extends React.Component {
         super(props);
         this.state = {
 			
-			username: 'dummyUser',
-			email: 'jjwallace314@gmail.com',
-			password: 'dummyPassword',
-			password2: 'dummyPassword',
-			firstName: 'Dummy',
-			lastName: 'User',
+			username: '',
+			email: '',
+			password: '',
+			password2: '',
+			firstName: '',
+			lastName: '',
+			
+			networkError:false,
 			
 			// Well, I can expand this to be better on our end...
 			usernameError:false,
@@ -26,6 +28,8 @@ class signup extends React.Component {
 			
 			passwordError:false,
 			passwordErrorDetail:'Passwords do not match!',
+			
+			uncaughtError:false,
 			
 			checkField: false,
         };
@@ -41,13 +45,20 @@ class signup extends React.Component {
 	}
 	
 	passFieldChange = (event) => {
-		this.setState( {password: event.target.value} )
+		this.setState({
+			password: event.target.value,
+			
+			passwordError: event.target.value !== this.state.password2,
+			passwordErrorDetail:'Passwords do not match!'
+		})
 	}
 	
 	pass2FieldChange = (event) => {
 		this.setState({
 			password2: event.target.value,
+			
 			passwordError: event.target.value !== this.state.password,
+			passwordErrorDetail:'Passwords do not match!'
 		})
 	}
 	
@@ -71,6 +82,7 @@ class signup extends React.Component {
 	nowSendEmailFailure = () => {
 		// If we fail here, we are totally boned...
 		console.log("Oh no. We failed")
+		this.props.history.push(this.props.reRouteTarget)
 	}
 	nowSendEmail = (newToken) => {
 		// Now sending the validator email...
@@ -88,11 +100,13 @@ class signup extends React.Component {
 		}
 		else {
 			console.log("Token Failed..?")
+			this.props.history.push(this.props.reRouteTarget)
 		}
 	}
 	nowSignInFailure = () => {
 		// O h n o
-		console.log("Connection failed...")
+		console.log("Sign in failed, I dont even know what to do here...")
+		this.props.history.push(this.props.reRouteTarget)
 	}
 	nowSignIn = () => {
 		APISignIn(this.props.APIHost, this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
@@ -105,32 +119,33 @@ class signup extends React.Component {
 			this.nowSignIn()
 		}
 	}
-	handleSignUpSubmitFailure = (errorStatus, errorData) => {
-		if (errorStatus === 400) {
-			for (let index in errorData) {
-				//console.log(index)
-				//console.log(errorData[index])
-				// This is ultratrash............. Redo this
-				if (index === "username") {
-					this.setState({
-						usernameError:true,
-						usernameErrorDetail:errorData[index]
-					})
-				}
-				if (index === "email") {
-					this.setState({
-						emailError:true,
-						emailErrorDetail:errorData[index]
-					})
-				}
-				if (index === "password") {
-					this.setState({
-						passwordError:true,
-						passwordErrorDetail:errorData[index]
-					})
-				}
+	handleSignUpSubmitFailure = (errorCodes, errorDatas) => {
+		//console.log(errorCodes)
+		let errorSet = [false, false, false, false]
+		let errorSetData = ["", "", "", ""]
+		let extra = false
+		
+		for (let index in errorCodes) {
+			if (errorCodes[index] > errorSet.length) {
+				extra = true
+			}
+			else {
+				errorSet[ errorCodes[index] ] = true
+				errorSetData[ errorCodes[index] ] = errorDatas[index]
 			}
 		}
+		
+		this.setState({
+			networkError:errorSet[0],
+			usernameError:errorSet[1],
+			passwordError:errorSet[2],
+			emailError:errorSet[3],
+			uncaughtError:extra,
+			
+			usernameErrorDetail:errorSetData[1],
+			passwordErrorDetail:errorSetData[2],
+			emailErrorDetail:errorSetData[3],
+		})
 	}
 	handleSignUpSubmit = (event) => {
 		
@@ -234,9 +249,16 @@ class signup extends React.Component {
 						</div>
 						<div className="row">
 							<div className="col">		
+								{this.state.networkError ? <p className="bg-warning text-danger border">Server cannot be reached!</p>:undefined}
 								<button type='submit' className='btn btn-dark btn-block'>Submit</button>
 							</div>
 						</div>		
+						
+						<div className="row my-5">
+							<div className="col">	
+							
+							</div>
+						</div>
 					</form>
 				</div>
 			</div>

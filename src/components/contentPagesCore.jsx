@@ -6,8 +6,9 @@ import { withRouter, Link, Route, Switch } from "react-router-dom";
 import Store from "store"
 
 //SetCompany
-import {ViewJournals, WriteJournals, WriteSuggestion, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox} from ".";
-import {APISaveSuggestion, APIGetCompanyGovernedPermTree, APIGetJournalDates, APIGetJournalData, APIGetSuggestionDates, APIGetSuggestionData, APIGetCompanyPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APISaveJournal, APICheckActive} from "../utils";
+import {UserProfile, ViewJournals, WriteJournals, WriteSuggestion} from "./userPages"
+import {CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox} from "./companyPages"
+import {APISaveSuggestion, APIGetJournalDates, APIGetJournalData, APIGetSuggestionDates, APIGetSuggestionData, APIGetUsersPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APISaveJournal, APICheckActive} from "../utils";
 
 import { EditorState, convertToRaw,  } from 'draft-js';
 //convertFromRaw
@@ -42,6 +43,9 @@ class ContentPages extends React.Component {
         this.state = {
 			
 			currentDate: new Date(),
+			selectedJournalDate: new Date(),
+			selectedCompanyDate: new Date(),
+			selectedSuggestionDate: new Date(),
 			
 			// EHI Page State...
 			EHIDayTimespan: 3,
@@ -57,7 +61,6 @@ class ContentPages extends React.Component {
 			selectedJournalAspect:"emotion",
 			
 			// Where we storing the data from...
-			// Should probobly do what I did down there and get set stuff to check for the reload...
 			selectedJournalData: {},
 			// If I put the calender in the sidebar, we shall put this here...
 			validJournalDates:[],
@@ -77,13 +80,17 @@ class ContentPages extends React.Component {
 			
 			companyMessage: "Choose a date and company to view that summary!",
 			
-			// Company List Stuff... Multiple company related things can use this...
-			selectedCompany:"None",
 			// Version 2 of the Company Data Selection
 			currentDivisionID:-1,
 			currentDivisionName:"None",
 			currentCompanyIndexes:[],
 			companyViewableDataTree:{},
+			companyViewableDataRawList:[],
+			companyViewableDataRawIDs:[],
+			
+			companySendDataTree: {},
+			companySendDataRawList: [],
+			companySendDataRawIDList: [],
 			// Use a state hook for this? Hmmmm,
 			lastCompanyRequestStatus:undefined,
 			
@@ -100,23 +107,85 @@ class ContentPages extends React.Component {
 			
 			currentSuggestionDivision: -1,
 			currentCompanyGovernedIndexes: [],
-			companyGovernedDataTree: [],
+			companyGovernedDataTree: {},
+			companyGovernedDataRawList: [],
+			companyGovernedDataRawIDList: [],
 			lastGovernedCompanyRequestStatus:undefined,
 			suggestionEditorState: EditorState.createEmpty()
+			
+			
         };
 	}
 	
 	// This will run when this component is loaded...
 	componentDidMount = () => {
+		
+		// On refresh, these will load before App.js has a chance to load in the token...
+		if (this.props.authToken === undefined) {
+			console.log("No auth token on load!")
+		}
 		this.checkActiveUser()
 		
 		this.getValidJournalDates()
-		this.getUserCompanyList()
+		this.getUserCompanyAdminViewTree()
 		this.getUserGovernedPermTree()
+		
+		//this.redoLoad()
 	}
 	
 	componentDidUpdate = (prevProps, prevState) => {
 		// When we SWAP TO the Journal Read menu...\
+	}
+	
+	flushStorage = () => {
+		Store.remove(this.props.currentUser+"-ValidDates")
+		Store.remove(this.props.currentUser+'-companyPermViewTree')
+		Store.remove(this.props.currentUser+'-companyPermViewNames')
+		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-ValidDates')
+		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI')
+		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-suggestionDates')
+	}
+	
+	resetState = () => {
+		this.setState({
+			// Clear EHI Data....
+			EHIDayLabels: [],
+			EHIDaySet: [],
+			EHIWeekLabels: [],
+			EHIWeekSet: [],
+			
+			// Clear All Dates...
+			validCompanySummaryDates:[],
+			
+			// Clear Tree Data...
+			companyGovernedDataTree: {},
+			companyGovernedDataRawList: [],
+			companyGovernedDataRawIDList: [],
+			
+			companyViewableDataTree: {},
+			companyViewableDataRawList: {},
+			companyViewableDataRawIDs:[],
+			
+			companySendDataTree: {},
+			companySendDataRawList: {},
+			companySendDataRawIDList: [],
+			
+			// Clear summary data...
+			validDivisionSuggestionDates:[],
+			
+			// Clear Journal Data
+			selectedJournalData: {},
+			validJournalDates:[],
+			validJournalScanDates: [],
+			
+		})
+	}
+	
+	redoLoad = () => {
+		this.getValidJournalDates()
+		this.getUserCompanyAdminViewTree()
+		this.getUserCompanySendsTree()
+		this.getUserGovernedPermTree()
 	}
 	
 	changeSuggestionContent = (incomingState) => {
@@ -142,14 +211,6 @@ class ContentPages extends React.Component {
 		})
 	}
 	
-	flushStorage = () => {
-		Store.remove(this.props.currentUser+"-ValidDates")
-		Store.remove(this.props.currentUser+'-companyList')
-		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-ValidDates')
-		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI')
-		Store.remove(this.props.currentUser+'-'+this.state.currentDivisionID+'-suggestionDates')
-	}
-	
 	forceLogout = () => {
 		// Gonna do this like this, in case we got something else we wana do on logout...
 		this.props.forceLogout()
@@ -171,6 +232,7 @@ class ContentPages extends React.Component {
 		}
 	}
 	checkActiveUser = () => {
+		//console.log(this.props.authToken)
 		APICheckActive(this.props.APIHost, this.props.authToken, this.checkActiveUserCallback, this.forceLogout)
 	}
 	
@@ -188,12 +250,26 @@ class ContentPages extends React.Component {
 	}
 	
 	// getting the data for which companies you are allowed to post to...
-	governedPermTreeCallback = (incomingCompanyTree) => {
-		Store.set(this.props.currentUser+'-companyGovernedPermTree', incomingCompanyTree)
+	governedPermTreeCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
+		
+		//Store.set(this.props.currentUser+'-companyPermGovernedTree', incomingCompanyTree)
+		//Store.set(this.props.currentUser+'-companyPermGovernedNames', incomingCompanyNames)
+		//Store.set(this.props.currentUser+'-companyPermGovernedNames', incomingCompanyIDs)
 		this.setState({
 			companyGovernedDataTree: incomingCompanyTree,
+			companyGovernedDataRawList: incomingCompanyNames,
+			companyGovernedDataRawIDList: incomingCompanyIDs,
 		})
 		//console.log(incomingStuff)
+	}
+	governedPermTreeFailure = (errorCodes, errorDatas) => {
+		
+		for (let index in errorCodes) {
+				
+			if (errorCodes[index] === 401) {
+				this.forceLogout()
+			}
+		}
 	}
 	getUserGovernedPermTree = () => {
 		if (!(this.props.currentUser === undefined)) {	
@@ -201,13 +277,15 @@ class ContentPages extends React.Component {
 			// It may be benificial to merge this into the other perm tree...
 			// But for now I will keep them seperate....
 			let checkData = Store.get(this.props.currentUser+"-companyGovernedPermTree")
-			if (checkData === undefined) {
+			let checkData2 = Store.get(this.props.currentUser+"-companyPermGovernedNames")
+			let checkData3 = Store.get(this.props.currentUser+"-incomingCompanyIDs")
+			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
 				console.log("Governed list was not in the cookies!")
-				APIGetCompanyGovernedPermTree(this.props.APIHost, this.props.authToken, this.governedPermTreeCallback, this.forceLogout)
+				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["gov"], this.governedPermTreeCallback, this.governedPermTreeFailure)
 			}
 			else {
 				console.log("Company Tree WAS in the cookies!")
-				this.governedPermTreeCallback(checkData)
+				this.governedPermTreeCallback(checkData, checkData2, checkData3)
 			}
 		}
 	}
@@ -271,14 +349,14 @@ class ContentPages extends React.Component {
 		
 		// I will  have to swap over to the bettern form of content...
 		this.setState({
-			journalMessage: "Showing Journal Entry for: " + this.state.currentDate.toString(),
+			journalMessage: "Showing Journal Entry for: " + this.state.selectedJournalDate.toString(),
 			journalContent: incomingjournalContent,
 			selectedJournalData: incomingAIData,
 		})
 	}
 	pickJournalCalenderDate = (selectedDate) => {
 		this.setState({
-			currentDate:selectedDate
+			selectedJournalDate:selectedDate
 		})
 		
 		// THIS data should not be old
@@ -294,24 +372,75 @@ class ContentPages extends React.Component {
 	}
 	
 	// Company Axios/State stuff---------------------------------------------------------------------
-	companyListCallback = (incomingCompanyTree) => {
+	companyListCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
 
-		Store.set(this.props.currentUser+'-companyPermTree', incomingCompanyTree)
+		//Store.set(this.props.currentUser+'-companyPermViewTree', incomingCompanyTree)
+		//Store.set(this.props.currentUser+'-companyPermViewNames', incomingCompanyNames)
+		//Store.set(this.props.currentUser+'-companyPermViewIDs', incomingCompanyIDs)
 		this.setState({
 			companyViewableDataTree: incomingCompanyTree,
+			companyViewableDataRawList: incomingCompanyNames,
+			companyViewableDataRawIDs: incomingCompanyIDs,
 		})
 	}
-	getUserCompanyList = () => {
+	companyListFailure = (errorCodes, errorDatas) => {
+		
+		for (let index in errorCodes) {
+				
+			if (errorCodes[index] === 401) {
+				this.forceLogout()
+			}
+		}
+	}
+	getUserCompanyAdminViewTree = () => {
 		if (!(this.props.currentUser === undefined)) {	
 			// We still have to check for date related reworks...
-			let checkData = Store.get(this.props.currentUser+"-companyViewingPermTree")
-			if (checkData === undefined) {
+			let checkData = Store.get(this.props.currentUser+"-companyPermViewTree")
+			let checkData2 = Store.get(this.props.currentUser+"-companyPermViewNames")
+			if (checkData === undefined || checkData2 === undefined) {
 				console.log("Company list was not in the cookies!")
-				APIGetCompanyPermTree(this.props.APIHost, this.props.authToken, this.companyListCallback, this.forceLogout)
+				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["admin", "view"], this.companyListCallback, this.companyListFailure)
 			}
 			else {
 				console.log("Company Tree WAS in the cookies!")
-				this.companyListCallback(checkData)
+				this.companyListCallback(checkData, checkData2)
+			}
+		}
+	}
+	
+	companySendCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
+
+		//Store.set(this.props.currentUser+'-companyPermSendTree', incomingCompanyTree)
+		//Store.set(this.props.currentUser+'-companyPermSendNames', incomingCompanyNames)
+		//Store.set(this.props.currentUser+'-companyPermSendIDs', incomingCompanyIDs)
+		this.setState({
+			companySendDataTree: incomingCompanyTree,
+			companySendDataRawList: incomingCompanyNames,
+			companySendDataRawIDList: incomingCompanyIDs,
+		})
+	}
+	companySendFailure = (errorCodes, errorDatas) => {
+		
+		for (let index in errorCodes) {
+				
+			if (errorCodes[index] === 401) {
+				this.forceLogout()
+			}
+		}
+	}
+	getUserCompanySendsTree = () => {
+		if (!(this.props.currentUser === undefined)) {	
+			// We still have to check for date related reworks...
+			let checkData = Store.get(this.props.currentUser+"-companyPermSendTree")
+			let checkData2 = Store.get(this.props.currentUser+"-companyPermSendNames")
+			let checkData3 = Store.get(this.props.currentUser+"-companyPermSendIDs")
+			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
+				console.log("Company list was not in the cookies!")
+				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["send"], this.companySendCallback, this.companySendFailure)
+			}
+			else {
+				console.log("Company Tree WAS in the cookies!")
+				this.companyListCallback(checkData, checkData2)
 			}
 		}
 	}
@@ -375,6 +504,11 @@ class ContentPages extends React.Component {
 		})
 	}
 	getCompanySuggestionData = (selectedDate) => {
+		
+		this.setState({
+			getCompanySuggestionData:selectedDate,
+		})
+		
 		if (!(this.state.currentDivisionID === -1)) {
 			let checkData = Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+selectedDate+"-suggestions")
 			if (checkData === undefined) {
@@ -394,7 +528,7 @@ class ContentPages extends React.Component {
 	companyDataCallback = (incomingDataDict, anchorDate) => {
 		Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data", {'data':incomingDataDict})
 		this.setState({
-			companyMessage: "Showing Summary for: " + this.state.currentDivisionID + " On: " + this.state.currentDate.toString(),
+			companyMessage: "Showing Summary for: " + this.state.currentDivisionID + " On: " + this.state.selectedCompanyDate.toString(),
 			selectedSummaryWeekData: incomingDataDict,
 			currentCompanyDataDate: anchorDate,
 			currentCompanyDataName: this.state.currentDivisionName,
@@ -417,6 +551,7 @@ class ContentPages extends React.Component {
 		if (this.state.currentCompanyDataID === this.state.currentDivisionID && this.state.currentCompanyDataDate === anchorDate) {
 			this.setState({
 				selectedCompanyDay: daySet[todayWeekday].value,
+				selectedCompanyDate:selectedDate
 			})
 		}
 		// if NOT, then we go get the data, as it is NOT loaded...
@@ -525,6 +660,7 @@ class ContentPages extends React.Component {
 	}
 	
 	getThatData = () => {
+		console.log(this.state.currentDivisionID)
 		this.getCompanyEHIData()
 		this.getCompanyValidDates()
 		this.getCompanyValidSuggestionDates()
@@ -615,9 +751,10 @@ class ContentPages extends React.Component {
 											<div className="list-group">
 												{/*Going to need to alter this to show which is active?*/}
 												{/*<Link className="list-group-item" to={this.props.match.url+"/EditProfile"}>Edit Profile</Link>*/}
-												<Link className="list-group-item" to={this.props.match.url+"/JournalWrite"}>Write Todays Journal</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/JournalRead"}>Review Previous Journals</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/journalWrite"}>Write Todays Journal</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/journalRead"}>Review Previous Journals</Link>
 												<Link className="list-group-item" to={this.props.match.url+"/writeSuggestion"}>Write Suggestion</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/userProfile"}>User Profile</Link>
 											</div>
 										</div>
 									</div>
@@ -636,10 +773,11 @@ class ContentPages extends React.Component {
 												<div className="list-group-item">{this.state.currentDivisionName}</div>
 												<Link className="list-group-item" to={this.props.match.url+"/companySelect"}>Select Company</Link>
 												{/*Going to need to alter this to show which is active?*/}
-												{/*<Link className="list-group-item" to={this.props.match.url+"/companyDetails"}>View/Edit Company Settings</Link>*/}
-												<Link className="list-group-item" to={this.props.match.url+"/CompanyEHI"}>Review Company EHI</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/CompanySummary"}>Review Company Summaries</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/companyProfile"}>View/Edit Company Settings</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/companyEHI"}>Review Company EHI</Link>
+												<Link className="list-group-item" to={this.props.match.url+"/companySummary"}>Review Company Summaries</Link>
 												<Link className="list-group-item" to={this.props.match.url+"/companySuggestions"}>View Suggestions</Link>
+												
 											</div>
 										</div>
 									</div>
@@ -658,17 +796,46 @@ class ContentPages extends React.Component {
 									</button>
 								</div>
 							</div>
+							
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-outline-danger" onClick={this.redoLoad}>
+										Refresh Global Data
+									</button>
+								</div>
+							</div>
+							
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-outline-danger" onClick={this.resetState}>
+										Reset Displayed Data
+									</button>
+								</div>
+							</div>
 						</div>
 						{/*Content for the everything....*/}
-						<div className="col-8 border m-1">
+						<div className="col border m-1">
 							<Switch>
 								<Route path={this.props.match.url+"/"} exact component={() => <DefaultView
 								
 									/>} 
 								/>
 
-								<Route path={this.props.match.url+"/userDetail"} component={() => <DefaultView
-								
+								<Route path={this.props.match.url+"/userProfile"} component={() => <UserProfile
+										APIHost={this.props.APIHost}
+										authToken={this.props.authToken}
+										
+										currentUser={this.props.currentUser}
+										
+										viewNameList={this.state.companyViewableDataRawList}
+										viewIDList={this.state.companyViewableDataRawIDs}
+										sendIDList={this.state.companySendDataRawIDList}
+										
+										governedNameList={this.state.companyGovernedDataRawList}
+										governedIDList={this.state.companyGovernedDataRawIDList}
+										
+										triggerRefresh={this.redoLoad}
+										triggerLogout={this.forceLogout}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/writeSuggestion"} component={() => <WriteSuggestion
@@ -687,7 +854,7 @@ class ContentPages extends React.Component {
 										saveToServer={this.postSuggestion}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/JournalWrite"} component={() => <WriteJournals
+								<Route path={this.props.match.url+"/journalWrite"} component={() => <WriteJournals
 										onChange={this.changeJournalContent}
 										placeholder={this.state.journalPlaceholder}
 										
@@ -695,8 +862,8 @@ class ContentPages extends React.Component {
 										saveToServer={this.postJournal}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/JournalRead"} component={() => <ViewJournals
-										currentDate={this.props.currentDate}
+								<Route path={this.props.match.url+"/journalRead"} component={() => <ViewJournals
+										currentDate={this.state.selectedJournalDate}
 										
 										dataSet={this.state.selectedJournalData}
 										selectedPrompt={this.state.selectedJournalPrompt}
@@ -724,12 +891,15 @@ class ContentPages extends React.Component {
 										getDataRequest={this.getCompanyDataRequest}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/companyDetails"} component={() => <DefaultView
+								<Route path={this.props.match.url+"/companyProfile"} component={() => <CompanySettings
+										APIHost={this.props.APIHost}
+										authToken={this.props.authToken}
 										
+										currentDivisionID={this.state.currentDivisionID}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySuggestions"} component={() => <SuggestionBox
-										currentDate={this.state.currentDate}
+										currentDate={this.state.selectedCompanyDate}
 										
 										validDays={this.state.validDivisionSuggestionDates}
 										
@@ -738,7 +908,7 @@ class ContentPages extends React.Component {
 										pickDate={this.getCompanySuggestionData}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/CompanyEHI"} component={() => <EHIDisplay
+								<Route path={this.props.match.url+"/companyEHI"} component={() => <EHIDisplay
 										timeIndexDay={this.state.EHIDayTimespan}
 										timeIndexWeek={this.state.EHIWeekTimespan}
 										
@@ -752,8 +922,8 @@ class ContentPages extends React.Component {
 										onWeekToggle={this.changeEHIWeekdates}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/CompanySummary"} component={() => <ViewCompany
-										currentDate={this.props.currentDate}
+								<Route path={this.props.match.url+"/companySummary"} component={() => <ViewCompany
+										currentDate={this.props.selectedCompanyDate}
 										
 										currentCompany={this.state.currentCompanyDataName}
 										anchorDate={this.state.currentCompanyDataDate}
@@ -771,7 +941,7 @@ class ContentPages extends React.Component {
 										setDay={this.changeCompanyDay}
 										setCompany={this.changeSelectedCompany}
 								
-										loadCompanyList={this.getUserCompanyList}
+										loadCompanyList={this.getUserCompanyAdminViewTree}
 										getValidDates={this.getCompanyValidDates}
 										pickDate={this.getCompanyWeeklySummary}
 									/>} 

@@ -342,6 +342,21 @@ export const stackedBarOptions = () => {
 	return options
 }
 
+export const stacked1BarData1Data = (inputData) => {
+	const data = {
+		labels: ['Value'],
+		datasets: [
+			{
+				label: 'Value',
+				data: inputData,
+				backgroundColor: 'rgb(54, 162, 235)',
+			},
+		],
+	}
+	
+	return data
+}
+
 export const stackedBarData2Test = (inputData1, inputData2, inputData3) => {
 	const data = {
 		labels: ['Relevance', 'Sentiment'],
@@ -360,6 +375,21 @@ export const stackedBarData2Test = (inputData1, inputData2, inputData3) => {
 				label: 'Maximum',
 				data: inputData3,
 				backgroundColor: 'rgb(75, 192, 192)',
+			},
+		],
+	}
+	
+	return data
+}
+
+export const stacked2BarData1Data = (inputData) => {
+	const data = {
+		labels: ['Relevance', 'Sentiment'],
+		datasets: [
+			{
+				label: 'Value',
+				data: inputData,
+				backgroundColor: 'rgb(54, 162, 235)',
 			},
 		],
 	}
@@ -391,6 +421,22 @@ export const stackedBarData3Test = (inputData1, inputData2, inputData3) => {
 	
 	return data
 }
+
+export const stacked3BarData1Data = (inputData) => {
+	const data = {
+		labels: ['Confidence', 'Relevance', 'Sentiment'],
+		datasets: [
+			{
+				label: 'Value',
+				data: inputData,
+				backgroundColor: 'rgb(54, 162, 235)',
+			},
+		],
+	}
+	
+	return data
+}
+
 
 export const sentimentBarData = (inputData) => {
 	const data = {

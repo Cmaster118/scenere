@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import axios from "axios";
 
 import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, VerifyEmail, ContactUs} from "./components";
-import { FreePages, ContentPages } from "./components";
+import { ContentPages } from "./components";
 //AuthPages
 
 import Store from "store"
@@ -17,8 +17,8 @@ import './App.css'
 // Ill have to test this...
 const basePath = "/scenere"
 
-const hostName = "https://cmaster.pythonanywhere.com"
-//const hostName = "http://10.0.0.60:8000"
+//const hostName = "https://cmaster.pythonanywhere.com"
+const hostName = "http://10.0.0.60:8000"
 
 class App extends React.Component {
 	
@@ -136,12 +136,12 @@ class App extends React.Component {
 						/>
 						
 						{/*Anything else will have to be in a different component...*/}
-						<Route path={basePath+"/info"} component={() => <FreePages 
+						{/*<Route path={basePath+"/info"} component={() => <FreePages 
 								APIHost={hostName}
 								
 							/>}
 						/>
-						{/*This can actually be replaced by a Modal in the navigational menu....
+						This can actually be replaced by a Modal in the navigational menu....
 						<Route path={basePath+"/auth"} component={() => <AuthPages 
 								APIHost={hostName}
 								
