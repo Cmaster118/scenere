@@ -2,7 +2,7 @@ import React from "react";
 
 import { withRouter} from "react-router-dom";
 
-import { APIValidateAccount, APIResendValidator } from "../utils";
+import { APIValidateAccount, APIResendValidator } from "../../utils";
 
 class verifyEmail extends React.Component {
 	

@@ -111,7 +111,7 @@ const JournalView = (props) => {
 				
 					displayStats.push(
 						<div className="row m-2" key="2">
-							<div className="col-3">
+							<div className="col">
 							</div>
 							<div className="col">
 								<div className="card">
@@ -123,7 +123,7 @@ const JournalView = (props) => {
 									</div>
 								</div>
 							</div>
-							<div className="col-3">
+							<div className="col">
 							</div>
 						</div>
 					)
@@ -135,8 +135,7 @@ const JournalView = (props) => {
 				
 					displayStats.push(
 						<div className="row m-2" key="2">
-							<div className="col-3">
-							</div>
+							<div className="col" />
 							<div className="col">
 								<div className="card">
 									<div className="card-header">
@@ -147,8 +146,7 @@ const JournalView = (props) => {
 									</div>
 								</div>
 							</div>
-							<div className="col-3">
-							</div>
+							<div className="col" />
 						</div>
 					)
 				break;
@@ -210,7 +208,7 @@ const JournalView = (props) => {
 						const dataRadar = getRadarEmotionData( emoVal )
 						const dataRadarOptions = getRadarEmotionOptions()
 						
-						console.log(keyData)
+						//console.log(keyData)
 						
 						const dataKeySent = stacked2BarData1Data(
 							[keyData.relevance, keyData.sentiment.score], 
@@ -257,17 +255,15 @@ const JournalView = (props) => {
 		promptList = [{name:"No Prompts", value:"None"}]
 	}
 
-	console.log(props.currentDate)
-
 	return (
 		<div className="mainView">
-			
-			<div className="container-fluid">
+			<div className="container-fluid justify-content-center">
 
 				<div className="row m-2">
-					<div className="col-lg-3 m-2">					
+					<div className="col- m-2">
 						<div>
 							<Calendar 
+								className="shadow"
 								onChange={props.pickDate}
 								value={props.currentDate}
 								tileClassName={tileClassName}
@@ -277,9 +273,8 @@ const JournalView = (props) => {
 							/>
 						</div>
 					</div>
-					<div className="col m-2">					
-						
-						<div className="card">
+					<div className="col my-2">
+						<div className="card shadow">
 							<div className="card-header">
 								<div>{props.displayMessage}</div>
 							</div>
@@ -337,7 +332,7 @@ const JournalView = (props) => {
 				
 				<div className="row m-2">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<div>Journal Contents:</div>
 							</div>
@@ -350,7 +345,7 @@ const JournalView = (props) => {
 				
 				<div className="row m-2">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<div>{displayPromptSentance}</div>
 							</div>
@@ -358,7 +353,6 @@ const JournalView = (props) => {
 								{displayStats}
 							</div>
 						</div>
-						
 					</div>
 				</div>
 

@@ -118,7 +118,7 @@ const EHIDisplay = (props) => {
 		<div className="EHIDisplay">
 			<div className="row m-1">
 				<div className="col-6">
-					<div className="card">
+					<div className="card shadow">
 						<div className="card-header">
 							Employee Health Index Daily Data
 						</div>
@@ -136,7 +136,7 @@ const EHIDisplay = (props) => {
 					</div>
 				</div>
 				<div className="col-6">
-					<div className="card">
+					<div className="card shadow">
 						<div className="card-header">
 							Employee Health Index Weekly Data
 						</div>

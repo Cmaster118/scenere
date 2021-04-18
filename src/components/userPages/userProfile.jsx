@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Store from "store"
+//import Store from "store"
 
 import { withRouter } from "react-router-dom";
 import { APIUserInviteCode, APIUserInvitesGet, APIUserInvitesSet, APIUserSettingsEdit, APIChangeUserEmail, APIChangeUserName, APIChangeUserPassword } from "../../utils";
@@ -34,13 +34,35 @@ const UserProfile = (props) => {
 	
 	useEffect(() => {    
 		// Update the document title using the browser API    
-		console.log("Triggered Refresh!")
-		tiggerReload()
-		// This should be fine, for dependancies.. as this SHOULD NOT EVER refresh...
+		//console.log("Triggered Refresh!")
 	}, []);
 
-	function tiggerReload() {
-		getUserInvites()
+	
+	function getUserInvitesSuccess( incomingData ) {
+		console.log("Got the Invites")
+		
+		let idSet = []
+		let userNames = []
+		//let divisionNames = []
+		let targetRole = []
+		for (let index in incomingData) {
+			idSet.push( incomingData[index].id )
+			userNames.push( incomingData[index].getUserFullName )
+			//divisionNames.push( incomingData[index].inviteDivision )
+			targetRole.push( inviteType[incomingData[index]] )
+		}
+		
+		setInviteIDList(idSet)
+		setInviteNamesList(userNames)
+		setInviteRolesList(targetRole)
+	}
+	function getUserInvitesFailure( errorCodes, errorMessages ) {
+		console.log("Failure Somehow...")
+		console.log(errorCodes)
+		console.log(errorMessages)
+	}
+	function getUserInvites() {
+		APIUserInvitesGet( props.APIHost, props.authToken, getUserInvitesSuccess, getUserInvitesFailure )
 	}
 
 	function inviteSuccess(successCodes, successData) {
@@ -75,53 +97,20 @@ const UserProfile = (props) => {
 		APIUserInviteCode( props.APIHost, props.authToken, inviteCode, inviteSuccess, inviteFailure )
 	}
 	
-	function getInvitesSuccess(successData) {
-		console.log("Get Invites Success")
-		Store.set(props.currentUser+"-Invites", successData)
-
-		let IDList = []
-		let nameList = []
-		let roleList = []
-		
-		for (let i in successData) {
-			// This.... doesnt seem secure enough...
-			IDList.push( successData[i]["id"] )
-			nameList.push( successData[i]["getUserFullName"] )
-			roleList.push( inviteType[successData[i]["targetRole"]] )
-		}
-		
-		setInviteIDList(IDList)
-		setInviteNamesList(nameList)
-		setInviteRolesList(roleList)
-	}
-	function getInvitesFailure(errorCodes, errorMessages) {
-		console.log("Get Invites Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
-	}
-	function getUserInvites() {
-		let checkData = Store.get(props.currentUser+"-Invites")
-		if (checkData === undefined) {
-			APIUserInvitesGet( props.APIHost, props.authToken, getInvitesSuccess, getInvitesFailure )
-		}
-		else {
-			console.log("Data will do here...")
-			getInvitesSuccess(checkData)
-		}
-	}
-	
 	function spendInviteSuccess(successData) {
 		console.log("Spend Invite Success")
 		console.log(successData)
 		
-		tiggerReload()
+		getUserInvites()
+		props.triggerRefresh()
 	}
 	function spendInviteFailure(errorCodes, errorMessages) {
 		console.log("Spend Invite Failure")
 		console.log(errorCodes)
 		console.log(errorMessages)
 		
-		tiggerReload()
+		getUserInvites()
+		props.triggerRefresh()
 	}
 	function inviteYes(event) {
 		console.log("Accept")
@@ -301,7 +290,6 @@ const UserProfile = (props) => {
 	if (props.viewNameList.length > 0) {
 		for (let i in props.viewNameList) {
 			let extra = ""
-			
 			// Blank will just be admin/view for now... Highlighted in green means Email...
 			let index = props.sendIDList.indexOf(props.viewIDList[i])
 			if (index >= 0) {
@@ -378,7 +366,7 @@ const UserProfile = (props) => {
 			
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Invite Code</h5>
 							</div>
@@ -398,13 +386,16 @@ const UserProfile = (props) => {
 					</div>
 				
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Company Invites</h5>
 							</div>
 							<div className="card-body">
 								<ul className="list-group">
 									{invitesDisplayList}
+									<button className="btn btn-primary" onClick={getUserInvites}>
+										Load Invites
+									</button>
 								</ul>
 							</div>
 						</div>
@@ -413,9 +404,9 @@ const UserProfile = (props) => {
 				
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
-								<h5>Companies getting your Journal Info</h5>
+								<h5>Companies you can View data for</h5>
 							</div>
 							<div className="card-body">
 								<ul className="list-group">
@@ -431,7 +422,7 @@ const UserProfile = (props) => {
 				
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Companies getting your Journal Info</h5>
 							</div>
@@ -449,7 +440,7 @@ const UserProfile = (props) => {
 			
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Edit User Security Details</h5>
 							</div>

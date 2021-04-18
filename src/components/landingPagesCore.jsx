@@ -1,11 +1,9 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
-//import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
-//import Store from "store"
-
-//import {makeCompanyTestData} from "../utils";
+import { Header, Features, About, ContactUs, BetaContact} from "./landingPages";
+// Services, Testimonials, ContactInfo,
 
 // I honestly dont know what to put in the Free pages yet...
 
@@ -30,13 +28,19 @@ class FreePages extends React.Component {
 		
 		return (
 			<div className="freePages">
-				<div className="container">
-					<div className="row">
-						<div className="col">
-							Non-Authorized Pages
-						</div>
-					</div>
-				</div>
+				<Header />
+				<BetaContact 
+					APIHost={this.props.APIHost}
+				/>
+				<Features />
+				<About />
+				{/* <Services /> */}
+				{/* <Testimonials /> */}
+				<ContactUs 
+					APIHost={this.props.APIHost}
+				/>
+				{/* <ContactInfo /> */}
+				{/*Would this be better as an empty set?*/}
 			</div>
 		);
 	}

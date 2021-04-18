@@ -1,13 +1,15 @@
 import React from "react";
 import { Link, withRouter } from "react-router-dom";
 
+import {testSaveStorage, testLoadStorage, clearStorage, checkStorageContents} from "../utils";
+
 class navigation extends React.Component {
 	
 	constructor(props) {
 		super(props);
 		this.state = {
           
-		  something: null,
+		  
 
         };
 	}
@@ -16,12 +18,19 @@ class navigation extends React.Component {
 		this.props.clearLogin()
 	}
 	
-	/*
-	<li className={'nav-item'}  key='31'>
-		<Link className="nav-link" to={basePath+"/test2"}>
-			!!TestDisplay 2!!
-		</Link>
-	</li>*/
+	saveToStorage = () => {
+		const keyTest = "asdf"
+		//const valueTest = ["derp","dorp","yaboi"]
+		const valueTest = {"SecondKey":"asdf","thirdKey":"boop"}
+		
+		testSaveStorage(keyTest, valueTest)
+	};
+	
+	getFromStorage = () => {
+		const keyTest = "asdf"
+		let dataTest = testLoadStorage(keyTest)		
+		console.log(dataTest)
+	};
 	
 	render() {
 		const basePath = this.props.basePath
@@ -46,7 +55,7 @@ class navigation extends React.Component {
 
 			userDisplay = (
 				<li className={'nav-item'}  key='3'>	
-					<Link className="nav-link" to={basePath+"/dashboard"}>
+					<Link className="nav-link" to={basePath+"/signin"}>
 						None
 					</Link>
 				</li>
@@ -55,7 +64,7 @@ class navigation extends React.Component {
 		else {
 			iconButton = [
 				(<li className={'nav-item'}  key='1'>	
-					<Link className="nav-link" to={basePath+"/dashboard"}>
+					<Link className="nav-link" to={this.props.reRouteCompany}>
 						Dashboard
 					</Link>
 				</li>),
@@ -68,8 +77,9 @@ class navigation extends React.Component {
 			]
 
 			userDisplay = (
-				<li className={'nav-item'}  key='5'>	
-					<Link className="nav-link" to={basePath+"/dashboard"}>
+				<li className={'nav-item'}  key='5'>
+					{/*Go to specifically User Settings? Call a dropdown?*/}
+					<Link className="nav-link" to={this.props.reRouteUser}>
 						{this.props.currentUser}
 					</Link>
 				</li>
@@ -84,13 +94,29 @@ class navigation extends React.Component {
 		</li>
 		*/
 
+		//fixed-top
 		return (
 			<div className="navigation">
+			
 				<nav className="navbar navbar-expand-lg navbar-dark bg-dark">
 					<div className="container-fluid">
 						<Link className="navbar-brand" to={basePath+"/"}>
 							Project Scenere
 						</Link>
+						
+						{/*
+						<button onClick={this.saveToStorage}>
+							Test Save
+						</button>
+						<button onClick={this.getFromStorage}>
+							Test Load
+						</button>
+						<button onClick={clearStorage}>
+							Clear
+						</button>
+						<button onClick={checkStorageContents}>
+							Check Contents
+						</button> */}
 						
 						<button
 							className="navbar-toggler"

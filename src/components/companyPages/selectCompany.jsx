@@ -2,7 +2,7 @@ import React from "react";
 
 import { withRouter } from "react-router-dom";
 
-const selectCompany =(props) => {
+const selectCompany = (props) => {
 		
 	let keyID = 0
 	let backLayerButtons = []
@@ -97,11 +97,9 @@ const selectCompany =(props) => {
 		errorCheckingClass =' text-danger'
 	}
 	
-	/*let errorCheckingClass = ""
+	/*let responseCheckingClass = ' bg-success'
 	if (props.lastRequestStatus === false) {
-		errorCheckingClass =' text-danger'
-	} else if (props.lastRequestStatus === true) {
-		errorCheckingClass =' text-success'
+		responseCheckingClass = ' bg-danger'
 	}*/
 	
 	let currentSet = [selectedPerms, selectedDivision, selectedID]
@@ -112,7 +110,7 @@ const selectCompany =(props) => {
 				
 				<div className="row my-2">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<div className="row">
 									<div className="col my-2">
@@ -141,11 +139,21 @@ const selectCompany =(props) => {
 								</div>
 								<div className="row my-2">
 									<div className="col">
-										<button onClick={props.getDataRequest} value={ currentSet } className={getButtonClass}>
+										<button onClick={props.getDataRequest} value={ currentSet } className={ getButtonClass }>
 											Get Data
 										</button>
 									</div>
 								</div>
+								
+								{props.lastRequestStatus > 0 && 
+									<div className="row">
+										<div className="col">
+											{/* props.lastRequestStatus === 1 && "Data Obtained!" */}
+											{ props.lastRequestStatus === 2 && "Not Allowed!" }
+										</div>
+									</div>
+								}
+								
 							</div>
 						</div>
 					</div>

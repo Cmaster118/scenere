@@ -41,30 +41,56 @@ const suggesstionBox = (props) => {
 		)
 		keyID += 1
 	}
+	if ( displayData.length === 0 ) {
+		displayData.push(
+			<div className="row m-2" key={keyID}>
+				<div className="col">
+					No data to show!
+				</div>
+			</div>
+		)
+		keyID += 1
+	}
+	
+	if ( props.dataDay === false  ) {
+		displayData = [
+			<div className="row m-2" key={keyID}>
+				<div className="col">
+					No Day Selected!
+				</div>
+			</div>
+		]
+	}
+	
+	let currentSelectedDayFilter = props.currentDate
+	if ( props.currentDate === false ) {
+		currentSelectedDayFilter = new Date()
+	}
 	
 	return (
 		<div className="testPages">
 			<div className="container-fluid">
+			
 				<div className="row m-2">
-					<div className="col col-lg-3 m-2">
+					<div className="col- m-2">
 						<Calendar 
+							className="shadow"
 							onChange={props.pickDate}
-							value={props.currentDate}
+							value={currentSelectedDayFilter}
 							tileClassName={tileClassName}
 
 							minDetail={'year'}
 							maxDetail={'month'}
 						/>
 					</div>
-					<div className="row m-2">
-						<div className="col m-2">
-							<div className="card">
-								<div className="card-header">
-									<div>Suggestions for Date: {props.dataDay.toString()}</div>
-								</div>
-								<div className="card-body">
-									{displayData}
-								</div>
+					
+					<div className="col m-2">
+						<div className="card shadow">
+							<div className="card-header">
+								<div>Suggestions for Date: {props.dataDay && props.dataDay.toString()}</div>
+							</div>
+							<div className="card-body">
+								{displayData}
 							</div>
 						</div>
 					</div>

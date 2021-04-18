@@ -1,5 +1,5 @@
 import React, { useState, useEffect  } from "react";
-import Store from "store"
+//import Store from "store"
 
 import { APIDivisionInvitesCreate, APIDivisionInvitesSet, APIDivisionSettingsEdit, APIDivisionSettingsGet, APIDivisionInvitesGet } from "../../utils";
 import { withRouter } from "react-router-dom";
@@ -57,7 +57,7 @@ const CompanySettings = (props) => {
 	
 	function getSuccess(successData) {
 		console.log("Get Data Success")
-		Store.set(props.currentDivisionID+"-Data", successData)
+		//Store.set(props.currentDivisionID+"-Data", successData)
 		
 		setCompanyFullName( successData["fullPathName"] )
 		setDivisionName( successData["divisionName"] )
@@ -93,7 +93,7 @@ const CompanySettings = (props) => {
 	function getDivisionData() {
 		// Verify that the division is valid?
 		if (props.currentDivisionID >= 0) {
-			let checkData = Store.get(props.currentDivisionID+"-Data")
+			let checkData = undefined//Store.get(props.currentDivisionID+"-Data")
 			if (checkData === undefined) {
 				console.log("Requesting Division Data From Server...")
 				APIDivisionSettingsGet( props.APIHost, props.authToken, props.currentDivisionID, getSuccess, getFailure )
@@ -108,7 +108,7 @@ const CompanySettings = (props) => {
 	
 	function getInvitesSuccess(successData) {
 		console.log("Get Invites Success")
-		Store.set(props.currentDivisionID+"-Invites", successData)
+		//Store.set(props.currentDivisionID+"-Invites", successData)
 
 		let IDList = []
 		let nameList = []
@@ -132,7 +132,7 @@ const CompanySettings = (props) => {
 	}
 	function getDivisionsInvites() {
 		if (props.currentDivisionID >= 0) {
-			let checkData = Store.get(props.currentDivisionID+"-Invites")
+			let checkData = undefined//Store.get(props.currentDivisionID+"-Invites")
 			if (checkData === undefined) {
 				APIDivisionInvitesGet( props.APIHost, props.authToken, props.currentDivisionID, getInvitesSuccess, getInvitesFailure )
 			}
@@ -442,7 +442,7 @@ const CompanySettings = (props) => {
 			
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Full Company Path</h5>
 							</div>
@@ -454,7 +454,7 @@ const CompanySettings = (props) => {
 				</div>
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Change Division Name</h5>
 							</div>
@@ -466,7 +466,7 @@ const CompanySettings = (props) => {
 						</div>
 					</div>
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Invites List</h5>
 							</div>
@@ -481,7 +481,7 @@ const CompanySettings = (props) => {
 			
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Invite Code</h5>
 							</div>
@@ -491,7 +491,7 @@ const CompanySettings = (props) => {
 						</div>
 					</div>
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Viewing Permissions</h5>
 							</div>
@@ -501,7 +501,7 @@ const CompanySettings = (props) => {
 						</div>
 					</div>
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Subscription Expiry</h5>
 							</div>
@@ -514,7 +514,7 @@ const CompanySettings = (props) => {
 				
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Invite User</h5>
 							</div>
@@ -547,7 +547,7 @@ const CompanySettings = (props) => {
 				
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Administrators</h5>
 							</div>
@@ -557,7 +557,7 @@ const CompanySettings = (props) => {
 						</div>
 					</div>
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Viewing Privilages:</h5>
 							</div>
@@ -569,7 +569,7 @@ const CompanySettings = (props) => {
 						</div>
 					</div>
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Users Notified:</h5>
 							</div>
@@ -584,7 +584,7 @@ const CompanySettings = (props) => {
 				
 				<div className="row">
 					<div className="col">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<h5>Target Users:</h5>
 							</div>

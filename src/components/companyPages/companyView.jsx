@@ -45,7 +45,7 @@ const parseEmotion = (emotionData) => {
 
 const companyViewSummary = (props) => {
 	
-	console.log(props.dataSet)
+	//console.log(props.dataSet)
 		
 	let tableDisplay = []
 	let index;
@@ -116,9 +116,9 @@ const companyViewSummary = (props) => {
 						const barOptions = testBarMultiOptions()
 						
 						displayStats.push(
-							<div className="row m-2" key="2">
-								<div className="col">
-									<div className="card">
+							<div className="row m-2 justify-content-center" key="2">
+								<div className="col-sm col-md col-lg-3">
+									<div className="card shadow">
 										<div className="card-header">
 											Averages + Max and min?
 										</div>
@@ -127,8 +127,8 @@ const companyViewSummary = (props) => {
 										</div>
 									</div>
 								</div>
-								<div className="col">
-									<div className="card">
+								<div className="col-sm col-md col-lg-3">
+									<div className="card shadow">
 										<div className="card-header">
 											"How many have hit this threshold"?
 										</div>
@@ -151,9 +151,9 @@ const companyViewSummary = (props) => {
 						const barOptionsNorm = sentimentBarOptions()
 					
 						displayStats.push(
-							<div className="row m-2" key="2">
-								<div className="col">
-									<div className="card">
+							<div className="row m-2 justify-content-center" key="2">
+								<div className="col-sm col-md col-lg-3">
+									<div className="card shadow">
 										<div className="card-header">
 											Sentiment Values
 										</div>
@@ -162,8 +162,8 @@ const companyViewSummary = (props) => {
 										</div>
 									</div>
 								</div>
-								<div className="col">
-									<div className="card">
+								<div className="col-sm col-md col-lg-3">
+									<div className="card shadow">
 										<div className="card-header">
 											"How many have hit this threshold"?
 										</div>
@@ -340,10 +340,27 @@ const companyViewSummary = (props) => {
 				
 			}
 		}
+		else {
+			displayStats.push(
+				<div className="row m-2 border" key="2">
+					<div className="col">
+						<p>Select a Prompt</p>
+					</div>
+				</div>
+			)
+		}
 	}
 	else {
 		// There was NO DATA in the day here, so we have to display nothing...
 		promptList = [{name:"No Prompts", value:"None"}]
+		
+		displayStats.push(
+			<div className="row m-2 border" key="2">
+				<div className="col">
+					<p>There was no data to read!</p>
+				</div>
+			</div>
+		)
 	}
 	
 	const tileClassName = ({ date, view }) => {
@@ -368,14 +385,17 @@ const companyViewSummary = (props) => {
 	let messageLine1 = "Showing Company Summary for: " + props.currentCompany
 	let messageLine2 = "For week of: " + props.anchorDate
 	
+	//console.log(props.currentDate)
+	
 	return (
 		<div className="companyView">
 			<div className="container-fluid">
 				
-				<div className="row m-2">
-					<div className="col-lg-3 m-2">					
+				<div className="row m-2 justify-content-center">
+					<div className="col- m-2">					
 						<div>
 							<Calendar 
+								className="shadow"
 								onChange={props.pickDate}
 								value={props.currentDate}
 								tileClassName={tileClassName}
@@ -386,7 +406,7 @@ const companyViewSummary = (props) => {
 						</div>
 					</div>
 					<div className="col m-2">
-						<div className="card">
+						<div className="card shadow">
 							<div className="card-header">
 								<div>{messageLine1}</div>
 								<div>{messageLine2}</div>
@@ -457,12 +477,16 @@ const companyViewSummary = (props) => {
 					</div>
 				</div>
 				
-				<div className="card">
-					<div className="card-header">
-						<div>Showing Data for prompt: {promptName}</div>
-					</div>
-					<div className="card-body">
-						{displayStats}
+				<div className="row m-2">
+					<div className="col">
+						<div className="card shadow">
+							<div className="card-header">
+								<div>Showing Data for prompt: {promptName}</div>
+							</div>
+							<div className="card-body">
+								{displayStats}
+							</div>
+						</div>
 					</div>
 				</div>
 				

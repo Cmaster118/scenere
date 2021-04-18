@@ -8,11 +8,11 @@ class footer extends React.Component {
 
         };
 	}
-	// fixed-bottom
+	// 
 	render() {
 		return (
-			<div className="footer">
-				<footer className="py-3 bg-dark fixed-bottom">
+			<div className="footer fixed-bottom">
+				<footer className="py-3 bg-dark">
 					<div className="container">
 						<p className="m-0 text-center text-white">
 							Copyright &copy; Nightingale Technologies 2021

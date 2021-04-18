@@ -2,9 +2,7 @@ import React from "react";
 
 import { Link, withRouter } from 'react-router-dom';
 
-import { APISignIn } from "../utils";
-
-import Store from "store"
+import { APISignIn } from "../../utils";
 
 class signIn extends React.Component {
 
@@ -47,18 +45,8 @@ class signIn extends React.Component {
 	}
 	
 	componentDidMount() {
-		//this.loadFromCookies();
-	};
-	
-	loadFromCookies = () => {
 		
-		const data = Store.get('rememberUser')
-		try {
-			this.setState({ username:data.user, password:data.pass })
-		} catch {
-			// Do Nothing!
-		}
-	}
+	};
 	
 	userFieldChange = (event) => {
 		this.setState({
@@ -164,7 +152,8 @@ class signIn extends React.Component {
 		}
 	
 		return (
-			<div className='container'>
+			<div className='container text-center'>
+
 				<form onSubmit={this.handleSubmit} >
 					<h3>Sign In</h3>
 					
@@ -181,7 +170,7 @@ class signIn extends React.Component {
 						<input type='password' className={'form-control '+passwordClass} value={this.state.password} onChange={this.passFieldChange} placeholder='Enter password' />
 						<p className="text-danger">{this.state.passwordError ? "Password cannot be blank":""}</p>
 					</div>
-					
+
 					<div className='form-group'>
 						<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.remember} onChange={this.remFieldChange} />
 						<label className='form-control-label' htmlFor='customCheck1' >Remember Me</label>

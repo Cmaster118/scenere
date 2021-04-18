@@ -1,15 +1,15 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
-import Store from "store"
-import {Editor, EditorState, RichUtils, convertToRaw, convertFromRaw } from 'draft-js';
+//EditorState, convertToRaw, convertFromRaw
+import {Editor, RichUtils,  } from 'draft-js';
 //ContentState
 
 const styles = {
   editor: {
     border: '1px solid gray',
     minHeight: '6em',
-	justifyContent: 'left',
+	textAlign: 'left',
   }
 };
 
@@ -31,7 +31,7 @@ class StyleButton extends React.Component {
 		}
 
 		return (
-			<button className={className} onClick={this.onToggle}>
+			<button className={className} onMouseDown={this.onToggle}>
 				{this.props.label}
 			</button>
 		);
@@ -99,248 +99,313 @@ const InlineStyleControls = (props) => {
 	);
 };
 
-// END OF THE EXAMPLE CODE!!!
-
-const saveEditorData = () => {
-	Store.set( "TodayTest", convertToRaw(this.state.editorState.getCurrentContent()) )
-}
-
-const loadEditorData = () => {
-	let loadedEditor = convertFromRaw(Store.get("TodayTest"))
-	//console.log(loadedEditor)
-	
-	this.setState({
-		editorState: EditorState.createWithContent(loadedEditor)
-	})
-}
-
 // This contains the EditorJS code... So lets do it last as I am unsure as of what to do...
-const journalView = (props) => {
+class journalView extends React.Component {
 	
-	let keyID = 0
-	let backLayerButtons = []
-	
-	let currentLayer = props.companyDataTree
-	// Dig following each of the currentSelection...
-	
-	backLayerButtons.push(
-		<button key={keyID} onClick={props.backLayer} value={0} className="btn btn-outline-dark"> 
-			Root 
-		</button>
-	)
-	keyID += 1
-	
-	let selectedDivisionFull = ""
-	//let selectedDivision = ""
-	let selectedPerms = 0
-	//let selectedID = -1
-	
-	if (props.currentCompanySelections.length > 0) {
-		// Display the currently selected aspects...
+	constructor(props) {
+        super(props);
+        this.state = {
+			
+		}	
 		
-		for (let i = 0; i < props.currentCompanySelections.length; i++) {
-			
-			// The last iteration of this is the one we are on, before the currentLayer is reset...
-			selectedDivisionFull += currentLayer[ props.currentCompanySelections[i] ]["name"] + "/"
-
-			//selectedDivision = currentLayer[ props.currentCompanySelections[i] ]["name"]
-			selectedPerms = currentLayer[ props.currentCompanySelections[i] ]["perm"]
-			//selectedID = props.currentCompanySelections[i]
-			
-			let thisClass = "btn"
-			if ( currentLayer[props.currentCompanySelections[i]]["perm"] ) {
-				thisClass += " btn-secondary"
-			}
-			else {
-				thisClass += " btn-outline-secondary"
-			}
-			backLayerButtons.push(
-				<button key={keyID} onClick={props.backLayer} value={i+1} className={thisClass}> 
-					{ currentLayer[props.currentCompanySelections[i]]["name"] } 
-				</button>
-			)
-			keyID += 1
-			
-			// Enter the currentLayer, one stage at a time...
-			currentLayer = currentLayer[ props.currentCompanySelections[i] ].children
-		}
+		this.focusMe = () => this.refs.editor.focus();
 	}
-	else {
-		selectedDivisionFull = "No Selection"
-	}
-
-	let currentLayerButtons = []
-	// Display the current layer we are selecting...
-	for (let key in currentLayer) {
-
-		let thisClass = "btn"
-		if ( currentLayer[key]["perm"] ) {
-			thisClass += " btn-primary"
-		}
-		else {
-			thisClass += " btn-outline-primary"
-		}
-		
-		currentLayerButtons.push(
-			<button key={keyID} onClick={props.selectLayer} value={key} className={thisClass}>
-				{currentLayer[key]["name"]}
-			</button>
-		)
-		keyID += 1
-	}
-	
-	// If we got to this point without putting anything into the array...
-	if (currentLayerButtons.length === 0) {
-		currentLayerButtons.push(
-			<div className="btn btn-outline-secondary" key={keyID}> 
-				End of Data
-			</div>
-		)
-		keyID += 1
-	}
-	
-	let getButtonClass = "btn "
-	if (selectedPerms > 0) {
-		getButtonClass += "btn-success"
-	}
-	else {
-		getButtonClass += "btn-danger"
-	}
-	
-	let errorCheckingClass = ""
-	if (props.lastRequestStatus === false) {
-		errorCheckingClass =' bg-danger'
-	}		
 	
 	// Example code... Can I alter this to be more my style?
 	// It works, so its okay for now...
-	const toggleBlockType = (blockType) => {
-		this.onChange(
+	toggleBlockType = (blockType) => {
+		this.props.onChange(
 			RichUtils.toggleBlockType(
-				this.state.editorState,
+				this.props.editorState,
 				blockType
 			)
 		);
 	}
 	
-	const toggleInlineStyle = (inlineStyle) => {
-		this.onChange(
+	toggleInlineStyle = (inlineStyle) => {
+		this.props.onChange(
             RichUtils.toggleInlineStyle(
-				this.state.editorState,
+				this.props.editorState,
 				inlineStyle
             )
         );
 	}
 	
-	const handleKeyCommand = (command, editorState) => {
+	handleKeyCommand = (command, editorState) => {
 		const newState = RichUtils.handleKeyCommand(editorState, command);
 
 		if (newState) {
-			props.onChange(newState);
+			this.props.onChange(newState);
 			return 'handled';
 		}
 
 		return 'not-handled';
 	}
 	
-	let placeholder = ""
-
-	return (
-		<div className="makeView">
-			<div className="container-fluid">
-			
-				<div className="row my-2">
-					<div className="col">
-						<div className="card">
-							<div className="card-header">
-								<div className="row">
-									<div className="col my-2">
-										<div className={errorCheckingClass}>
-											Select Part of Company:
-										</div>
-									</div>
-								</div>
-							</div>
-							<div className="card-body">
-								<div className="row my-2">
-									<div className="col btn-group btn-group-sm">
-										{backLayerButtons}
-									</div>
-								</div>
-								
-								<div className="row my-2">
-									<div className="col btn-group btn-group-sm">
-										{currentLayerButtons}
-									</div>
-								</div>
-							</div>
+	render() {
+	
+		let keyID = 0
+		let backLayerButtons = []
+		
+		let currentLayer = this.props.companyDataTree
+		// Dig following each of the currentSelection...
+		
+		backLayerButtons.push(
+			<button key={keyID} onClick={this.props.backLayer} value={0} className="btn btn-outline-dark"> 
+				Root 
+			</button>
+		)
+		keyID += 1
+		
+		let selectedDivisionFull = ""
+		//let selectedDivision = ""
+		let selectedPerms = 0
+		//let selectedID = -1
+		
+		let showSuccess = false
+		let showNormalError = false
+		let showUnknownError = false
+		
+		let successData = false
+		let successData2 = false
+		let normalError = false
+		let unknownError = false
+		for (let index in this.props.suggestionErrors[0]) {
+			// Display Success 1!
+			if (this.props.suggestionErrors[0][index] === 1) {
+				showSuccess = true
+				successData = 
+					<div className="row">
+						<div className="col text-success">
+							{this.props.suggestionErrors[1][index]}
 						</div>
 					</div>
-				</div>
+			}
+			// Display Success 2!
+			else if (this.props.suggestionErrors[0][index] === 2) {
+				showSuccess = true
+				successData2 = 
+					<div className="row">
+						<div className="col text-success">
+							{"Created Suggestion for: "+ this.props.suggestionErrors[1][index].targetDivision + ", " + this.props.suggestionErrors[1][index].createdDate}
+						</div>
+					</div>
+			}
+			// Wrong Company
+			else if (this.props.suggestionErrors[0][index] === 3) {
+				showNormalError = true
+				normalError =
+					<div className="row">
+						<div className="col text-danger">
+							{this.props.suggestionErrors[1][index]}
+						</div>
+					</div>
+			}
+			// No Company
+			else if (this.props.suggestionErrors[0][index] === 4) {
+				showNormalError = true
+				normalError =
+					<div className="row">
+						<div className="col text-danger">
+							{this.props.suggestionErrors[1][index]}
+						</div>
+					</div>
+			}
+			// Unknown
+			else if (this.props.suggestionErrors[0][index] === 10) {
+				showUnknownError = true
+				unknownError =
+					<div className="row">
+						<div className="col text-danger">
+							{this.props.suggestionErrors[1][index]}
+						</div>
+					</div>
+			}
+		}
+		
+		if (this.props.currentCompanySelections.length > 0) {
+			// Display the currently selected aspects...
 			
-				<div className="row my-2">
-					<div className="col">
-						<div className="card">
-							<div className="card-header">
-								<h4>Writing Suggestion for:</h4>
-								<div className="row">
-									<div className="col my-2">
-										<div className={errorCheckingClass}>
-											{selectedDivisionFull}
-										</div>
-									</div>
-								</div>
-							</div>
-							<div className="card-body">
-								
-								<div className="row">
-									<div className="col">
-										<BlockStyleControls
-											editorState={props.editorState}
-											onToggle={toggleBlockType}
-										/>
-										<InlineStyleControls
-											editorState={props.editorState}
-											onToggle={toggleInlineStyle}
-										/>
-									</div>
-								</div>
-								
-								<div className="row">
-									<div className="col-1">
-									</div>
-									<div className="col">
-										<div id="align-left">
-											<div style={styles.editor} >
-												<Editor
-												  
-													editorState={props.editorState}
-													onChange={props.onChange}
-													handleKeyCommand={handleKeyCommand}
-													
-													spellCheck={true}
-													placeholder={placeholder}
-												/>
+			for (let i = 0; i < this.props.currentCompanySelections.length; i++) {
+				
+				// The last iteration of this is the one we are on, before the currentLayer is reset...
+				selectedDivisionFull += currentLayer[ this.props.currentCompanySelections[i] ]["name"] + "/"
+
+				//selectedDivision = currentLayer[ this.props.currentCompanySelections[i] ]["name"]
+				selectedPerms = currentLayer[ this.props.currentCompanySelections[i] ]["perm"]
+				//selectedID = this.props.currentCompanySelections[i]
+				
+				let thisClass = "btn"
+				if ( currentLayer[this.props.currentCompanySelections[i]]["perm"] ) {
+					thisClass += " btn-secondary"
+				}
+				else {
+					thisClass += " btn-outline-secondary"
+				}
+				backLayerButtons.push(
+					<button key={keyID} onClick={this.props.backLayer} value={i+1} className={thisClass}> 
+						{ currentLayer[this.props.currentCompanySelections[i]]["name"] } 
+					</button>
+				)
+				keyID += 1
+				
+				// Enter the currentLayer, one stage at a time...
+				currentLayer = currentLayer[ this.props.currentCompanySelections[i] ].children
+			}
+		}
+		else {
+			selectedDivisionFull = "No Selection"
+		}
+
+		let currentLayerButtons = []
+		// Display the current layer we are selecting...
+		for (let key in currentLayer) {
+
+			let thisClass = "btn"
+			if ( currentLayer[key]["perm"] ) {
+				thisClass += " btn-primary"
+			}
+			else {
+				thisClass += " btn-outline-primary"
+			}
+			
+			currentLayerButtons.push(
+				<button key={keyID} onClick={this.props.selectLayer} value={key} className={thisClass}>
+					{currentLayer[key]["name"]}
+				</button>
+			)
+			keyID += 1
+		}
+		
+		// If we got to this point without putting anything into the array...
+		if (currentLayerButtons.length === 0) {
+			currentLayerButtons.push(
+				<div className="btn btn-outline-secondary" key={keyID}> 
+					End of Data
+				</div>
+			)
+			keyID += 1
+		}
+		
+		let getButtonClass = "btn "
+		if (selectedPerms > 0) {
+			getButtonClass += "btn-success"
+		}
+		else {
+			getButtonClass += "btn-danger"
+		}
+		
+		let errorCheckingClass = ""
+		if (this.props.lastRequestStatus === false) {
+			errorCheckingClass =' bg-danger'
+		}		
+		
+		let placeholder = ""
+
+		return (
+			<div className="makeView">
+				<div className="container-fluid">
+				
+					<div className="row my-2">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
+									<div className="row">
+										<div className="col my-2">
+											<div className={errorCheckingClass}>
+												Select Part of Company:
 											</div>
 										</div>
 									</div>
-									<div className="col-1">
-									</div>
 								</div>
-
-								<div className="row">
-									<div className="col">
-										<button className={getButtonClass} onClick={props.saveToServer}> Save Suggestion </button>
+								<div className="card-body">
+									<div className="row my-2">
+										<div className="col btn-group btn-group-sm">
+											{backLayerButtons}
+										</div>
+									</div>
+									
+									<div className="row my-2">
+										<div className="col btn-group btn-group-sm">
+											{currentLayerButtons}
+										</div>
 									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 				
+					<div className="row my-2">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
+									<h4>Writing Suggestion for:</h4>
+									<div className="row">
+										<div className="col my-2">
+											<div className={errorCheckingClass}>
+												{selectedDivisionFull}
+											</div>
+										</div>
+									</div>
+								</div>
+								<div className="card-body">
+									
+									<div className="row">
+										<div className="col">
+											<BlockStyleControls
+												editorState={this.props.editorState}
+												onToggle={this.toggleBlockType}
+											/>
+											<InlineStyleControls
+												editorState={this.props.editorState}
+												onToggle={this.toggleInlineStyle}
+											/>
+										</div>
+									</div>
+									
+									<div className="row">
+										<div className="col-1">
+										</div>
+										<div className="col" onClick={this.focusMe}>
+											<div id="align-left">
+												<div style={styles.editor} >
+													<Editor
+													  
+														editorState={this.props.editorState}
+														onChange={this.props.onChange}
+														handleKeyCommand={this.handleKeyCommand}
+														
+														spellCheck={true}
+														placeholder={placeholder}
+														
+														ref="editor"
+													/>
+												</div>
+											</div>
+										</div>
+										<div className="col-1">
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="col">
+											<button className={getButtonClass} onMouseDown={this.props.saveToServer}> Save Suggestion </button>
+										</div>
+									</div>
+									
+									{showSuccess && successData}
+									{showSuccess && successData2}
+									{showNormalError && normalError}
+									{showUnknownError && unknownError}
+								</div>
+							</div>
+						</div>
+					</div>
+					
+				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }
 
 export default withRouter(journalView);

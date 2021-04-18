@@ -1,7 +1,7 @@
 import React from "react";
 
 import { withRouter } from 'react-router-dom';
-import { APIForgotEmailSend, APIForgotEmailValidate, APIForgotEmailChangePassword } from "../utils";
+import { APIForgotEmailSend, APIForgotEmailValidate, APIForgotEmailChangePassword } from "../../utils";
 
 class forgotPassword extends React.Component {
 		

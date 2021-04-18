@@ -1,6 +1,6 @@
 import React from "react";
 
-import { APISignIn, APISignUp, APIResendValidator } from "../utils";
+import { APISignIn, APISignUp, APIResendValidator } from "../../utils";
 
 import { withRouter} from "react-router-dom";
 

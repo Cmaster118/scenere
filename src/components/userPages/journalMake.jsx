@@ -1,15 +1,15 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
-import Store from "store"
-import {Editor, EditorState, RichUtils, convertToRaw, convertFromRaw } from 'draft-js';
-//ContentState
+//import Store from "store"
+// ContentState, EditorState, convertToRaw, convertFromRaw 
+import {Editor, RichUtils, } from 'draft-js';
 
 const styles = {
   editor: {
     border: '1px solid gray',
     minHeight: '6em',
-	justifyContent: 'left',
+	textAlign: 'left',
   }
 };
 
@@ -31,7 +31,7 @@ class StyleButton extends React.Component {
 		}
 
 		return (
-			<button className={className} onClick={this.onToggle}>
+			<button className={className} onMouseDown={this.onToggle}>
 				{this.props.label}
 			</button>
 		);
@@ -46,8 +46,8 @@ const BLOCK_TYPES = [
 	{label: 'H5', style: 'header-five'},
 	{label: 'H6', style: 'header-six'},
 	//{label: 'Blockquote', style: 'blockquote'},
-	{label: 'UL', style: 'unordered-list-item'},
-	{label: 'OL', style: 'ordered-list-item'},
+	//{label: 'UL', style: 'unordered-list-item'},
+	//{label: 'OL', style: 'ordered-list-item'},
 	//{label: 'Code Block', style: 'code-block'},
 ];
 
@@ -100,7 +100,7 @@ const InlineStyleControls = (props) => {
 };
 
 // END OF THE EXAMPLE CODE!!!
-const saveEditorData = () => {
+/*const saveEditorData = () => {
 	Store.set( "TodayTest", convertToRaw(this.state.editorState.getCurrentContent()) )
 }
 
@@ -111,104 +111,181 @@ const loadEditorData = () => {
 	this.setState({
 		editorState: EditorState.createWithContent(loadedEditor)
 	})
-}
+}*/
 
 // This contains the EditorJS code... So lets do it last as I am unsure as of what to do...
-const journalView = (props) => {
+class journalView extends React.Component {
+	
+	constructor(props) {
+        super(props);
+        this.state = {
+			
+		}	
+		
+		this.focusMe = () => this.refs.editor.focus();
+	}
 	
 	// Example code... Can I alter this to be more my style?
 	// It works, so its okay for now...
-	const toggleBlockType = (blockType) => {
-		this.onChange(
+	toggleBlockType = (blockType) => {
+		this.props.onChange(
 			RichUtils.toggleBlockType(
-				this.state.editorState,
+				this.props.editorState,
 				blockType
 			)
 		);
 	}
 	
-	const toggleInlineStyle = (inlineStyle) => {
-		this.onChange(
+	toggleInlineStyle = (inlineStyle) => {
+		this.props.onChange(
             RichUtils.toggleInlineStyle(
-				this.state.editorState,
+				this.props.editorState,
 				inlineStyle
             )
         );
 	}
 	
-	const handleKeyCommand = (command, editorState) => {
+	handleKeyCommand = (command, editorState) => {
 		const newState = RichUtils.handleKeyCommand(editorState, command);
 
 		if (newState) {
-			props.onChange(newState);
+			this.props.onChange(newState);
 			return 'handled';
 		}
 
 		return 'not-handled';
 	}
-	
-	let placeholder = ""
-	let promptType = "Open Ended"
 
-	return (
-		<div className="makeView">
-			<div className="container-fluid">
-				<div className="row my-2">
-					<div className="col">
-						<div className="card">
-							<div className="card-header">
-								<h4>Writing Today's Journal</h4>
+	render() {
+		
+		let placeholder = ""
+		let promptType = "Open Ended"
+		
+		let showSuccess = false
+		let showNormalError = false
+		let showUnknownError = false
+		
+		let successData = false
+		let successData2 = false
+		let normalError = false
+		let unknownError = false
+		for (let index in this.props.journalErrors[0]) {
+			// Display Success 1!
+			if (this.props.journalErrors[0][index] === 1) {
+				showSuccess = true
+				successData = 
+					<div className="row">
+						<div className="col text-success">
+							{this.props.journalErrors[1][index]}
+						</div>
+					</div>
+			}
+			// Display Success 2!
+			else if (this.props.journalErrors[0][index] === 2) {
+				showSuccess = true
+				//console.log(this.props.journalErrors[1][index])
+				successData2 =
+					<div className="row">
+						<div className="col text-success">
+							{"Created Journal for: "+this.props.journalErrors[1][index].forDate}
+						</div>
+					</div>
+			}
+			// Already Exists?
+			else if (this.props.journalErrors[0][index] === 3) {
+				showNormalError = true
+				normalError =
+					<div>
+						<div className="row">
+							<div className="col text-warning">
+								Sorry! That Journal already exists
 							</div>
-							<div className="card-body">
-								<h5 className="card-title">Today's Prompt is: {promptType}</h5>
-								
-								<div className="row">
-									<div className="col">
-										<BlockStyleControls
-											editorState={props.editorState}
-											onToggle={toggleBlockType}
-										/>
-										<InlineStyleControls
-											editorState={props.editorState}
-											onToggle={toggleInlineStyle}
-										/>
-									</div>
+						</div>
+						{/*<div className="row">
+							<div className="col text-warning">
+								{this.props.journalErrors[1][index]}
+							</div>
+						</div> */}
+					</div>
+			}
+			// Unknown
+			else if (this.props.journalErrors[0][index] === 10) {
+				showUnknownError = true
+				unknownError =
+					<div className="row">
+						<div className="col text-danger">
+							{this.props.journalErrors[1][index]}
+						</div>
+					</div>
+			}
+		}
+		
+		return (
+			<div className="makeView">
+				<div className="container-fluid">
+					<div className="row my-2">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
+									<h4>Writing Today's Journal</h4>
 								</div>
-								
-								<div className="row">
-									<div className="col-1">
-									</div>
-									<div className="col">
-										<div id="align-left">
-											<div style={styles.editor} >
-												<Editor
-												  
-													editorState={props.editorState}
-													onChange={props.onChange}
-													handleKeyCommand={handleKeyCommand}
-													
-													spellCheck={true}
-													placeholder={placeholder}
-												/>
-											</div>
+								<div className="card-body">
+									<h5 className="card-title">Today's Prompt is: {promptType}</h5>
+									
+									<div className="row">
+										<div className="col">
+											<BlockStyleControls
+												editorState={this.props.editorState}
+												onToggle={this.toggleBlockType}
+											/> 
+											<InlineStyleControls
+												editorState={this.props.editorState}
+												onToggle={this.toggleInlineStyle}
+											/>
 										</div>
 									</div>
-									<div className="col-1">
+									
+									<div className="row">
+										<div className="col-1">
+										</div>
+										<div className="col" onClick={this.focusMe}>
+											<div id="align-left">
+												<div style={styles.editor} >
+													<Editor
+														editorState={this.props.editorState}
+														onChange={this.props.onChange}
+														handleKeyCommand={this.handleKeyCommand}
+														
+														spellCheck={true}
+														placeholder={placeholder}
+														
+														ref="editor"
+													/>
+												</div>
+											</div>
+										</div>
+										<div className="col-1">
+										</div>
 									</div>
-								</div>
 
-								<div className="row">
-									<div className="col">
-										<button className="btn btn-outline-primary" onClick={props.saveToServer}> Save current Journal entry </button>
+									<div className="row">
+										<div className="col">
+											<button className="btn btn-outline-primary" onMouseDown={this.props.saveToServer}> Save current Journal entry </button>
+										</div>
 									</div>
+									
+									{showSuccess && successData}
+									{showSuccess && successData2}
+									{showNormalError && normalError}
+									{showUnknownError && unknownError}
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }
 
 export default withRouter(journalView);
