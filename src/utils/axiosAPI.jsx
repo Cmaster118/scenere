@@ -1,5 +1,40 @@
 import axios from "axios"
 
+const convertDate = (date) => {
+  var yyyy = date.getFullYear().toString();
+  var mm = (date.getMonth()+1).toString();
+  var dd  = date.getDate().toString();
+
+  var mmChars = mm.split('');
+  var ddChars = dd.split('');
+
+  return yyyy + '-' + (mmChars[1]?mm:"0"+mmChars[0]) + '-' + (ddChars[1]?dd:"0"+ddChars[0]);
+}
+
+// Refresh!
+export const APIRefreshToken = (APIHost, sessionToken, callbackFunction, callbackFailure) => {
+	const data = {
+			token: sessionToken,
+		};
+		
+		axios.post(APIHost + "/apiTokenRefresh/", data)
+		.then( 	res => {
+			//console.log(res)
+			
+			// If we get here then we should have a new token
+			console.log("Token refreshed")
+			callbackFunction()
+		})
+		.catch( err => {
+			console.log(err)
+			// Check for a specific error?
+			
+			this.logout()
+			
+			return false
+		});
+}	
+
 // Sign In!
 export const APISignIn = (APIHost, requestUsername, requestPassword, callbackFunction, callbackFailure) => {
 	const data = {
@@ -15,11 +50,42 @@ export const APISignIn = (APIHost, requestUsername, requestPassword, callbackFun
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		if (!(err === undefined)) {
-			if (!(err.response === undefined)) {
-				let outError = err.response.status
-				callbackFailure(outError)
+		//console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			// First version.... Hmmmmmmmmmmm This is still too simple...
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				//console.log(errorName)
+				
+				if (errorName === "username") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else if (errorName === "password") {
+					errCodes.push(2)
+					errDatas.push(errData[errorName])
+				} else if (errorName === "non_field_errors") {
+					errCodes.push(3)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
 			}
+			
+			callbackFailure(errCodes, errDatas)
 		}
 	})
 }
@@ -44,13 +110,40 @@ export const APISignUp = (APIHost, requestUsername, requestPassword1, requestPas
 			callbackFunction(outData)
 		})
 		.catch( err => {
-			if (!(err === undefined)) {
-				if (!(err.response === undefined)) {
-					// Figure out how do display these better?
-					let outError = err.response.status
-					let outData = err.response.data
-					callbackFailure(outError, outData)
+			//console.log(err)
+			if (!err.response) {
+				console.log("Network Error!")
+				callbackFailure([0],["Network Error"])
+			}
+			else {
+				//let errCode = err.response.status
+				let errData = err.response.data
+				
+				// First version.... Hmmmmmmmmmmm This is still too simple...
+				let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+					//console.log(errorName)
+					
+					if (errorName === "username") {
+						errCodes.push(1)
+						errDatas.push(errData[errorName])
+					}
+					else if (errorName === "password") {
+						errCodes.push(2)
+						errDatas.push(errData[errorName])
+					} else if (errorName === "email") {
+						errCodes.push(3)
+						errDatas.push(errData[errorName])
+					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
 				}
+				
+				callbackFailure(errCodes, errDatas)
 			}
 		})
 }
@@ -61,8 +154,7 @@ export const APIValidateAccount = (APIHost, authToken, activateToken, callbackFu
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	axios.get(APIHost +"/emailActivate/?token="+activateToken, config)
-	.then( 
-		res => {
+	.then(res => {
 			callbackFunction(res.status, res.data)
 	})
 	.catch( err => {
@@ -80,8 +172,7 @@ export const APIResendValidator = (APIHost, authToken, callbackFunction, callbac
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	axios.get(APIHost +"/emailVerifyResend", config)
-	.then( 
-		res => {
+	.then(res => {
 			//console.log("Got Data!")
 			//console.log(res.data)
 			callbackFunction()
@@ -104,8 +195,7 @@ export const APICheckActive = (APIHost, authToken, callbackFunction, callbackFai
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	axios.get(APIHost +"/userIsActive", config)
-	.then( 
-		res => {
+	.then(res => {
 			callbackFunction(res.data[0].isActive)
 	})
 	.catch( err => {
@@ -119,51 +209,206 @@ export const APICheckActive = (APIHost, authToken, callbackFunction, callbackFai
 	});
 }
 
-// Get Divisions that we are allowed to send a suggestion to...
-export const APIGetCompanyGovernedPermTree = (APIHost, authToken, callbackFunction, callbackFailure) => {
+// Contact Us Email
+export const APIContactUsEmail = (APIHost, firstName, lastName, email, company, content, callbackFunction, callbackFailure) => {
+	const data = {
+			
+		firstName: firstName,
+		lastName: lastName,
 		
-	const config = {
-		headers: { Authorization: `JWT ${authToken}` }
+		email: email,
+		company: company,
+		
+		content: content,		
 	};
 
-	axios.get(APIHost +"/getUsersGovernedDivisions", config)
-	.then( 	res => {
+	axios.post(APIHost +"/sendContactEmail/", data )
+	.then( res => { 
+	
+		// Successfully Sent the email, can trigger something on this side
+		if (res.status === 200) {
+
+		}
+	})
+	.catch( err => {
+		console.log(err.response.status)
+		console.log(err.response.data)
+	})
+}
+
+// Beta Sign Up Email
+export const APIBetaSignEmail = (APIHost, email, callbackFunction, callbackFailure) => {
+	const data = {
+		email: email,
+	};
+
+	axios.post(APIHost +"/sendBetaEmail/", data )
+	.then( res => { 
+	
+		// Successfully Sent the email, can trigger something on this side
+		if (res.status === 200) {
+
+		}
+	})
+	.catch( err => {
+		console.log(err.response.status)
+		console.log(err.response.data)
+	})
+}
+
+
+// Forgot Password Email Send!
+export const APIForgotEmailSend = (APIHost, sendEmail, callbackFunction, callbackFailure) => {
+
+	// Not logged in, so no token
+	const data = {
+		targetEmail: sendEmail,
+	};
+	
+	axios.post(APIHost + "/nonAuthPassword/sendEmail/", data)
+	.then(res => {
+			//console.log(res)
+			callbackFunction(res.status)
+		}
+	)
+	.catch(err => {
+		if (!err.response) {
+			console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			let errData = err.response.data
 			
-			// Normal behaviour
-			console.log("Got the tree of companies")
+			let errCodes = []
+			let errDatas = []
 			
-			// Now we convert this data into a tree... Tho why not just use it as is?
-			//console.log(res.data)
-			
-			callbackFunction(res.data)
-		})
-		.catch( err => {
-			if (!(err === undefined)) {
-				if (!(err.response === undefined)) {
-					if (err.response.status === 401) {
-						// Force the logout stuff
-						callbackFailure()
-					}
+			for (let errorName in errData) {
+				//console.log(errorName)
+				
+				if (errorName === "email") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
 				}
 			}
-		});
+			
+			callbackFailure(errCodes, errDatas)
+		}
+	});
 }
+// Forgot Password Validator Token Check!
+export const APIForgotEmailValidate = (APIHost, passToken, callbackFunction, callbackFailure) => {
+
+	// Not logged in, so no token
+	const config = {
+		
+	};
+	
+	axios.get(APIHost + "/nonAuthPassword/validate/?token="+passToken, config)
+	.then(res => {
+			callbackFunction(res.status)
+		}
+	)
+	.catch(err => {
+		if (!err.response) {
+			console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				//console.log(errorName)
+				
+				if (errorName === "status") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure(errCodes, errDatas)
+		}
+	});
+}
+
+// Forgot Password Password Changer!
+export const APIForgotEmailChangePassword = (APIHost, passToken, password1, password2, callbackFunction, callbackFailure) => {
+	// Not logged in, so no token
+	const data = {
+		password:password1,
+		password2:password2,
+		passToken:passToken,
+	};
+	
+	axios.put(APIHost + "/nonAuthPassword/Change/", data)
+	.then(res => {
+			// If this triggers, we should be completly fine...
+			callbackFunction(res.status)
+		}
+	)
+	.catch(err => {
+		// If THIS triggers, we are having a bad time...
+		//console.log(err)
+		if (!err.response) {
+			console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				//console.log(errorName)
+				
+				if (errorName === "password") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure(errCodes, errDatas)
+		}
+	});
+}
+
+// Logged In Password Changer!
+export const APILoggedInPasswordChanger = (APIHost, authToken, callbackFunction, callbackFailure) => {
+
+}
+
 // Saving of the suggestion...
 export const APISaveSuggestion = (APIHost, authToken, postingDate, targetDivision, content, editorBlock, callbackFunction, callbackFailure) => {
-		
-	//const randomID = Math.random().toString(16).substr(2, 8);
 	
 	const config = {
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
+	// As UTC: postingDate.toJSON().split("T")[0]
 	const data = {
+		reqDiv: targetDivision,
+		
 		targetDivision: targetDivision,
-		createdDate: postingDate.toJSON().split("T")[0],
+		createdDate: convertDate( postingDate ),
 		content: content,
+		
+		richText: editorBlock,
 	};
-	
-	//console.log(data)
 	
 	axios.post(APIHost +"/saveNewSuggestion/", data, config )
 	.then( res => { 
@@ -171,11 +416,40 @@ export const APISaveSuggestion = (APIHost, authToken, postingDate, targetDivisio
 	})
 	.catch( err => {
 		// Change this depending on the error...?
-		if (!(err === undefined)) {
-			if (!(err.response === undefined)) {
-				if (err.response.status === 401) {
-					callbackFailure()
+		if (!err.response) {
+			console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			//console.log(err)
+			if (err.response.status === 401) {
+				callbackFailure([401],["Invalid Token"])
+			}
+			else if (err.response.status === 403) {
+				callbackFailure([3],["You do not have permission to post to this!"])
+			}
+			else {
+				let errData = err.response.data
+				//let errCode = err.response.status
+				
+				let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+					//console.log(errorName)
+					
+					// Not a valid Error
+					if (errorName === "targetDivision") {
+						errCodes.push(10)
+						errDatas.push(errData[errorName])
+					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
 				}
+				
+				callbackFailure(errCodes,errDatas)
 			}
 		}
 	})
@@ -192,11 +466,13 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 	
 	const data = {
 		shorthand: 'made from the website: '+randomID,
+		
 		// Author is filled in based on your Token on the server side...
-	
-		forDate: postingDate.toJSON().split("T")[0],
+		// The timezone on the server is different.....
+		forDate: convertDate( postingDate ),
 
 		content: content,
+		richText: editorBlock,
 	};
 	
 	//console.log(data)
@@ -207,11 +483,31 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 	})
 	.catch( err => {
 		// Change this depending on the error...?
+		//console.log(err)
 		if (!(err === undefined)) {
-			if (!(err.response === undefined)) {
-				if (err.response.status === 401) {
-					callbackFailure()
+			if (err.response.status === 401) {
+				callbackFailure([401], ['Invalid Token'])
+			}
+			else {
+				let errData = err.response.data
+				//let errCode = err.response.status
+				
+				let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+
+					if (errorName === "author") {
+						errCodes.push(3)
+						errDatas.push(errData[errorName])
+					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
 				}
+				
+				callbackFailure(errCodes,errDatas)
 			}
 		}
 	})
@@ -226,7 +522,7 @@ export const APIGetJournalDates = (APIHost, authToken, callbackFunction, callbac
 	axios.get(APIHost +"/getJournalDates", config)
 	.then( 
 		res => {
-			console.log("Got Data!")
+			//console.log("Got Data!")
 			let tempAIArray = []
 			let tempJoArray = []
 			var item = ""
@@ -291,42 +587,83 @@ export const APIGetJournalData = (APIHost, authToken, selectedDate, callbackFunc
 
 	})
 	.catch( err => {
-		if (!(err === undefined)) {
-			if (!(err.response === undefined)) {
-				if (err.response.status === 401) {
-					// Force the logout stuff
-					callbackFailure()
+			if (!err.response) {
+				console.log("Network Error!")
+				callbackFailure([0],["Network Error"])
+			}
+			else {
+				//let errData = err.response.data
+				let errCode = err.response.status
+				
+				/*let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+					//console.log(errorName)
+					
+					if (errorName === "password") {
+						errCodes.push(1)
+						errDatas.push(errData[errorName])
+					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
+				}*/
+				
+				// Currently I have this as still being Logout...
+				if (errCode === 401) {	
+					callbackFailure([401],["Unauthorized"])
 				}
 			}
-		}
 	});
 };
 
 // Get the company list under the user, defined in the token
-export const APIGetCompanyPermTree = (APIHost, authToken, callbackFunction, callbackFailure) => {
+export const APIGetUsersPermTree = (APIHost, authToken, reqPerms, callbackFunction, callbackFailure) => {
 		
 	const config = {
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 
-	axios.get(APIHost +"/getUsersViewableDivisions", config)
+	axios.get(APIHost +"/getUsersPermissionTree?reqPerms="+reqPerms, config)
 	.then( 	res => {
 			
 			// Normal behaviour
-			console.log("Got the tree of companies")
-			
+			//console.log("Got the tree of companies")
 			// Now we convert this data into a tree... Tho why not just use it as is?
 			//console.log(res.data)
 			
-			callbackFunction(res.data)
+			callbackFunction(res.data["tree"], res.data["nameList"], res.data["idList"])
 		})
 		.catch( err => {
-			if (!(err === undefined)) {
-				if (!(err.response === undefined)) {
-					if (err.response.status === 401) {
-						// Force the logout stuff
-						callbackFailure()
+			if (!err.response) {
+				console.log("Network Error!")
+				callbackFailure([0],["Network Error"])
+			}
+			else {
+				//let errData = err.response.data
+				let errCode = err.response.status
+				
+				/*let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+					//console.log(errorName)
+					
+					if (errorName === "password") {
+						errCodes.push(1)
+						errDatas.push(errData[errorName])
 					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
+				}*/
+				
+				// Currently I have this as still being Logout...
+				if (errCode === 401) {	
+					callbackFailure([401],["Unauthorized"])
 				}
 			}
 		});
@@ -349,6 +686,8 @@ export const APIGetCompanyValidDates = (APIHost, authToken, divisionID, callback
 				
 				// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
 				// CHANGE THIS!!!
+				
+				// This is definetly too much data.... So I will have to seperate these into single day stuff...
 				const newDate = new Date(res.data[item].forDate)
 				// Move to next dat btw
 				newDate.setDate(newDate.getDate()+1)
@@ -510,30 +849,22 @@ export const APIGetSuggestionDates = (APIHost, authToken, targetCompany, callbac
 	
 	axios.get(APIHost +"/getCompanySuggestionDates?reqDiv="+targetCompany, config)
 	.then( 	res => {
-		// Should respond with a 1 length thing
-		//console.log(res.data)
-		if (res.data.length > 0) {
-			// Normal behaviour
-			//console.log("Got the suggestion dates!")
-			//console.log(res.data)
-			let datesData = []
+		
+		let datesData = []
+		
+		let item = ""
+		for (item in res.data) {
 			
-			let item = ""
-			for (item in res.data) {
+			const newDate = new Date(res.data[item])
+			const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)		
+			//console.log( checkDate )
 				
-				const newDate = new Date(res.data[item])
-				const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)		
-				//console.log( checkDate )
-					
-				datesData.push(checkDate)
-			}
-			
-			//console.log(datesData)
-			callbackFunction(datesData)
+			datesData.push(checkDate)
 		}
-		else {
-			// This should not trigger
-		}
+		
+		//console.log(datesData)
+		callbackFunction(datesData)
+		
 	})
 	.catch( err => {
 		if (!(err === undefined)) {
@@ -571,6 +902,643 @@ export const APIGetSuggestionData = (APIHost, authToken, targetCompany, targetDa
 					callbackFailure()
 				}
 			}
+		}
+	});
+}
+
+// CREATING a new invite from the Company Settings Page
+export const APIDivisionInvitesCreate = (APIHost, authToken, targetDivision, targetInvite, targetAction, callbackFunction, callbackFailure) => {
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	const data = {
+		reqDiv:targetDivision,
+		targetUser:targetInvite,
+		targetAction:targetAction,
+	}
+	
+	axios.post(APIHost +"/createDivisionInvite/", data, config)
+	.then( 	res => {
+		//console.log(res)
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// GETTING a divisions Invites, NOT THE HEAD ONE!
+export const APIDivisionInvitesSet = (APIHost, authToken, targetDivision, targetInvite, targetAction, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	const data = {
+		reqDiv:targetDivision,
+		targetInvite:targetInvite,
+		targetAction:targetAction,
+	}
+	
+	axios.put(APIHost +"/setDivisionInvite/", data, config)
+	.then( 	res => {
+		//console.log(res)
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// GETTING a divisions Invites, NOT THE HEAD ONE!
+export const APIDivisionInvitesGet = (APIHost, authToken, targetCompany, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	axios.get(APIHost +"/getDivisionInvites?reqDiv="+targetCompany, config)
+	.then( 	res => {
+		//console.log(res)
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction(succData)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// GETTING a divisions profile, NOT THE HEAD ONE!
+export const APIDivisionSettingsGet = (APIHost, authToken, targetCompany, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	axios.get(APIHost +"/getDivisionData?reqDiv="+targetCompany, config)
+	.then( 	res => {
+		//console.log(res)
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data[0]
+
+		callbackFunction(succData)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// SAVING an edited division's profile, NOT THE HEAD ONE! THAT IS LATER!
+export const APIDivisionSettingsEdit = (APIHost, authToken, dataSet, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	//const data = {
+		
+	//};
+	
+	const data = dataSet
+	
+	axios.put(APIHost +"/setDivisionData/", data, config)
+	.then( 	res => {
+		
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction(succData)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			console.log(errData)
+			
+			let errCodes = []
+			let errDatas = []
+			
+			/*for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}*/
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+	
+}
+
+export const APIUserSettingsEdit = (APIHost, authToken, dataSet, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	//const data = {
+		
+	//};
+	
+	const data = dataSet
+	
+	axios.put(APIHost +"/setUserProfileData/", data, config)
+	.then( 	res => {
+		
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction(succData)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			//let errData = err.response.data
+			//console.log(errData)
+			
+			let errCodes = []
+			let errDatas = []
+			
+			/*for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}*/
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+	
+}
+
+// Sign up for the company's governed list that matches this code...
+export const APIUserInviteCode = (APIHost, authToken, inviteCode, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	//let data = {
+	//	
+	//}
+
+	axios.get(APIHost +"/useDivisionInvite?joinCode="+inviteCode, config)
+	.then( 	res => {
+		// Should respond with a 1 length thing
+		//let succCode = res.response.status
+		let succData = res.response.data
+		//console.log(res.data)
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		//console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				//console.log(errorName)
+				
+				if (errorName === "dup") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else if (errorName === "token") {
+					errCodes.push(2)
+					errDatas.push(errData[errorName])
+				}
+				else if (errorName === "invite") {
+					errCodes.push(3)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// Get the invites!
+export const APIUserInvitesGet = (APIHost, authToken, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+
+	axios.get(APIHost +"/getUsersInvites", config)
+	.then( 	res => {
+		//console.log(res)
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction(succData)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+// Set the invites!
+export const APIUserInvitesSet = (APIHost, authToken, targetInvite, targetAction, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	const data = {
+		targetInvite:targetInvite,
+		targetAction:targetAction,
+	}
+	
+	axios.put(APIHost +"/setUserInvite/", data, config)
+	.then( 	res => {
+		// I am clearly not thinking these through correctly...
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			//console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+export const APIChangeUserEmail = (APIHost, authToken, newEmail, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	// Verify data before we do this?
+	const data = {
+		email:newEmail,
+	}
+	
+	axios.put(APIHost +"/updateUserEmail/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			let errCode = err.response.status
+			if (errCode === 500) {
+				callbackFailure( [10], ["Server Error"] )
+			}
+			
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+export const APIChangeUserName = (APIHost, authToken, newFirst, newLast, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	// Verify data before we do this?
+	const data = {
+		first_name:newFirst,
+		last_name:newLast,
+	}
+	
+	axios.put(APIHost +"/updateUserName/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			let errCode = err.response.status
+			if (errCode === 500) {
+				callbackFailure( [10], ["Server Error"] )
+			}
+			
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+export const APIChangeUserPassword = (APIHost, authToken, newPass, oldPass, oldPass2, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	// Verify data before we do this?
+	const data = {
+		oldPassword:newPass,
+		password:oldPass,
+		password2:oldPass2,
+	}
+	
+	axios.put(APIHost +"/updateUserPassword/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		console.log(err)
+		if (!err.response) {
+			// network Error
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			let errCode = err.response.status
+			if (errCode === 500) {
+				callbackFailure( [10], ["Server Error"] )
+			}
+			
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
 		}
 	});
 }

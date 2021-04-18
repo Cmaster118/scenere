@@ -1,16 +1,19 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 
-import axios from "axios";
+import { SignIn, SignUp, Forgot, VerifyEmail } from "./components/authPages";
+import { ContactUs } from "./components/landingPages";
 
-import { Navigation, Footer, Landing, SignIn, SignUp, Forgot, VerifyEmail, ContactUs} from "./components";
-import { FreePages, ContentPages } from "./components";
+import { Navigation, Footer } from "./components";
+import { LandingPages, ContentCommonPages} from "./components";
 //AuthPages
 
+import { APIRefreshToken } from "./utils";
 import Store from "store"
 
 //import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
+import './style.css'
 
 // Is THIS a patch for Github Pages react stuff?
 // Maybe...
@@ -70,33 +73,17 @@ class App extends React.Component {
 		return true
 	}
 	
+	
+	refreshCallback = (incomingToken) => {
+		this.setToken(incomingToken, this.state.currentUser, this.status.rememberMe)
+	}
+	refreshFailure = () => {
+		this.logout()
+	}
 	// Test out refreshing the token...
 	// Should do this every page reload...
 	refresh = () => {
-		const data = {
-			token: this.state.sessionToken,
-		};
-		
-		axios.post(hostName + "/apiTokenRefresh/", data)
-		.then( 	res => {
-			//console.log(res)
-			
-			// If we get here then we should have a new token
-			//console.log(res.data.token)
-			console.log("Token refreshed")
-			// A little bit unnecessary but hey...
-			this.setToken(res.data.token, this.state.currentUser, this.status.rememberMe)
-			
-			return true
-		})
-		.catch( err => {
-			console.log(err)
-			// Check for a specific error?
-			
-			this.logout()
-			
-			return false
-		});
+		APIRefreshToken(hostName, this.state.sessionToken, this.refreshCallback, this.refreshFailure)
 	}
 
 	// Should move this over to the UTIL...
@@ -106,47 +93,36 @@ class App extends React.Component {
 			currentUser: undefined 
 		})
 
+		// Store this as a cookie instead?
 		Store.remove('lastUser')
 	}
-	
-	// maybe I should move all the AXIOS stuff to its own file...
 	
 	render() {
 
 		return (
 			<Router>
 				<div className="App">
-			
+					
 					<Navigation 
 						currentUser={this.state.currentUser}
 						basePath={basePath}
 
 						clearLogin={this.logout}
+						
+						reRouteCompany={basePath+"/dashboard"}
+						reRouteUser={basePath+"/dashboard"}
 					/>
 						
 					<Switch>
 					
 						{/*To catch ONLY the landing page, this one has to be exact...*/}
-						{/*That means that i CANNOT nest them in the landing page...*/}
 						{/*Unless I am also missing something*/}
-						<Route path={basePath+"/"} exact component={() => <Landing 
+						<Route path={basePath+"/"} exact component={() => <LandingPages 
 								APIHost={hostName}
 								
 							/>} 
 						/>
 						
-						{/*Anything else will have to be in a different component...*/}
-						<Route path={basePath+"/info"} component={() => <FreePages 
-								APIHost={hostName}
-								
-							/>}
-						/>
-						{/*This can actually be replaced by a Modal in the navigational menu....
-						<Route path={basePath+"/auth"} component={() => <AuthPages 
-								APIHost={hostName}
-								
-							/>} 
-						/>*/}
 						<Route path={basePath+"/signin"} exact component={() => <SignIn 
 								APIHost={hostName}
 								loginSave={this.setToken}
@@ -187,20 +163,18 @@ class App extends React.Component {
 							/>} 
 						/>
 						
-						{/*And depending on how complicated this gets, I may need to split this*/}
-						<Route path={basePath+"/dashboard"} component={() => <ContentPages 
+						<Route path={basePath+"/dashboard"} component={() => <ContentCommonPages 
 								APIHost={hostName}
 								
 								tokenRefresh={this.refresh}
 								reRouteTarget={basePath+"/signin"}
 								activateRedirect={basePath+"/verify"}
 								
-								forceLogout={this.logout}
+								logout={this.logout}
 								
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
-								
-							/>} 
+							/>}
 						/>
 
 					</Switch>
