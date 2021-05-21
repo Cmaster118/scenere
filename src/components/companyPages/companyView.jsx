@@ -24,17 +24,13 @@ const AIAspect = [
 	{ name: 'Keywords', value: 'keywords' },
 	//{ name: 'Relations', value: 'relations' },
 ];
-// This is also garunteed...
-const daySet = [
-    { name: 'Monday', value: 'mon' },
-    { name: 'Tuesday', value: 'tue' },
-    { name: 'Wednesday', value: 'wed' },
-	{ name: 'Thursday', value: 'thu' },
-	{ name: 'Friday', value: 'fri' },
-	{ name: 'Saturday', value: 'sat' },
-	{ name: 'Sunday', value: 'sun' },
-	{ name: 'All', value: 'allDay' },
-];
+
+const convertSummaryType = [
+	"Daily",
+	"Weekly",
+	"Monthy",
+	"Annual",
+]
 
 // This is very lean...
 const parseEmotion = (emotionData) => {
@@ -52,27 +48,24 @@ const companyViewSummary = (props) => {
 	
 	// Read the data from our state machine,
 	const currentPrompt = props.selectedPrompt
-	const currentDay = props.selectedDay
 	const currentAspect = props.selectedAspect
+	const currentSummaryDate = props.dataSet["forDate"]
+	const promptSet = props.dataSet["promptList"]
 	
 	let promptList = []
 	
 	// At least this is garunteed to exist
-	let dayData = props.dataSet[currentDay]
+	let fullData = props.dataSet['summaryResult']
 	// Check to see if the lower states exist...
 	
 	let displayStats = [];
-	let promptName = "not valid prompt";
+	let promptDisplay = "not valid prompt";
 	
-	// This will trip if we have data
-	if (!(dayData === null) && !(dayData === undefined)) {
-		
-		let key;
-		for (key in dayData) {
+	// If fulldata is in the format we want, we can use it
+	if (!(fullData === null) && !(fullData === undefined)) {
 
-			if ( !(dayData[key].name === undefined) ) {
-				promptList.push( {name:dayData[key].name, value:key} )
-			}
+		for (let promptKey in fullData) {
+			promptList.push( {name:promptKey, value:promptKey} )
 		}
 		
 		// At this point if the array is still empty,we have nothing...
@@ -81,12 +74,19 @@ const companyViewSummary = (props) => {
 		}
 		
 		//console.log(currentPrompt)
-		//console.log(dayData)
-		let sanityCheck = currentPrompt in dayData
+		//console.log(fullData)
+		let sanityCheck = currentPrompt in fullData
 		if (sanityCheck) {
+			
 			// Switch state this bugger...
-			promptName = dayData[currentPrompt]["name"]
-			let purity = dayData[currentPrompt]["responsePurity"]
+			try {
+				promptDisplay = promptSet.find( element => element.identifier === currentPrompt )["text"]
+			}
+			catch (error) {
+				promptDisplay = "Prompt Display Error"
+			}
+			
+			let purity = fullData[currentPrompt]["responsePurity"]
 			
 			displayStats.push(
 				<div className="row m-2" key="1">
@@ -100,7 +100,7 @@ const companyViewSummary = (props) => {
 			
 			// Check to see if we actually HAVE any data just before we do this...
 			try{
-				let dataSet = dayData[currentPrompt]["data"][currentAspect]
+				let dataSet = fullData[currentPrompt]["data"][currentAspect]
 			
 				switch(currentAspect) {
 					case "emotion":
@@ -117,7 +117,7 @@ const companyViewSummary = (props) => {
 						
 						displayStats.push(
 							<div className="row m-2 justify-content-center" key="2">
-								<div className="col-sm col-md col-lg-3">
+								<div className="col-sm col-md col-lg">
 									<div className="card shadow">
 										<div className="card-header">
 											Averages + Max and min?
@@ -127,7 +127,7 @@ const companyViewSummary = (props) => {
 										</div>
 									</div>
 								</div>
-								<div className="col-sm col-md col-lg-3">
+								<div className="col-sm col-md col-lg">
 									<div className="card shadow">
 										<div className="card-header">
 											"How many have hit this threshold"?
@@ -152,7 +152,7 @@ const companyViewSummary = (props) => {
 					
 						displayStats.push(
 							<div className="row m-2 justify-content-center" key="2">
-								<div className="col-sm col-md col-lg-3">
+								<div className="col-sm col-md col-lg">
 									<div className="card shadow">
 										<div className="card-header">
 											Sentiment Values
@@ -162,7 +162,7 @@ const companyViewSummary = (props) => {
 										</div>
 									</div>
 								</div>
-								<div className="col-sm col-md col-lg-3">
+								<div className="col-sm col-md col-lg">
 									<div className="card shadow">
 										<div className="card-header">
 											"How many have hit this threshold"?
@@ -365,27 +365,45 @@ const companyViewSummary = (props) => {
 	
 	const tileClassName = ({ date, view }) => {
 	
+		let hasSummary = false
+		
+		let year = String( date.getFullYear() )
+		let month =	String( date.getMonth()+1 )
+
+		if (month < 10) {
+			month = "0"+month
+		}
+		
+		let day = String(date.getDate())
+		if (day < 10) {
+			day = "0"+day
+		}
+		
+		const checkDate = year+"-"+month+"-"+day
+	
 		// Add class to tiles in month view only
 		if (view === 'month') {
-			
-			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
-
 			// Check if a date React-Calendar wants to check is on the list of dates to add class to
-			const hasSummary = props.validSummaryDates.find( element => element === checkDate)
-			
-			if (hasSummary) {
-				return 'btn btn-success'
-			} else {
-				//return 'btn btn-outline-dark'
+			try {
+				hasSummary = props.validSummaryDates['day'].find( element => element === checkDate)
 			}
-			
+			catch {
+				// This should trigger if DAY is not in the validSummaryDates
+				// Basically just skipping it
+			}
 		}
+		
+		if (hasSummary) {
+			return 'btn btn-success'
+		} else {
+			//return 'btn btn-outline-dark'
+		}
+			
 	}
 	
 	let messageLine1 = "Showing Company Summary for: " + props.currentCompany
-	let messageLine2 = "For week of: " + props.anchorDate
-	
-	//console.log(props.currentDate)
+	let messageLine2 = "For Date: " + currentSummaryDate
+	let messageLine3 = "Summary Type: " + convertSummaryType[props.summaryType]
 	
 	return (
 		<div className="companyView">
@@ -410,27 +428,9 @@ const companyViewSummary = (props) => {
 							<div className="card-header">
 								<div>{messageLine1}</div>
 								<div>{messageLine2}</div>
+								<div>{messageLine3}</div>
 							</div>
 							<div className="card-body">
-								<div className="row m-2">
-									<div className="col">
-										<ButtonGroup toggle>
-											{daySet.map((radio, idx) => (
-											<ToggleButton
-												key={idx}
-												type="radio"
-												variant="secondary"
-												name="radio"
-												value={radio.value}
-												checked={props.selectedDay === radio.value}
-												onChange={props.setDay}
-												>
-												{radio.name}
-											</ToggleButton>
-											))}
-										</ButtonGroup>
-									</div>
-								</div>
 								
 								<div className="row m-2">
 									<div className="col">
@@ -481,7 +481,7 @@ const companyViewSummary = (props) => {
 					<div className="col">
 						<div className="card shadow">
 							<div className="card-header">
-								<div>Showing Data for prompt: {promptName}</div>
+								<div>Showing Data for prompt: {promptDisplay}</div>
 							</div>
 							<div className="card-body">
 								{displayStats}

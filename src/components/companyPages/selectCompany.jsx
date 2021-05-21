@@ -148,7 +148,7 @@ const selectCompany = (props) => {
 								{props.lastRequestStatus > 0 && 
 									<div className="row">
 										<div className="col">
-											{/* props.lastRequestStatus === 1 && "Data Obtained!" */}
+											{ props.lastRequestStatus === 1 && "Data Obtained, Ready To Go!" }
 											{ props.lastRequestStatus === 2 && "Not Allowed!" }
 										</div>
 									</div>

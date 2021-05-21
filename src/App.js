@@ -8,6 +8,7 @@ import { Navigation, Footer } from "./components";
 import { LandingPages, ContentCommonPages} from "./components";
 //AuthPages
 
+import { Sidebar } from "./utils";
 import { APIRefreshToken } from "./utils";
 import Store from "store"
 
@@ -23,16 +24,18 @@ const basePath = "/scenere"
 const hostName = "https://cmaster.pythonanywhere.com"
 //const hostName = "http://10.0.0.60:8000"
 
+//const DEBUGMODE = false
+
 class App extends React.Component {
 	
 	constructor(props) {
 		super(props);
 		this.state = {
           
-		  currentUser: undefined,
-		  sessionToken: undefined,
-		  remember: false,
-
+			currentUser: undefined,
+			sessionToken: undefined,
+			remember: false,
+			
         };
 	}
 	
@@ -40,16 +43,71 @@ class App extends React.Component {
 		this.loadFromCookies();
 	};
 	
+	disableMenu = () => {
+		try {
+			this.refs.sidebar.disableMenu()
+		}
+		catch {
+			
+		}
+	}
+	activateUserMenu = () => {
+		try {
+			this.refs.sidebar.activateMenu(0)
+		}
+		catch {
+			
+		}
+	}
+	activateCompanyMenu = () => {
+		try {
+			this.refs.sidebar.activateMenu(1)
+		}
+		catch {
+			
+		}
+	}
+	
+	changeMenuUserName = (newName) => {
+		try {
+			this.refs.sidebar.setUserName(newName)
+		}
+		catch {
+			
+		}
+	}
+	changeMenuCompanyName = (newCompany) => {
+		try {
+			this.refs.sidebar.setCompanyName(newCompany)
+		}
+		catch {
+			
+		}
+	}
+	
 	loadFromCookies = () => {
 		const lastUserSet = Store.get('lastUser');
+
+		try{			
+			let nowDate = new Date()
+			let checkDate = new Date(lastUserSet.expire)
 			
-		try{ 
-			// IF we are successful, then we also want to set remember to true... As it must have been in that state to get this
-			this.setState({ 
-				currentUser: lastUserSet.user, 
-				sessionToken: lastUserSet.session,
-				remember: true,
-			}) 
+			//console.log(checkDate)
+			//console.log(nowDate)
+			if ( nowDate > checkDate ) {
+				console.log("SESSION WAS EXPIRED!")
+				Store.remove('lastUser')
+			}
+			else {
+				this.changeMenuUserName(lastUserSet.user)
+			
+				// IF we are successful, then we also want to set remember to true... As it must have been in that state to get this
+				this.setState({ 
+					currentUser: lastUserSet.user, 
+					sessionToken: lastUserSet.session,
+					remember: true,
+				}) 
+			}
 		}
 		catch{
 			console.log("User was NOT found in the storage")
@@ -64,8 +122,13 @@ class App extends React.Component {
 			rememberMe: remember,
 		})
 		
+		this.changeMenuUserName(username)
+		
+		let expireTime = new Date()
+		expireTime = new Date(expireTime.getTime() + 30*60000);
+		
 		if (remember === true) {
-			Store.set('lastUser', { user:username, session:token })
+			Store.set('lastUser', { user:username, session:token, expire:expireTime })
 			//console.log("Remembered User")
 		}
 		
@@ -93,6 +156,8 @@ class App extends React.Component {
 			currentUser: undefined 
 		})
 
+		this.changeMenuUserName("No User")
+
 		// Store this as a cookie instead?
 		Store.remove('lastUser')
 	}
@@ -103,16 +168,29 @@ class App extends React.Component {
 			<Router>
 				<div className="App">
 					
+					<Sidebar
+						ref="sidebar"
+						// Note to self, I hardcoded in here....
+						// Until I have a better naming system...
+						basePath={basePath}
+					/>
+					
 					<Navigation 
 						currentUser={this.state.currentUser}
-						basePath={basePath}
 
-						clearLogin={this.logout}
+						logout={this.logout}
 						
-						reRouteCompany={basePath+"/dashboard"}
-						reRouteUser={basePath+"/dashboard"}
+						reRouteSignIn={basePath+"/signin"}
+						reRouteSignUp={basePath+"/signup"}
+						
+						reRouteLanding={basePath+"/"}
+						reRouteDashboard={basePath+"/dashboard"}
+						
+						reRouteUserInvites={basePath+"/dashboard/userMode/userInvite"}
+						reRouteUserSecurity={basePath+"/dashboard/userMode/userSecurity"}
+						reRouteUserPermissions={basePath+"/dashboard/userMode/userPermissions"}
 					/>
-						
+					
 					<Switch>
 					
 						{/*To catch ONLY the landing page, this one has to be exact...*/}
@@ -174,6 +252,15 @@ class App extends React.Component {
 								
 								currentUser={this.state.currentUser}
 								authToken={this.state.sessionToken}
+								
+								reRouteCompany={basePath+"/dashboard"}
+								reRouteUser={basePath+"/dashboard"}
+								
+								disableMenu={this.disableMenu}
+								activateUserMenu={this.activateUserMenu}
+								activateCompanyMenu={this.activateCompanyMenu}
+								
+								changeMenuCompanyName={this.changeMenuCompanyName}
 							/>}
 						/>
 

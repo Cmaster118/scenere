@@ -8,16 +8,20 @@ class navigation extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-          
-		  
 
         };
 	}
 
 	triggerLogout = () => {
-		this.props.clearLogin()
+		this.props.logout()
 	}
 	
+	checkTheStorage = () => {
+		checkStorageContents()
+	}
+	clearTheStorage = () => {
+		clearStorage()
+	}
 	saveToStorage = () => {
 		const keyTest = "asdf"
 		//const valueTest = ["derp","dorp","yaboi"]
@@ -33,21 +37,19 @@ class navigation extends React.Component {
 	};
 	
 	render() {
-		const basePath = this.props.basePath
-
 		let iconButton = null
 		let userDisplay = null
 
 		if (this.props.currentUser === undefined) {
 			iconButton = [
 				(<li className={'nav-item'} key='1'>
-					<Link className="nav-link" to={basePath+"/signup"}>
+					<Link className="nav-link" to={this.props.reRouteSignUp}>
 						Sign Up
 					</Link>
 				</li>),
 
 				(<li className={'nav-item'}  key='2'>
-					<Link className="nav-link" to={basePath+"/signin"}>
+					<Link className="nav-link" to={this.props.reRouteSignIn}>
 						Sign In
 					</Link>
 				</li>)
@@ -55,7 +57,7 @@ class navigation extends React.Component {
 
 			userDisplay = (
 				<li className={'nav-item'}  key='3'>	
-					<Link className="nav-link" to={basePath+"/signin"}>
+					<Link className="nav-link" to={this.props.reRouteSignIn}>
 						None
 					</Link>
 				</li>
@@ -64,35 +66,34 @@ class navigation extends React.Component {
 		else {
 			iconButton = [
 				(<li className={'nav-item'}  key='1'>	
-					<Link className="nav-link" to={this.props.reRouteCompany}>
+					<Link className="nav-link" to={this.props.reRouteDashboard}>
 						Dashboard
-					</Link>
-				</li>),
-			
-				(<li className={'nav-item'}  key='2'>
-					<Link className="nav-link" to={basePath+"/"} onClick={this.triggerLogout}>
-						Sign Out
 					</Link>
 				</li>)
 			]
 
 			userDisplay = (
-				<li className={'nav-item'}  key='5'>
-					{/*Go to specifically User Settings? Call a dropdown?*/}
-					<Link className="nav-link" to={this.props.reRouteUser}>
+				<div className='dropdown'  key='5'>
+					<div className="nav-link" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 						{this.props.currentUser}
-					</Link>
-				</li>
+					</div>
+					<div className="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+						<Link className="dropdown-item" to={this.props.reRouteUserInvites}>
+							Invites
+						</Link>
+						<Link className="dropdown-item" to={this.props.reRouteUserSecurity}>
+							Security
+						</Link>
+						<Link className="dropdown-item" to={this.props.reRouteUserPermissions}>
+							Permissions
+						</Link>
+						<Link className="dropdown-item" to={this.props.reRouteLanding} onClick={this.triggerLogout}>
+							Sign Out
+						</Link>
+					</div>
+				</div>
 			)
 		}
-		
-		/*
-		<li className={'nav-item'}  key='10'>	
-			<Link className="nav-link" to={basePath+"/contact"}>
-				Contact Us Test
-			</Link>
-		</li>
-		*/
 
 		//fixed-top
 		return (
@@ -100,7 +101,7 @@ class navigation extends React.Component {
 			
 				<nav className="navbar navbar-expand-lg navbar-dark bg-dark">
 					<div className="container-fluid">
-						<Link className="navbar-brand" to={basePath+"/"}>
+						<Link className="navbar-brand" to={this.props.reRouteLanding}>
 							Project Scenere
 						</Link>
 						
@@ -111,12 +112,17 @@ class navigation extends React.Component {
 						<button onClick={this.getFromStorage}>
 							Test Load
 						</button>
-						<button onClick={clearStorage}>
+						<button onClick={this.clearTheStorage}>
 							Clear
 						</button>
-						<button onClick={checkStorageContents}>
+						<button onClick={this.checkTheStorage}>
 							Check Contents
-						</button> */}
+						</button> 
+						*/}
+						
+						<div className="dropdown">
+							
+						</div>
 						
 						<button
 							className="navbar-toggler"
@@ -133,13 +139,7 @@ class navigation extends React.Component {
 
 						<div className="collapse navbar-collapse" id="navbarResponsive">
 							<ul className="navbar-nav ml-auto">
-							
 								{iconButton}
-								<li className={'nav-item'}  key='1'>	
-									<div className="nav-link">
-										Current User:
-									</div>
-								</li>
 								{userDisplay}
 							</ul>
 						</div>

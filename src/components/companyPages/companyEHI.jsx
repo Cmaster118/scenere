@@ -1,11 +1,9 @@
 import React from "react";
-//import axios from "axios";
+
+import { ButtonGroup, ToggleButton } from 'react-bootstrap';
+//import { ProgressBar } from 'react-bootstrap';
 
 import { withRouter, } from "react-router-dom";
-
-//import Store from "store"
-
-//import { ProgressBar } from 'react-bootstrap';
 
 import { Line } from 'react-chartjs-2';
 import { arbitraryLineData } from '../../utils';
@@ -69,87 +67,151 @@ const GraphTimingButtons = (props) => {
 // This will show the EHI in chart form...
 const EHIDisplay = (props) => {
 	
-	const currentDayTimeIndex = props.timeIndexDay
-	const currentWeekTimeIndex = props.timeIndexWeek
+	const currentTimeIndex = props.timeIndex
 	
-	const dayLabels = props.ehiDayLabels
-	const dayData = props.ehiDayData
-	
-	let dayCount = historyGraphTimings[currentDayTimeIndex].dayLength
-	if (dayCount === 0) {
-		dayCount = dayLabels.length
+	let timescaleList = []
+	let promptList = []
+	for (let key in props.EHIData) {
+		// Name should be changed for later....
+		promptList.push( {name:key, value:key} )
 	}
 	
-	let ehiDaysLabels = dayLabels.slice(-dayCount)
-	let ehiDaysData = {
-		label:"EHI index",
-		// May not have to slice the second time?
-		data:dayData.slice(-dayCount)
+	if (promptList.length === 0) {
+		promptList.push( {name:"No Prompts!", value:"none"} )
 	}
 	
-	const weekLabels = props.ehiWeekLabels
-	const weekData = props.ehiWeekData
+	const usedPrompt = props.EHIselectedPrompt
+	const usedTimescale = props.EHIselectedTimescale
 	
-	dayCount = historyGraphTimings[currentWeekTimeIndex].weekLength
-	if (dayCount === 0) {
-		dayCount = weekLabels.length
-	}
-	
-	let ehiWeeksLabels = weekLabels.slice(-dayCount)
-	let ehiWeeksData = {
-		label:"EHI index",
-		// May not have to slice the second time?
-		data:weekData.slice(-dayCount)
-	}
-	
-	if (ehiWeeksLabels.length === 1) {
-		ehiWeeksLabels.unshift("")
-		ehiWeeksLabels.push("")
+	let dataSet = []
+	if (!(props.EHIData[usedPrompt] === undefined)) {
 		
-		ehiWeeksData.data.unshift(ehiWeeksData.data[0])
-		ehiWeeksData.data.push(ehiWeeksData.data[0])
+		for (let timescale in props.EHIData[usedPrompt]) {
+			// Name should be changed for later....
+			timescaleList.push( {name:timescale, value:timescale} )
+		}
+		
+		if (!(props.EHIData[usedPrompt][usedTimescale] === undefined)) {
+			dataSet = props.EHIData[usedPrompt][usedTimescale]
+		}
 	}
 	
-	let lineDataDays = arbitraryLineData(ehiDaysLabels, [ehiDaysData])
-	let lineDataWeeks = arbitraryLineData(ehiWeeksLabels, [ehiWeeksData])
-	let lineOptions = arbitraryLineOptions()
+	if (timescaleList.length === 0) {
+		timescaleList.push( {name:"Waiting for prompt...", value:"none"} )
+	}
 	
+	const dataLabels = []
+	const dataData = []
+	
+	let lineOptions = arbitraryLineOptions()
+	let lineData = arbitraryLineData([], [[]])
+	// Redefine this down here so that I can reorganize the above stuff...
+	if (!(dataSet === undefined)) {
+		for (let timecode in dataSet) {
+			dataLabels.push(timecode)
+			dataData.push(dataSet[timecode])
+		}
+		
+		let dayCount = historyGraphTimings[currentTimeIndex].dayLength
+		if (dayCount === 0) {
+			dayCount = dataLabels.length
+		}
+		
+		let ehiDaysLabels = dataLabels.slice(-dayCount)
+		let ehiDaysData = {
+			label:"EHI index",
+			// May not have to slice the second time?
+			data:dataData.slice(-dayCount)
+		}
+		
+		lineData = arbitraryLineData(ehiDaysLabels, [ehiDaysData])
+	}
+
 	return (
 		<div className="EHIDisplay">
-			<div className="row m-1">
-				<div className="col-6">
-					<div className="card shadow">
-						<div className="card-header">
-							Employee Health Index Daily Data
-						</div>
-						<div className="card-body">
-							<Line
-								data={lineDataDays} 
-								options={lineOptions}
-							/>
+			<div className="container-fluid">
+				
+				<div className="row m-1">
+					<div className="col">
+					
+						<div className="card shadow">
+							<div className="card-header">
+								EHI Controls V1
+							</div>
+							<div className="card-body">
 							
-							<GraphTimingButtons
-								graphState={currentDayTimeIndex}
-								onToggle={props.onDayToggle}
-							/>
+								<div className="row m-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{promptList.map((radio, idx) => (
+											<ToggleButton
+												key={idx}
+												type="radio"
+												variant="primary"
+												name="radio"
+												value={radio.value}
+												checked={props.selectedPrompt === radio.value}
+												onChange={props.EHISetPrompt}
+												>
+												{radio.name}
+											</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
+								</div>
+								
+								<div className="row m-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{timescaleList.map((radio, idx) => (
+											<ToggleButton
+												key={idx}
+												type="radio"
+												variant="secondary"
+												name="radio"
+												value={radio.value}
+												checked={props.selectedTimescale === radio.value}
+												onChange={props.EHISetTimescale}
+												>
+												{radio.name}
+											</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
+								</div>
+							</div>
 						</div>
+			
 					</div>
 				</div>
-				<div className="col-6">
-					<div className="card shadow">
-						<div className="card-header">
-							Employee Health Index Weekly Data
-						</div>
-						<div className="card-body">
-							<Line
-								data={lineDataWeeks} 
-								options={lineOptions}
-							/>
-							
-							<GraphTimingButtons
-								graphState={currentWeekTimeIndex}
-								onToggle={props.onWeekToggle}
-							/>
+			
+				<div className="row m-1">
+					<div className="col">
+						<div className="card shadow">
+							<div className="card-header">
+								<div>
+									<i><b>
+										Employee Health Index:
+									</b></i>
+								</div>
+								<div>
+									Prompt: {usedPrompt}
+								</div>
+								<div>
+									Scale: {usedTimescale}
+								</div>
+							</div>
+							<div className="card-body">
+								<Line
+									data={lineData} 
+									options={lineOptions}
+								/>
+								
+								<GraphTimingButtons
+									graphState={currentTimeIndex}
+									onToggle={props.EHITimeToggle}
+								/>
+							</div>
 						</div>
 					</div>
 				</div>

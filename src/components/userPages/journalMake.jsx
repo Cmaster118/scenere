@@ -2,8 +2,9 @@ import React from "react";
 
 import { withRouter } from "react-router-dom";
 //import Store from "store"
-// ContentState, EditorState, convertToRaw, convertFromRaw 
-import {Editor, RichUtils, } from 'draft-js';
+// ContentState, convertToRaw, convertFromRaw 
+import { Editor, RichUtils } from 'draft-js';
+//EditorState
 
 const styles = {
   editor: {
@@ -101,7 +102,7 @@ const InlineStyleControls = (props) => {
 
 // END OF THE EXAMPLE CODE!!!
 /*const saveEditorData = () => {
-	Store.set( "TodayTest", convertToRaw(this.state.editorState.getCurrentContent()) )
+	Store.set( "TodayTest", convertToRaw(this.props.editorState.getCurrentContent()) )
 }
 
 const loadEditorData = () => {
@@ -122,7 +123,7 @@ class journalView extends React.Component {
 			
 		}	
 		
-		this.focusMe = () => this.refs.editor.focus();
+		this.focusMe = (event) => this.refs.editor.focus();
 	}
 	
 	// Example code... Can I alter this to be more my style?
@@ -155,11 +156,20 @@ class journalView extends React.Component {
 
 		return 'not-handled';
 	}
+	
+	saveJournal = () => {
+		this.props.saveToServer()
+	}
 
 	render() {
 		
+		let promptTitle = "No Prompts! \n Feel free to write whatever you like!"
+		if (this.props.promptList.length > 0 && this.props.promptIndex >= 0 && this.props.promptIndex < this.props.promptList.length) {
+			let promptSentance = this.props.promptList[ this.props.promptIndex ]['text']
+			promptTitle = "Prompt" + (this.props.promptIndex+1) + ": \n" + promptSentance
+		}
+		
 		let placeholder = ""
-		let promptType = "Open Ended"
 		
 		let showSuccess = false
 		let showNormalError = false
@@ -230,7 +240,7 @@ class journalView extends React.Component {
 									<h4>Writing Today's Journal</h4>
 								</div>
 								<div className="card-body">
-									<h5 className="card-title">Today's Prompt is: {promptType}</h5>
+									<h5 className="card-title">{promptTitle}</h5>
 									
 									<div className="row">
 										<div className="col">
@@ -241,13 +251,11 @@ class journalView extends React.Component {
 											<InlineStyleControls
 												editorState={this.props.editorState}
 												onToggle={this.toggleInlineStyle}
-											/>
+												/>
 										</div>
 									</div>
 									
 									<div className="row">
-										<div className="col-1">
-										</div>
 										<div className="col" onClick={this.focusMe}>
 											<div id="align-left">
 												<div style={styles.editor} >
@@ -264,13 +272,11 @@ class journalView extends React.Component {
 												</div>
 											</div>
 										</div>
-										<div className="col-1">
-										</div>
 									</div>
 
 									<div className="row">
 										<div className="col">
-											<button className="btn btn-outline-primary" onMouseDown={this.props.saveToServer}> Save current Journal entry </button>
+											<button className="btn btn-outline-primary" onMouseDown={this.saveJournal}> Save current Journal entry </button>
 										</div>
 									</div>
 									
@@ -280,6 +286,19 @@ class journalView extends React.Component {
 									{showUnknownError && unknownError}
 								</div>
 							</div>
+						</div>
+					</div>
+					
+					<div className="row my-2">
+						<div className="col">
+							<button className="btn btn-outline-primary" onClick={this.props.prevPrompt}>
+								Load Prev Prompt
+							</button>
+						</div>
+						<div className="col">
+							<button className="btn btn-outline-primary" onClick={this.props.nextPrompt}>
+								Load Next Prompt
+							</button>
 						</div>
 					</div>
 				</div>

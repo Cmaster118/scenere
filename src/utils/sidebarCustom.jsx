@@ -1,5 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { slide as Menu } from 'react-burger-menu';
+
+const validStates = [0,1]
 
 export class Sidebar extends React.Component {
 
@@ -7,37 +10,135 @@ export class Sidebar extends React.Component {
         super(props);
 		this.state = {
 			
+			enabled:false,
+			displayState:0,
+			
+			currentCompanyName:"No Company!",
+			currentUserName:"No User!",
+		}
+	}
+	
+	setCompanyName = (name) => {
+		this.setState({
+			currentCompanyName: name,
+		})
+	}
+	
+	setUserName = (name) => {
+		this.setState({
+			currentUserName: name,
+		})
+	}
+	
+	disableMenu = () => {
+		this.setState({
+			enabled: false,
+		})
+	}
+	
+	activateMenu = (reqState) => {
+		
+		let foundState = validStates.find(element => element === reqState);
+		
+		if (foundState !== undefined) {
+			this.setState({
+				enabled:true,
+				displayState: reqState,
+			})
+			return true
+		}
+		else {
+			this.setState({
+				enabled:false,
+			})
+			return false
 		}
 	}
 	
 	render() {
+		
+		let displayMenu = []
+		
+		switch(this.state.displayState) {
+			case 0:
+				displayMenu.push(
+					<div className="list-group-item list-group-item-secondary" key="1">
+						<h4>
+							{this.state.currentUserName}
+						</h4>
+					</div>,
+					<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/journalWrite"} key="2">
+						Make Today's Journal
+					</Link>,
+					<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/journalRead"} key="3">
+						View past Journals
+					</Link>,
+					<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/writeSuggestion"} key="4">
+						Make Suggestions
+					</Link>
+				)
+				break;
+			case 1:
+				displayMenu.push(
+
+					<Link className="list-group-item list-group-item-secondary" to={this.props.basePath+"/dashboard/companyMode/companySelect"} key="0">
+						<h3>
+							{this.state.currentCompanyName}
+						</h3>
+					</Link>,
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyEHI"} key="1">
+						View EHI
+					</Link>,
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySummary"} key="2">
+						View Summaries
+					</Link>,
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
+						View Suggestion Box
+					</Link>,
+					
+					/*
+					<div className="list-group-item list-group-item-secondary" key="3.5">
+						<h4>
+							Company Settings
+						</h4>
+					</div>, 
+					*/
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="4">
+						Edit Prompt Events
+					</Link>,
+					/*Yo! Split these next!*/
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="5">
+						User Invites
+					</Link>,
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPerms"} key="6">
+						Permission Settings
+					</Link>,
+					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySettings"} key="7">
+						Misc. Settings
+					</Link>,
+				)
+				break;
+			default:
+				displayMenu.push(
+					<div className="list-group">
+						Invalid Menu! Oops!
+					</div>
+				)
+		}
+		
 		return (
-			<Menu>
-				<a className="menu-item" href="/scenere">
-					Home
-				</a>
-
-				<a className="menu-item" href="/scenere">
-					Laravel
-				</a>
-
-				<a className="menu-item" href="/scenere">
-					Angular
-				</a>
-
-				<a className="menu-item" href="/scenere">
-					React
-				</a>
-
-				<a className="menu-item" href="/scenere">
-					Vue
-				</a>
-
-				<a className="menu-item" href="/scenere">
-					Node
-				</a>
-			</Menu>
+			<div className="menuContainer">
+				{this.state.enabled &&
+					<Menu>
+						<div className="list-group">
+							<Link className="list-group-item list-group-item-dark" to={this.props.basePath+"/dashboard"}>
+								Dashboard
+							</Link>
+							{displayMenu}
+						</div>
+					</Menu>
+				}
+			</div>
 		)
-			
 	}
 }

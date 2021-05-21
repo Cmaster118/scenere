@@ -1,5 +1,12 @@
 import axios from "axios"
 
+const convertSummaryType = [
+	"day",
+	"week",
+	"month",
+	"year",
+]
+
 const convertDate = (date) => {
   var yyyy = date.getFullYear().toString();
   var mm = (date.getMonth()+1).toString();
@@ -9,6 +16,25 @@ const convertDate = (date) => {
   var ddChars = dd.split('');
 
   return yyyy + '-' + (mmChars[1]?mm:"0"+mmChars[0]) + '-' + (ddChars[1]?dd:"0"+ddChars[0]);
+}
+
+// Put a generalized Error Gathering here? Would save time...
+const checkError = (err) => {
+	if (!err.response) {
+		// Network Error
+	}
+	else {
+		// Proper response
+		if (err.response.status === 401) {
+			//Invalid Token
+		}
+		else if (err.response.status === 403) {
+			//Invalid Permissions
+		}
+		else if (err.response.status === 400) {
+			// Bad Request
+		}
+	}
 }
 
 // Refresh!
@@ -22,11 +48,11 @@ export const APIRefreshToken = (APIHost, sessionToken, callbackFunction, callbac
 			//console.log(res)
 			
 			// If we get here then we should have a new token
-			console.log("Token refreshed")
+			//console.log("Token refreshed")
 			callbackFunction()
 		})
 		.catch( err => {
-			console.log(err)
+			//console.log(err)
 			// Check for a specific error?
 			
 			this.logout()
@@ -178,7 +204,7 @@ export const APIResendValidator = (APIHost, authToken, callbackFunction, callbac
 			callbackFunction()
 	})
 	.catch( err => {
-		console.log("Failure")
+		//console.log("Failure")
 		if (!(err === undefined)) {
 			if (!(err.response === undefined)) {
 				if (err.response.status === 401) {
@@ -231,8 +257,8 @@ export const APIContactUsEmail = (APIHost, firstName, lastName, email, company, 
 		}
 	})
 	.catch( err => {
-		console.log(err.response.status)
-		console.log(err.response.data)
+		//console.log(err.response.status)
+		//console.log(err.response.data)
 	})
 }
 
@@ -251,8 +277,8 @@ export const APIBetaSignEmail = (APIHost, email, callbackFunction, callbackFailu
 		}
 	})
 	.catch( err => {
-		console.log(err.response.status)
-		console.log(err.response.data)
+		//console.log(err.response.status)
+		//console.log(err.response.data)
 	})
 }
 
@@ -456,7 +482,7 @@ export const APISaveSuggestion = (APIHost, authToken, postingDate, targetDivisio
 }
 
 // Save the journal data...
-export const APISaveJournal = (APIHost, authToken, postingDate, content, editorBlock, callbackFunction, callbackFailure) => {
+export const APISaveJournal = (APIHost, authToken, postingDate, promptValue, content, editorBlock, callbackFunction, callbackFailure) => {
 		
 	const randomID = Math.random().toString(16).substr(2, 8);
 	
@@ -471,6 +497,8 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 		// The timezone on the server is different.....
 		forDate: convertDate( postingDate ),
 
+		usedPromptKeyText: promptValue,
+
 		content: content,
 		richText: editorBlock,
 	};
@@ -483,7 +511,7 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 	})
 	.catch( err => {
 		// Change this depending on the error...?
-		//console.log(err)
+		
 		if (!(err === undefined)) {
 			if (err.response.status === 401) {
 				callbackFailure([401], ['Invalid Token'])
@@ -491,13 +519,14 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 			else {
 				let errData = err.response.data
 				//let errCode = err.response.status
-				
+		
 				let errCodes = []
 				let errDatas = []
 				
 				for (let errorName in errData) {
-
-					if (errorName === "author") {
+					//console.log(errorName)
+					//console.log(errData)
+					if (errorName === "author" || errorName === "non_field_errors") {
 						errCodes.push(3)
 						errDatas.push(errData[errorName])
 					}
@@ -513,6 +542,55 @@ export const APISaveJournal = (APIHost, authToken, postingDate, content, editorB
 	})
 }
 
+export const APIGetJournalPrompts = (APIHost, authToken, callbackFunction, callbackFailure) => {
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	axios.get(APIHost +"/getValidPrompts", config)
+	.then( 
+		res => {
+			// This should be ok for now?
+			callbackFunction( res.data )
+	})
+	.catch( err => {
+		if (!err.response) {
+			console.log("Network Error!")
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			//console.log(err)
+			if (err.response.status === 401) {
+				callbackFailure([401],["Invalid Token"])
+			}
+			else if (err.response.status === 403) {
+				callbackFailure([3],["You do not have permission!"])
+			}
+			else {
+				let errData = err.response.data
+				//let errCode = err.response.status
+				
+				let errCodes = []
+				let errDatas = []
+				
+				for (let errorName in errData) {
+					
+					// Not a valid Error
+					if (errorName === "???") {
+						errCodes.push(10)
+						errDatas.push(errData[errorName])
+					}
+					else {
+						errCodes.push(10)
+						errDatas.push("Unknown Error")
+					}
+				}
+				
+				callbackFailure(errCodes,errDatas)
+			}
+		}
+	});
+}
+
 // Get the dates for a specific user, defined in the auth token
 // I may have to redo this?
 export const APIGetJournalDates = (APIHost, authToken, callbackFunction, callbackFailure) => {
@@ -526,6 +604,7 @@ export const APIGetJournalDates = (APIHost, authToken, callbackFunction, callbac
 			let tempAIArray = []
 			let tempJoArray = []
 			var item = ""
+			
 			for (item in res.data){
 				const newDate = new Date(res.data[item].forDate)
 				const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)			
@@ -554,39 +633,36 @@ export const APIGetJournalData = (APIHost, authToken, selectedDate, callbackFunc
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
-	console.log("Requesting Date from Server")
+	//console.log("Requesting Date from Server")
 	const dateReq = selectedDate.toJSON().split("T")[0]
 	
 	axios.get(APIHost +"/getUserJournal/?reqDate="+dateReq, config)
 	.then( 
 		res => {
-			// What if it is > 1?
-			if (res.data.length > 0) {
-				console.log("obtained a journal entry")
-				
-				let journalContent = res.data[0].content
-				//let journalBlock = res.data[0].blockData
+			//console.log(res.data)
+			let promptSet = []
+			let contentSet = []
+			let blockSet = []
+			let AISet = []
+			
+			for (let index in res.data) {
+			
+				promptSet.push(res.data[index].usedPromptKey)
+				contentSet.push(res.data[index].content)
+				blockSet.push(res.data[index].richText)
 				
 				let AIData = {}
-				if (res.data[0].hasAI) {
-					
-					AIData = res.data[0].AIresult
+				if (res.data[index].hasAI) {
+					AIData = res.data[index].AIresult
 				}
-				
-				callbackFunction(journalContent, AIData)
-				
+				AISet.push(AIData)
 			}
-			else{
-				console.log("No entry for that day")
-				
-				let journalContent = ""
-				let AIData = {}
-				
-				callbackFunction(journalContent, AIData)
-			}
+			
+			callbackFunction(promptSet, contentSet, blockSet, AISet)
 
 	})
 	.catch( err => {
+
 			if (!err.response) {
 				console.log("Network Error!")
 				callbackFailure([0],["Network Error"])
@@ -675,53 +751,24 @@ export const APIGetCompanyValidDates = (APIHost, authToken, divisionID, callback
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
-	axios.get(APIHost + "/getCompanyWeekDates?reqDiv="+divisionID, config)
+	axios.get(APIHost + "/getCompanyDates/?reqDiv="+divisionID, config)
 	.then( 	res => {
-			let tempSumArray = []
+			let tempObjectSorter = {}
 			
-			console.log("Got Valid Dates!")
-			//console.log(res.data)
+			//console.log("Got Valid Dates!")
 			var item = ""
 			for (item in res.data){
 				
-				// THESE DATES HAVE THE WRONG TIMEZONE COMING IN, SO THE RESULTING DAY CAN BE WRONG!!!!
-				// CHANGE THIS!!!
+				// These dates may be off... I will need to check HOW and WHY.... Because we will need to get the dates from this side..
 				
-				// This is definetly too much data.... So I will have to seperate these into single day stuff...
-				const newDate = new Date(res.data[item].forDate)
-				// Move to next dat btw
-				newDate.setDate(newDate.getDate()+1)
-				// This is the "Anchor Date"
-				if (res.data[item].hasMon) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
+				let typeName = convertSummaryType[ res.data[item].summaryType ]
+
+				if ( !(typeName in tempObjectSorter) ) {
+					tempObjectSorter[typeName] = []
 				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasTue) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasWed) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasThu) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasFri) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasSat) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
-				newDate.setDate(newDate.getDate()+1)
-				if (res.data[item].hasSun) {
-					tempSumArray.push( newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()) )
-				}
+				tempObjectSorter[typeName].push( res.data[item].forDate )
 			}
-			
-			callbackFunction(tempSumArray)
+			callbackFunction(tempObjectSorter)
 	})
 	.catch( err => {
 		if (!(err === undefined)) {
@@ -736,48 +783,29 @@ export const APIGetCompanyValidDates = (APIHost, authToken, divisionID, callback
 }
 
 // Get a specific company's summary for the list...
-export const APIGetCompanySummary = (APIHost, authToken, divisionID, selectedDate, callbackFunction, callbackFailure) => {
-	
-	let todayWeekday = (selectedDate.getDay()-1)
-	if (todayWeekday < 0) {
-		todayWeekday = 6
-	}
+export const APIGetCompanySummary = (APIHost, authToken, divisionID, summaryType, selectedDate, callbackFunction, callbackFailure) => {
 	
 	let copiedDate = new Date(selectedDate.getTime());
-
-	copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
 	const dateReq = copiedDate.toJSON().split("T")[0]
 
 	const config = {
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
-	axios.get(APIHost +"/getCompanyWeekSummary/?reqDate="+dateReq+"&reqDiv="+divisionID, config)
+	axios.get(APIHost +"/getCompanySummary/?reqDate="+dateReq+"&reqDiv="+divisionID+"&type="+summaryType, config)
 	.then( 
 		res => {
-			// What if it is > 1?
-			if (res.data.length > 0) {
+			//console.log(res.data)
+
+			/*for (let index in res.data) {
 				console.log("obtained a company summary")
-				
-				// Check for matching stuff on this end?
-				//console.log(res.data[0].summaryResult)
-				
-				let incomingDict = {
-					mon:res.data[0].monResult,
-					tue:res.data[0].tueResult,
-					wed:res.data[0].wedResult,
-					thu:res.data[0].thuResult,
-					fri:res.data[0].friResult,
-					sat:res.data[0].satResult,
-					sun:res.data[0].sunResult,
-					allDay:res.data[0].summaryResult,
-				}
-				
-				callbackFunction(incomingDict, dateReq)
-				
+			}*/
+
+			if (res.data.length > 0) {
+				callbackFunction(res.data[0], summaryType)
 			}
-			else{
-				callbackFunction({}, dateReq)
+			else {
+				//callbackFailure()
 			}
 	})
 	.catch( err => {
@@ -798,35 +826,19 @@ export const APIGetServerEHIData = (APIHost, authToken, targetCompany, callbackF
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
-	axios.get(APIHost +"/getCompanyEHI?reqDiv="+targetCompany, config)
+	axios.get(APIHost +"/getCompanyEHI/?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
-		//console.log(res)
+		//console.log(res.data)
 		if (res.data.length > 0) {
 			// Normal behaviour
-			console.log("Got the company data!")
+			//console.log("Got the company EHI data!")
 			
-			let labelsDays = []
-			let dataDays = []
-			
-			let labelsWeeks = []
-			let dataWeeks = []
-			
-			let index;
-			for (index in res.data[0].EHIstorage["days"]) {
-				
-				labelsDays.push(index)
-				dataDays.push(res.data[0].EHIstorage["days"][index])
-			}
-			for (index in res.data[0].EHIstorage["weeks"]) {
-				labelsWeeks.push(index)
-				dataWeeks.push(res.data[0].EHIstorage["days"][index])
-			}
-			
-			callbackFunction(labelsDays, dataDays, labelsWeeks, dataWeeks)
+			callbackFunction(res.data[0]["EHIstorage"])
 		}
 		else {
 			// This should not trigger
+			callbackFailure()
 		}
 	})
 	.catch( err => {
@@ -847,7 +859,7 @@ export const APIGetSuggestionDates = (APIHost, authToken, targetCompany, callbac
 		headers: { Authorization: `JWT ${authToken}` }
 	};
 	
-	axios.get(APIHost +"/getCompanySuggestionDates?reqDiv="+targetCompany, config)
+	axios.get(APIHost +"/getCompanySuggestionDates/?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		
 		let datesData = []
@@ -891,7 +903,7 @@ export const APIGetSuggestionData = (APIHost, authToken, targetCompany, targetDa
 		// Should respond with a 1 length thing
 		//console.log(res.data)
 		
-		console.log("Got the suggestion data!")
+		//console.log("Got the suggestion data!")
 		callbackFunction(targetDate, res.data)
 	})
 	.catch( err => {
@@ -929,7 +941,7 @@ export const APIDivisionInvitesCreate = (APIHost, authToken, targetDivision, tar
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -983,7 +995,7 @@ export const APIDivisionInvitesSet = (APIHost, authToken, targetDivision, target
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1031,7 +1043,7 @@ export const APIDivisionInvitesGet = (APIHost, authToken, targetCompany, callbac
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1079,7 +1091,7 @@ export const APIDivisionSettingsGet = (APIHost, authToken, targetCompany, callba
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1141,8 +1153,8 @@ export const APIDivisionSettingsEdit = (APIHost, authToken, dataSet, callbackFun
 		else {
 			// proper response... Still not liking this....
 			//let errCode = err.response.status
-			let errData = err.response.data
-			console.log(errData)
+			//let errData = err.response.data
+			//console.log(errData)
 			
 			let errCodes = []
 			let errDatas = []
@@ -1187,7 +1199,7 @@ export const APIUserSettingsEdit = (APIHost, authToken, dataSet, callbackFunctio
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1299,7 +1311,7 @@ export const APIUserInvitesGet = (APIHost, authToken, callbackFunction, callback
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1351,7 +1363,7 @@ export const APIUserInvitesSet = (APIHost, authToken, targetInvite, targetAction
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			//console.log("Network Error!")
@@ -1360,6 +1372,53 @@ export const APIUserInvitesSet = (APIHost, authToken, targetInvite, targetAction
 		else {
 			// proper response... Still not liking this....
 			//let errCode = err.response.status
+			let errData = err.response.data
+			
+			let errCodes = []
+			let errDatas = []
+			
+			for (let errorName in errData) {
+				if (errorName === "???") {
+					errCodes.push(1)
+					errDatas.push(errData[errorName])
+				}
+				else {
+					errCodes.push(10)
+					errDatas.push("Unknown Error")
+				}
+			}
+			
+			callbackFailure( errCodes, errDatas )
+		}
+	});
+}
+
+export const APIGetUserDetails = (APIHost, authToken, callbackFunction, callbackFailure) => {
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	axios.get(APIHost +"/getUserDetails/", config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		//console.log(err)
+		if (!err.response) {
+			// network Error
+			callbackFailure([0],["Network Error"])
+		}
+		else {
+			// proper response... Still not liking this....
+			let errCode = err.response.status
+			if (errCode === 500) {
+				callbackFailure( [10], ["Server Error"] )
+			}
+			
 			let errData = err.response.data
 			
 			let errCodes = []
@@ -1401,7 +1460,7 @@ export const APIChangeUserEmail = (APIHost, authToken, newEmail, callbackFunctio
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+		//console.log(err)
 		if (!err.response) {
 			// network Error
 			callbackFailure([0],["Network Error"])
@@ -1455,7 +1514,7 @@ export const APIChangeUserName = (APIHost, authToken, newFirst, newLast, callbac
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+
 		if (!err.response) {
 			// network Error
 			callbackFailure([0],["Network Error"])
@@ -1510,7 +1569,7 @@ export const APIChangeUserPassword = (APIHost, authToken, newPass, oldPass, oldP
 	})
 	.catch( err => {
 		// Find out what error it was, then change the sign in page accordingly by the by...
-		console.log(err)
+
 		if (!err.response) {
 			// network Error
 			callbackFailure([0],["Network Error"])
@@ -1541,4 +1600,133 @@ export const APIChangeUserPassword = (APIHost, authToken, newPass, oldPass, oldP
 			callbackFailure( errCodes, errDatas )
 		}
 	});
+}
+
+export const APIGetSearchPrompts = (APIHost, authToken, searchTerm, searchType, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	axios.get(APIHost +"/searchPrompts/?queryText=" + searchTerm + "&queryType=" + searchType, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		
+		checkError(err)
+		let errCodes = []
+		let errDatas = []
+		
+		callbackFailure( errCodes, errDatas )
+		
+	})
+}
+
+export const APIGetDivisionEvents = (APIHost, authToken, divisionID, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	axios.get(APIHost +"/getDivisionEvents/?reqDiv="+divisionID, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+		
+		for (let index in succData) {
+			let isEnabled = false
+			if ( succData[index]["usedBy"].find(element => element === Number(divisionID)) !== undefined ) {
+				isEnabled = true
+			}
+			succData[index]["usedBy"] = isEnabled
+			succData[index]["fromServer"] = true
+		}
+		
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		
+		checkError(err)
+		let errCodes = []
+		let errDatas = []
+		
+		callbackFailure( errCodes, errDatas )
+		
+	})
+}
+
+export const APISetDivisionEvents = (APIHost, authToken, savedID, incomingId, incomingDivision, incomingEnabledDiv, incomingEnabled, incomingType, incomingPrompts, callbackFunction, callbackFailure) => {
+
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	const data = {
+		// Supply an ID to update...
+		// If this is here, its an update, if it is NOT, its a create
+		id: incomingId,
+		reqDiv: incomingDivision,
+		
+		enabledDiv: incomingEnabledDiv,
+		enabled: incomingEnabled,
+		triggerType: incomingType,
+		promptSet: incomingPrompts,
+	}
+	
+	axios.post(APIHost +"/setDivisionEvents/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( savedID, succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		
+		checkError(err)
+		let errCodes = []
+		let errDatas = []
+		
+		callbackFailure( savedID, errCodes, errDatas )
+		
+	})
+}
+
+export const APIDeleteDivisionEvents = (APIHost, authToken, savedID, incomingId, incomingDivision, callbackFunction, callbackFailure) => {
+
+	const config = {
+		headers: { Authorization: `JWT ${authToken}` }
+	};
+	
+	const data = {
+		// Supply an ID to update...
+		// If this is here, its an update, if it is NOT, its a create
+		id: incomingId,
+		reqDiv: incomingDivision,
+	}
+	
+	axios.post(APIHost +"/deleteDivisionEvents/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( savedID, succData )
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		
+		checkError(err)
+		let errCodes = []
+		let errDatas = []
+		
+		callbackFailure( savedID, errCodes, errDatas )
+		
+	})
 }
