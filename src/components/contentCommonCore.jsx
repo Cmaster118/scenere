@@ -1,15 +1,19 @@
 import React from "react";
 
+import Store from "store"
+
 import { withRouter, Route, Switch } from "react-router-dom";
 //import { ButtonGroup, ToggleButton } from 'react-bootstrap'
 
 //SetCompany
 import { UserPages, CompanyPages, Dashboard } from "."
+//import { CompanyPages } from "./companyPages"
+//import { UserPages } from "./userPages"
 import { APIGetJournalDates, APIGetSuggestionDates, APIGetSuggestionData, APIGetUsersPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APICheckActive } from "../utils";
 //convertFromRaw
 
 // This needs to be changed out as this is now in 2 files....
-const daySet = [
+/*const daySet = [
     { name: 'Monday', value: 'mon' },
     { name: 'Tuesday', value: 'tue' },
     { name: 'Wednesday', value: 'wed' },
@@ -19,6 +23,7 @@ const daySet = [
 	{ name: 'Sunday', value: 'sun' },
 	{ name: 'All', value: 'allDay' },
 ];
+*/
 
 class ContentPages extends React.Component {
 	
@@ -36,17 +41,11 @@ class ContentPages extends React.Component {
 			selectedSuggestionDate: new Date(),
 			
 			// EHI Page State...
-			EHIDayTimespan: 3,
-			EHIWeekTimespan: 3,
-			
-			EHIDayLabels: [],
-			EHIDaySet: [],
-			EHIWeekLabels: [],
-			EHIWeekSet: [],
+			EHIData: [],
 			
 			// Company Summary View Save State
 			selectedCompanyDay:"mon",
-			selectedCompanyPrompt:"p1",
+			selectedCompanyPrompt:"misc",
 			selectedCompanyAspect:"emotion",
 			
 			companyMessage: "Choose a date and company to view that summary!",
@@ -67,8 +66,8 @@ class ContentPages extends React.Component {
 			
 			// Last data obtained for company summary
 			currentCompanyDataName:undefined,
-			currentCompanyDataDate:undefined,
-			selectedSummaryWeekData: {mon:{},tue:{},wed:{},thu:{},fri:{},sat:{},sun:{},allDay:{}},
+			currentCompanyDataType:undefined,
+			selectedSummaryWeekData: {},
 			validCompanySummaryDates:[],
 			
 			// Suggestions!
@@ -76,32 +75,51 @@ class ContentPages extends React.Component {
 			selectedSuggestDayData: [],
 			validDivisionSuggestionDates:[],
 			
-			currentSuggestionDivision: -1,
-			currentCompanyGovernedIndexes: [],
 			companyGovernedDataTree: {},
 			companyGovernedDataRawList: [],
 			companyGovernedDataRawIDList: [],
 			lastGovernedCompanyRequestStatus:undefined,
+			
+			authToken: this.props.authToken
         };
 	}
 	
 	// This will run when this component is loaded...
 	componentDidMount = () => {
 		// On refresh, these will load before App.js has a chance to load in the token...
-		this.loadData()
+		
+		if ( this.state.authToken === undefined ) {
+			let loginData = Store.get('lastUser') 
+			
+			try {
+				let spareToken = loginData.session
+				// Doing this will force a refresh... Hm
+				if ( spareToken !== undefined ) {
+					this.setState({
+						authToken: spareToken,
+					})
+				}
+				else {
+					this.forceLogout()
+				}
+			}
+			catch {
+				this.forceLogout()
+			}
+		}
+		else {
+			this.loadData()
+		}
 	}
 	
 	clearCompanyData = () => {
 		this.setState({
 			// Clear EHI Data....
-			EHIDayLabels: [],
-			EHIDaySet: [],
-			EHIWeekLabels: [],
-			EHIWeekSet: [],
+			EHIData: [],
 			
 			currentCompanyDataName:undefined,
-			currentCompanyDataDate:undefined,
-			selectedSummaryWeekData: {mon:{},tue:{},wed:{},thu:{},fri:{},sat:{},sun:{},allDay:{}},
+			currentCompanyDataType:undefined,
+			selectedSummaryWeekData:{},
 			validCompanySummaryDates:[],
 			
 			selectedSuggestDay: false,
@@ -111,6 +129,7 @@ class ContentPages extends React.Component {
 	}
 	
 	loadData = () => {
+		
 		this.checkActiveUser()
 		
 		this.getValidJournalDates()
@@ -119,18 +138,6 @@ class ContentPages extends React.Component {
 		this.getUserCompanyAdminViewTree()
 		this.getUserCompanySendsTree()
 		this.getUserGovernedPermTree()
-	}
-	
-	// This has to be here due to Props being non-writable...
-	changeEHIDaydates = (dateRangeChoice) => {
-		this.setState({
-			EHIDayTimespan:dateRangeChoice
-		})
-	}
-	changeEHIWeekdates = (dateRangeChoice) => {
-		this.setState({
-			EHIWeekTimespan:dateRangeChoice
-		})
 	}
 	
 	forceLogout = () => {
@@ -146,16 +153,16 @@ class ContentPages extends React.Component {
 	// But we should check here, and redirect to the Verification page if we fail...
 	checkActiveUserCallback = (ActiveState) => {
 		if (ActiveState === true) {
-			console.log("User is considered Active")
+			//console.log("User is considered Active")
 		}
 		else {
-			console.log("User needs to activate account")
+			//console.log("User needs to activate account")
 			this.props.history.push(this.props.activateRedirect)
 		}
 	}
 	checkActiveUser = () => {
-		//console.log(this.props.authToken)
-		APICheckActive(this.props.APIHost, this.props.authToken, this.checkActiveUserCallback, this.forceLogout)
+		//console.log(this.state.authToken)
+		APICheckActive(this.props.APIHost, this.state.authToken, this.checkActiveUserCallback, this.forceLogout)
 	}
 	
 	// Journal Date Stuff----------------------------------------------------------------------
@@ -172,23 +179,23 @@ class ContentPages extends React.Component {
 		//this.state.validJournalDates
 		//this.state.validJournalScanDates
 		
-		console.log("Running a journal dates check")
+		//console.log("Running a journal dates check")
 		
 		// Check if the user is a valid one... As this is loaded in App.js
 		if (!(this.props.currentUser === undefined)) {		
 			// We have to overwrite it if the data is old though...
 			let checkData = undefined//Store.get(this.props.currentUser+"-ValidDates")
 			if (checkData === undefined) {
-				console.log("Valid journal Dates were not in the cookies!")
-				APIGetJournalDates(this.props.APIHost, this.props.authToken, this.journalDatesCallback, this.forceLogout)
+				//console.log("Valid journal Dates were not in the cookies!")
+				APIGetJournalDates(this.props.APIHost, this.state.authToken, this.journalDatesCallback, this.forceLogout)
 			}
 			else {
-				console.log("Valid Journal dates WERE in the cockies!")
+				//console.log("Valid Journal dates WERE in the cockies!")
 				this.journalDatesCallback(checkData.journalDates, checkData.AIDates)
 			}
 		}
 		else {
-			console.log("Invalid User")
+			//console.log("Invalid User")
 			//this.forceLogout()
 		}
 	}
@@ -224,11 +231,11 @@ class ContentPages extends React.Component {
 			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermGovernedNames")
 			let checkData3 = undefined//Store.get(this.props.currentUser+"-incomingCompanyIDs")
 			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
-				console.log("Governed list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["gov"], this.governedPermTreeCallback, this.governedPermTreeFailure)
+				//console.log("Governed list was not in the cookies!")
+				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["gov"], this.governedPermTreeCallback, this.governedPermTreeFailure)
 			}
 			else {
-				console.log("Company Tree WAS in the cookies!")
+				//console.log("Company Tree WAS in the cookies!")
 				this.governedPermTreeCallback(checkData, checkData2, checkData3)
 			}
 		}
@@ -255,17 +262,17 @@ class ContentPages extends React.Component {
 			}
 		}
 	}
-	getUserCompanyAdminViewTree = () => {
+	getUserCompanyAdminViewTree = (  ) => {
 		if (!(this.props.currentUser === undefined)) {	
 			// We still have to check for date related reworks...
 			let checkData = undefined//Store.get(this.props.currentUser+"-companyPermViewTree")
 			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermViewNames")
 			if (checkData === undefined || checkData2 === undefined) {
-				console.log("Company list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["admin", "view"], this.companyListCallback, this.companyListFailure)
+				//console.log("Company list was not in the cookies!")
+				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["admin", "view"], this.companyListCallback, this.companyListFailure)
 			}
 			else {
-				console.log("Company Tree WAS in the cookies!")
+				//console.log("Company Tree WAS in the cookies!")
 				this.companyListCallback(checkData, checkData2)
 			}
 		}
@@ -298,37 +305,36 @@ class ContentPages extends React.Component {
 			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermSendNames")
 			let checkData3 = undefined//Store.get(this.props.currentUser+"-companyPermSendIDs")
 			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
-				console.log("Company list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.props.authToken, ["send"], this.companySendCallback, this.companySendFailure)
+				//console.log("Company list was not in the cookies!")
+				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["send"], this.companySendCallback, this.companySendFailure)
 			}
 			else {
-				console.log("Company Tree WAS in the cookies!")
+				//console.log("Company Tree WAS in the cookies!")
 				this.companyListCallback(checkData, checkData2)
 			}
 		}
 	}
 	
-	companyDatesCallback = (incomingDatesList) => {
-		//console.log(this.state.validCompanySummaryDates)
+	companyDatesCallback = (incomingDatesObject) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidDates", {'dates':incomingDatesList})
 		this.setState({
-			validCompanySummaryDates: incomingDatesList
+			validCompanySummaryDates: incomingDatesObject
 		})
 	}
 	getCompanyValidDates = () => {
 		if (!(this.state.currentDivisionID === -1)) {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidDates")
 			if (checkData === undefined) {
-				console.log("Company dates were not in the cookies")
-				APIGetCompanyValidDates(this.props.APIHost, this.props.authToken, this.state.currentDivisionID, this.companyDatesCallback, this.forceLogout)
+				//console.log("Company dates were not in the cookies")
+				APIGetCompanyValidDates(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companyDatesCallback, this.forceLogout)
 			}
 			else {
-				console.log("Company Dates WERE in the coockies!")
+				//console.log("Company Dates WERE in the coockies!")
 				this.companyDatesCallback(checkData["dates"])
 			}
 		}
 		else {
-			console.log("Invalid company!")
+			//console.log("Invalid company!")
 		}
 	}
 	
@@ -343,22 +349,22 @@ class ContentPages extends React.Component {
 		if (!(this.state.currentDivisionID === -1)) {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidSuggestionDates")
 			if (checkData === undefined) {
-				console.log("Division suggestion dates were not in the cookies...")
-				APIGetSuggestionDates(this.props.APIHost, this.props.authToken, this.state.currentDivisionID, this.companySuggestionDateCallback, this.forceLogout)
+				//console.log("Division suggestion dates were not in the cookies...")
+				APIGetSuggestionDates(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companySuggestionDateCallback, this.forceLogout)
 			}
 			else {
-				console.log("Division suggestion dates WERE in the coockies!")
+				//console.log("Division suggestion dates WERE in the coockies!")
 				this.companySuggestionDateCallback(checkData["dates"])
 			}
 		}
 		else {
-			console.log("Invalid company!")
+			//console.log("Invalid company!")
 		}
 	}
 	
 	companySuggestionDataCallback = (targetDate, incomingData) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+targetDate+"-suggestions", {'data':incomingData})
-		console.log(incomingData)
+		//console.log(incomingData)
 		let givenDate = new Date(targetDate)
 		this.setState({
 			selectedSuggestDay: givenDate,
@@ -375,79 +381,74 @@ class ContentPages extends React.Component {
 			
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+selectedDate+"-suggestions")
 			if (checkData === undefined) {
-				console.log("Division suggestion data was not in the cookies")
-				APIGetSuggestionData(this.props.APIHost, this.props.authToken, this.state.currentDivisionID, selectedDate, this.companySuggestionDataCallback, this.forceLogout)
+				//console.log("Division suggestion data was not in the cookies")
+				APIGetSuggestionData(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, selectedDate, this.companySuggestionDataCallback, this.forceLogout)
 			}
 			else {
-				console.log("Division suggestion dates WERE in the coockies!")
+				//console.log("Division suggestion dates WERE in the coockies!")
 				this.companySuggestionDataCallback()
 			}
 		}
 		else {
-			console.log("Invalid company!")
+			//console.log("Invalid company!")
 			this.setState({
 				
 			})
 		}
 	}
 	
-	companyDataCallback = (incomingDataDict, anchorDate) => {
+	companyDataCallback = (incomingDataDict, summaryType) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data", {'data':incomingDataDict})
 		this.setState({
+
 			companyMessage: "Showing Summary for: " + this.state.currentDivisionID + " On: " + this.state.selectedCompanyDate.toString(),
 			selectedSummaryWeekData: incomingDataDict,
-			currentCompanyDataDate: anchorDate,
+			currentCompanyDataType: summaryType,
 			currentCompanyDataName: this.state.currentDivisionName,
 			currentCompanyDataID: this.state.currentDivisionID,
+
 		})
 	}
 	getCompanyWeeklySummary = (selectedDate) => {
+		//console.log(selectedDate)
 		// First, we need to check if we clicked in the same week as our currently loaded data...
 		let todayWeekday = (selectedDate.getDay()-1)
 		if (todayWeekday < 0) {
 			todayWeekday = 6
 		}
 		
-		let copiedDate = new Date(selectedDate.getTime());
+		//let copiedDate = new Date(selectedDate.getTime());
 
-		copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
-		const anchorDate = copiedDate.toJSON().split("T")[0]
+		//copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
+		//const anchorDate = copiedDate.toJSON().split("T")[0]
+		
+		//console.log( selectedDate.toJSON() )
+		
+		let summaryType = 0
 		
 		this.setState({
 			selectedCompanyDate:selectedDate,
 		})
 		
-		// if we DID, all we need to do is swap the day we are doing...
-		if (this.state.currentCompanyDataID === this.state.currentDivisionID && this.state.currentCompanyDataDate === anchorDate) {
-			this.setState({
-				selectedCompanyDay: daySet[todayWeekday].value,
-			})
-		}
-		// if NOT, then we go get the data, as it is NOT loaded...
-		else {
-			if (!(this.state.currentDivisionID === -1)) {
-				let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data")
-				if (checkData === undefined) {
-					console.log("Company Summary Data was not in the coockies")
-					APIGetCompanySummary(this.props.APIHost, this.props.authToken, this.state.currentDivisionID, selectedDate, this.companyDataCallback, this.forceLogout)
-				}
-				else {
-					this.companyDataCallback(checkData["data"], anchorDate)
-				}
+		if (!(this.state.currentDivisionID === -1)) {
+			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data")
+			if (checkData === undefined) {
+				//console.log("Company Summary Data was not in the coockies")
+				APIGetCompanySummary(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, summaryType, selectedDate, this.companyDataCallback, this.forceLogout)
 			}
 			else {
-				console.log("Invalid company!")
+				this.companyDataCallback(checkData["data"], summaryType)
 			}
+		}
+		else {
+			//console.log("Invalid company!")
 		}
 	}
 	
-	companyEHICallback = (incomingEHIDaysLabels, incomingEHIDaysData, incomingEHIWeeksLabels, incomingEHIWeeksData) => {
+	companyEHICallback = (incomingEHIData) => {
 		//Store.set(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI', {'labelsDays':incomingEHIDaysLabels, 'dataDays':incomingEHIDaysData, 'labelsWeeks':incomingEHIWeeksLabels, 'dataWeeks':incomingEHIWeeksData})
 		this.setState({
-			EHIDayLabels: incomingEHIDaysLabels,
-			EHIDaySet: incomingEHIDaysData,
-			EHIWeekLabels: incomingEHIWeeksLabels,
-			EHIWeekSet: incomingEHIWeeksData,
+			EHIData: incomingEHIData
 		})
 	}
 	// EHI Stuff
@@ -456,15 +457,15 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI')
 			// How am I going to check for redos?
 			if (checkData === undefined) {
-				console.log("Company EHI Data was not in the coockies")
-				APIGetServerEHIData(this.props.APIHost, this.props.authToken, this.state.currentDivisionID, this.companyEHICallback, this.forceLogout)
+				//console.log("Company EHI Data was not in the coockies")
+				APIGetServerEHIData(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companyEHICallback, this.forceLogout)
 			}
 			else {
 				this.companyEHICallback(checkData["labelsDays"], checkData["dataDays"], checkData["labelsWeeks"], checkData["dataWeeks"])
 			}
 		}
 		else {
-			console.log("Invalid company!")
+			//console.log("Invalid company!")
 		}
 	}
 	
@@ -488,33 +489,6 @@ class ContentPages extends React.Component {
 		})
 	}
 	
-	// Meanwhile, over in the suggestion selector...
-	selectGovernedCompanyLayer = (event) => {
-		let values = this.state.currentCompanyGovernedIndexes
-		values.push(event.target.value)
-		
-		let newDivision = values[ values.length-1 ]
-		
-		this.setState({
-			currentSuggestionDivision: newDivision,
-			currentCompanyGovernedIndexes:values,
-			lastGovernedCompanyRequestStatus:undefined,
-		})
-	}
-	backGovernedCompanyLayer = (event) => {
-		let values = this.state.currentCompanyGovernedIndexes
-		values.splice(event.target.value)
-		
-		let newDivision = values[ values.length-1 ]
-		//console.log(newDivision)
-		
-		this.setState({
-			currentSuggestionDivision: newDivision,
-			currentCompanyGovernedIndexes:values,
-			lastGovernedCompanyRequestStatus:undefined,
-		})
-	}
-	
 	getThatData = () => {
 		//console.log(this.state.currentDivisionID)
 		// Clear ALL THE DATA from the last company we had set....
@@ -535,9 +509,11 @@ class ContentPages extends React.Component {
 				currentDivisionID: splitUp[2],
 				lastCompanyRequestStatus:1,
 			}, this.getThatData )
+			
+			this.props.changeMenuCompanyName(splitUp[1])
 		}
 		else {
-			console.log("Not allowed!")
+			//console.log("Not allowed!")
 			this.setState({
 				lastCompanyRequestStatus:2
 			})
@@ -572,16 +548,20 @@ class ContentPages extends React.Component {
 				
 					<Switch>
 						<Route path={this.props.match.url} exact component={() => <Dashboard
-								toUserPage={this.props.match.url+"/user/journalWrite"}
-								toCompanyPage={this.props.match.url+"/company/selectCompany"}
+								toUserPage={this.props.match.url+"/userMode/journalWrite"}
+								toCompanyPage={this.props.match.url+"/companyMode/companySelect"}
 							/>} 
 						/>
-						<Route path={this.props.match.url+"/user"} component={() => <UserPages
+						<Route path={this.props.match.url+"/userMode"} component={() => <UserPages
+
+								reRouteUser={this.props.reRouteUser}
 
 								currentDate={this.state.currentDate}
+								
+								forceLogout={this.forceLogout}
 
 								APIHost={this.props.APIHost}
-								authToken={this.props.authToken}
+								authToken={this.state.authToken}
 								
 								currentUser={this.props.currentUser}
 								
@@ -601,14 +581,15 @@ class ContentPages extends React.Component {
 								companyGovernedDataTree={this.state.companyGovernedDataTree}
 								lastGovernedCompanyRequestStatus={this.state.lastGovernedCompanyRequestStatus}
 								
-								selectGovernedCompanyLayer={this.selectGovernedCompanyLayer}
-								backGovernedCompanyLayer={this.backGovernedCompanyLayer}
-								getGovernedCompanyDataRequest={this.getGovernedCompanyDataRequest}
-								
-								currentSuggestionDivision = {this.state.currentSuggestionDivision}
+								disableMenu={this.props.disableMenu}
+								activateUserMenu={this.props.activateUserMenu}
 							/>} 
 						/>
-						<Route path={this.props.match.url+"/company"} component={() => <CompanyPages
+						<Route path={this.props.match.url+"/companyMode"} component={() => <CompanyPages
+								
+								forceLogout={this.forceLogout}
+								
+								reRouteCompany={this.props.reRouteCompany}
 								
 								currentDate={this.state.currentDate}
 						
@@ -622,7 +603,7 @@ class ContentPages extends React.Component {
 								getCompanyDataRequest={this.getCompanyDataRequest}
 								
 								APIHost={this.props.APIHost}
-								authToken={this.props.authToken}
+								authToken={this.state.authToken}
 								
 								currentDivisionID={this.state.currentDivisionID}
 										
@@ -633,21 +614,11 @@ class ContentPages extends React.Component {
 								selectedSuggestDay={this.state.selectedSuggestDay}
 								selectedSuggestDayData={this.state.selectedSuggestDayData}
 								getCompanySuggestionData={this.getCompanySuggestionData}
-										
-								EHIDayTimespan={this.state.EHIDayTimespan}
-								EHIWeekTimespan={this.state.EHIWeekTimespan}
 								
-								EHIDayLabels={this.state.EHIDayLabels}
-								EHIDaySet={this.state.EHIDaySet}
-								
-								EHIWeekLabels={this.state.EHIWeekLabels}
-								EHIWeekSet={this.state.EHIWeekSet}
-								
-								changeEHIDaydates={this.changeEHIDaydates}
-								changeEHIWeekdates={this.changeEHIWeekdates}
+								EHIData={this.state.EHIData}
 										
 								currentCompanyDataName={this.state.currentCompanyDataName}
-								currentCompanyDataDate={this.state.currentCompanyDataDate}
+								currentCompanyDataType={this.state.currentCompanyDataType}
 								
 								validCompanySummaryDates={this.state.validCompanySummaryDates}
 
@@ -665,6 +636,11 @@ class ContentPages extends React.Component {
 								getUserCompanyAdminViewTree={this.getUserCompanyAdminViewTree}
 								getCompanyValidDates={this.getCompanyValidDates}
 								getCompanyWeeklySummary={this.getCompanyWeeklySummary}
+								
+								loadCompanyData={this.loadData}
+								
+								disableMenu={this.props.disableMenu}
+								activateCompanyMenu={this.props.activateCompanyMenu}
 							/>} 
 						/>
 					</Switch>

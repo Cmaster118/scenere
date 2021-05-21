@@ -13,13 +13,7 @@ class FreePages extends React.Component {
         super(props);
         this.state = {
 			
-			// hmmmm
-			example: 0,
         };
-	}
-	
-	backButton = () => {
-		this.props.history.goBack()
 	}
 	
 	// Rendering this with Bootstrap React.... To see if there is anything really interesting I can do with it
@@ -28,6 +22,7 @@ class FreePages extends React.Component {
 		
 		return (
 			<div className="freePages">
+			
 				<Header />
 				<BetaContact 
 					APIHost={this.props.APIHost}

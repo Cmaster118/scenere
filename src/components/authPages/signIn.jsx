@@ -172,8 +172,8 @@ class signIn extends React.Component {
 					</div>
 
 					<div className='form-group'>
-						<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.remember} onChange={this.remFieldChange} />
 						<label className='form-control-label' htmlFor='customCheck1' >Remember Me</label>
+						<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.remember} onChange={this.remFieldChange} />
 					</div>
 					
 					{this.state.miscError ? <p className="text-danger border">Unknown Error</p>:undefined}

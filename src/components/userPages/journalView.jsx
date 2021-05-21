@@ -9,6 +9,7 @@ import { Radar, Bar } from 'react-chartjs-2';
 import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
 import { withRouter } from "react-router-dom";
+import { Editor, EditorState, convertFromRaw } from 'draft-js';
 
 //import {isLoggedIn} from '../../utils';
 import {getRadarEmotionData } from '../../utils';
@@ -32,15 +33,13 @@ const AIAspect = [
 	//{ name: 'Relations', value: 'relations' },
 ];
 
-// This doesnt look right... Fix this later I guess
-/*this.onChange = (editorState) => this.setState({editorState});
-this.setEditor = (editor) => {
-	this.editor = editor;
-};*/
-
-// Perhaps the journal would be set here instead?
-// I CAN use hooks if need be. So I will note that to try once I get this up and running...
-// And can check performance...
+const styles = {
+  editor: {
+    border: '1px solid gray',
+    minHeight: '6em',
+	textAlign: 'left',
+  }
+};
 
 // Main Function
 const JournalView = (props) => {
@@ -68,36 +67,57 @@ const JournalView = (props) => {
 		}
 	}
 	
-	let displayPromptSentance = "Displaying Data for Journal with prompt: " + props.selectedPrompt
+	let displayPromptSentance = "Displaying Data for Journal with prompt: " + props.journalPromptSet[props.selectedPrompt]
 	
-	let index;
-	
-	let dayData = props.dataSet
+	let promptContent = "None"
 	let promptList = []
+	if (props.journalPromptSet.length > 0) {
+		
+		for (let index in props.journalPromptSet) {
+			if (!(props.journalPromptSet[index] === null)) {
+				promptList.push(
+					{ name:props.journalPromptSet[index]["identifier"], value:index }
+				)
+			}
+			else {
+				promptList.push(
+					{ name:"Empty", value:index }
+				)
+			}
+		}
+		try {
+			promptContent = props.journalPromptSet[props.selectedPrompt]["text"]
+		}
+		catch {
+			promptContent = "None"
+		}
+	}
+	
+	// This is probobly wasting resources...
+	// But lets change out the format, see if that works....
+	let givenState = EditorState.createEmpty()
+	if (!(props.journalRichContentSet[props.selectedPrompt] === undefined)) {
+		let richData = convertFromRaw( props.journalRichContentSet[props.selectedPrompt] )
+		givenState = EditorState.createWithContent(richData)
+	}
+	
+	if (promptList.length === 0) {
+		promptList.push( {name:"No Prompts", value:-1} )
+	}
+	
+	let dayData = props.journalAIDataSet[props.selectedPrompt]
+	let journalContent = props.journalContentSet[props.selectedPrompt]
+	if (journalContent === undefined) {
+		journalContent = "No Content!"
+	}
 	
 	let tableDisplay = []
 	let displayStats = []
-	//let promptName = "Invalid Prompt"
 	
 	if (!(dayData === null) && !(dayData === undefined)) {
 		
-		let key;
-		for (key in dayData) {
-
-			if ( !(dayData[key].name === undefined) ) {
-				promptList.push( {name:dayData[key].name, value:key} )
-			}
-		}
-		
-		// At this point if the array is still empty,we have nothing...
-		if (promptList.length === 0) {
-			promptList = [{name:"No Prompts", value:"None"}]
-		}
-		
 		let sanityCheck = props.selectedAspect in dayData
 		if (sanityCheck) {
-			//promptName = dayData[props.selectedPrompt]["name"]
-			//displayPromptSentance = "Showing Data for prompt: " + promptName
 			
 			//let dataSet = dayData[props.selectedPrompt]["data"][props.selectedAspect]
 			let dataSet = dayData[props.selectedAspect]
@@ -153,7 +173,7 @@ const JournalView = (props) => {
 				case 'entities':
 					
 					//console.log(dataSet)
-					for (index in dataSet) {
+					for (let index in dataSet) {
 						let entity = dataSet[index]
 						//console.log(entity)
 						
@@ -200,7 +220,7 @@ const JournalView = (props) => {
 				break;
 				case 'keywords':
 				
-					for (index in dataSet) {
+					for (let index in dataSet) {
 						let keyData = dataSet[index]
 						
 						let emoVal = parseEmotion( keyData.emotion )
@@ -247,12 +267,6 @@ const JournalView = (props) => {
 						console.log("Invalid AI selection somehow")
 			}
 		}
-		else {
-			promptList = [{name:"No Prompts", value:"None"}]
-		}
-	}
-	else {
-		promptList = [{name:"No Prompts", value:"None"}]
 	}
 
 	return (
@@ -279,11 +293,6 @@ const JournalView = (props) => {
 								<div>{props.displayMessage}</div>
 							</div>
 							<div className="card-body">
-								<div className="row m-2">
-									<div className="col">
-										
-									</div>
-								</div>
 							
 								<div className="row m-2">
 									<div className="col">
@@ -334,10 +343,23 @@ const JournalView = (props) => {
 					<div className="col">
 						<div className="card shadow">
 							<div className="card-header">
-								<div>Journal Contents:</div>
+								<div>Prompt and Journal Contents:</div>
 							</div>
 							<div className="card-body">
-								<p>{props.currentJournal}</p>
+								<p>Prompt Contents: {promptContent}</p>
+								<p>Bare Content: {journalContent}</p>
+
+								<div id="align-left">
+									Rich Content:
+									<div style={styles.editor} >
+										<Editor
+											editorState={givenState}
+											placeholder={"Nothing Here!"}
+											readOnly={true}
+										/>
+									</div>
+								</div>
+								
 							</div>
 						</div>
 					</div>

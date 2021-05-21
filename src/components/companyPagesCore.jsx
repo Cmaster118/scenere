@@ -1,12 +1,13 @@
 import React from "react";
 
-import { withRouter, Link, Route, Switch } from "react-router-dom";
+//Link
+import { withRouter, Route, Switch } from "react-router-dom";
 //import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
 //import Store from "store"
 
 //SetCompany
-import {CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox} from "./companyPages"
+import {CompanyInvites, CompanyPermissions, CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox, PromptEdit} from "./companyPages"
 //convertFromRaw
 
 const DefaultView = (props) => {
@@ -27,8 +28,35 @@ class ContentPages extends React.Component {
 	constructor(props) {
         super(props);
 		this.state = {
-			
+			EHITimespan: 3,
+			EHISelectedPrompt: "none",
+			EHISelectedTimescale: "none",
 		}
+	}
+	
+	componentDidMount() {
+		this.props.activateCompanyMenu(1)
+	};
+	
+	componentWillUnmount() {
+		this.props.disableMenu()
+	}
+	
+	changeEHIPrompt = (event) => {
+		this.setState({
+			EHISelectedPrompt:event.currentTarget.value
+		})
+	}
+	changeEHITimescale = (event) => {
+		this.setState({
+			EHISelectedTimescale:event.currentTarget.value
+		})
+	}
+	
+	EHITimeToggle = (dateRangeChoice) => {
+		this.setState({
+			EHITimespan:dateRangeChoice
+		})
 	}
 	
 	// Rendering this with Bootstrap React.... To see if there is anything really interesting I can do with it
@@ -39,8 +67,9 @@ class ContentPages extends React.Component {
 	
 		return (
 			<div className="contentPages">
-				<div className="container-fluid">
+				<div className="container">
 					<div className="row m-1 my-5">
+					{/*
 						<div className="col- m-1">
 							<div className="row">
 								<div className="col">
@@ -54,19 +83,15 @@ class ContentPages extends React.Component {
 									</div>
 								</div>
 							</div>
-							{/*Start of the Company Mode Stuff...*/}
 							<div className="row">
 								<div className="col">
-								
 									<div className="card shadow">
 										<div className="card-header">
-											<h5>Company View</h5>
+											<Link className="list-group-item" to={this.props.reRouteCompany}>Return To Dashboard</Link>
 										</div>
 										<div className="card-body">
 											<div className="list-group">
-												<div className={this.props.currentDivisionID === -1? "list-group-item bg-warning":"list-group-item bg-light"}>{this.props.currentDivisionName}</div>
-												<Link className="list-group-item" to={this.props.match.url+"/selectCompany"}>Select Company</Link>
-												{/*Going to need to alter this to show which is active?*/}
+												<Link className={this.props.currentDivisionID === -1? "list-group-item bg-warning":"list-group-item bg-light"} to={this.props.match.url+"/selectCompany"}>{this.props.currentDivisionName}</Link>
 												<Link className="list-group-item" to={this.props.match.url+"/companyEHI"}>Review Company EHI</Link>
 												<Link className="list-group-item" to={this.props.match.url+"/companySummary"}>Review Company Summaries</Link>
 												<Link className="list-group-item" to={this.props.match.url+"/companySuggestions"}>View Suggestions</Link>
@@ -77,6 +102,7 @@ class ContentPages extends React.Component {
 								</div>
 							</div>		
 						</div>
+					*/}
 						<div className="col m-1">
 							
 							{ this.props.currentDivisionID === -1 &&
@@ -90,7 +116,7 @@ class ContentPages extends React.Component {
 							}
 						
 							<Switch>
-								<Route path={this.props.match.url+"/selectCompany"} exact component={() => <SelectCompany
+								<Route path={this.props.match.url+"/companySelect"} exact component={() => <SelectCompany
 										currentCompanySelections={this.props.currentCompanyIndexes}
 										companyDataTree={this.props.companyViewableDataTree}
 										lastRequestStatus={this.props.lastCompanyRequestStatus}
@@ -100,13 +126,35 @@ class ContentPages extends React.Component {
 										getDataRequest={this.props.getCompanyDataRequest}
 									/>} 
 								/>
-								<Route path={this.props.match.url+"/companyProfile"} component={() => <CompanySettings
+								
+								<Route path={this.props.match.url+"/companyInvites"} component={() => <CompanyInvites
 										APIHost={this.props.APIHost}
 										authToken={this.props.authToken}
 										
 										currentDivisionID={this.props.currentDivisionID}
+										
+										triggerRefresh={this.props.loadCompanyData}
 									/>} 
 								/>
+								<Route path={this.props.match.url+"/companyPerms"} component={() => <CompanyPermissions
+										APIHost={this.props.APIHost}
+										authToken={this.props.authToken}
+										
+										currentDivisionID={this.props.currentDivisionID}
+										
+										triggerRefresh={this.props.loadCompanyData}
+									/>} 
+								/>
+								<Route path={this.props.match.url+"/companySettings"} component={() => <CompanySettings
+										APIHost={this.props.APIHost}
+										authToken={this.props.authToken}
+										
+										currentDivisionID={this.props.currentDivisionID}
+										
+										triggerRefresh={this.props.loadCompanyData}
+									/>} 
+								/>
+								
 								<Route path={this.props.match.url+"/companySuggestions"} component={() => <SuggestionBox
 										currentDate={this.props.selectedSuggestDay}
 										
@@ -122,24 +170,23 @@ class ContentPages extends React.Component {
 								<Route path={this.props.match.url+"/companyEHI"} component={() => <EHIDisplay
 										currentDivisionID={this.props.currentDivisionID}
 								
-										timeIndexDay={this.props.EHIDayTimespan}
-										timeIndexWeek={this.props.EHIWeekTimespan}
+										timeIndex={this.state.EHITimespan}
 										
-										ehiDayLabels={this.props.EHIDayLabels}
-										ehiDayData={this.props.EHIDaySet}
+										EHIData={this.props.EHIData}
 										
-										ehiWeekLabels={this.props.EHIWeekLabels}
-										ehiWeekData={this.props.EHIWeekSet}
+										EHIselectedPrompt={this.state.EHISelectedPrompt}
+										EHIselectedTimescale={this.state.EHISelectedTimescale}
 										
-										onDayToggle={this.props.changeEHIDaydates}
-										onWeekToggle={this.props.changeEHIWeekdates}
+										EHISetPrompt={this.changeEHIPrompt}
+										EHISetTimescale={this.changeEHITimescale}
+										EHITimeToggle={this.EHITimeToggle}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySummary"} component={() => <ViewCompany
 										currentDate={this.props.selectedCompanyDate}
 										
 										currentCompany={this.props.currentCompanyDataName}
-										anchorDate={this.props.currentCompanyDataDate}
+										summaryType={this.props.currentCompanyDataType}
 										
 										validSummaryDates={this.props.validCompanySummaryDates}
 
@@ -157,6 +204,16 @@ class ContentPages extends React.Component {
 										loadCompanyList={this.props.getUserCompanyAdminViewTree}
 										getValidDates={this.props.getCompanyValidDates}
 										pickDate={this.props.getCompanyWeeklySummary}
+									/>} 
+								/>
+								
+								<Route path={this.props.match.url+"/companyPrompts"} component={() => <PromptEdit
+										APIHost={this.props.APIHost}
+										authToken={this.props.authToken}
+										
+										forceLogout={this.props.forceLogout}
+										
+										currentDivisionID={this.props.currentDivisionID}										
 									/>} 
 								/>
 								
