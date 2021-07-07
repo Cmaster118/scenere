@@ -1,17 +1,17 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
-import { ButtonGroup, ToggleButton } from 'react-bootstrap';
+import { ButtonGroup, ToggleButton, Table, Accordion, Card } from 'react-bootstrap';
 
 //import Store from "store"
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 
-import { ProgressBar } from 'react-bootstrap';
+import { ProgressBar, Alert } from 'react-bootstrap';
 
 import { Radar, Bar } from 'react-chartjs-2';
-import { testMaxMin, testBarMulti, stackedBarData3Test, stackedBarData2Test, stackedBarData, sentimentBarData } from '../../utils';
-import { getRadarEmotionOptions, testBarMultiOptions, stackedBarOptions, sentimentBarOptions } from '../../utils';
+import { frequencyBarData, testMaxMin, testBarMulti, stackedBarData3Test, stackedBarData2Test, stackedBarData, sentimentBarData } from '../../utils';
+import { getBarOptionsFreq, getRadarEmotionOptions, testBarMultiOptions, stackedBarOptions, sentimentBarOptions } from '../../utils';
 //import { makeCompanyTestData, makeCompanyTestDataOtherFormat } from "../../utils";
 
 // Move all of the functions here to a seperate file, a repository, so that I can fast make layouts sometime
@@ -39,70 +39,317 @@ const parseEmotion = (emotionData) => {
 	return derp;
 }
 
-const companyViewSummary = (props) => {
+class  MultiIteration extends React.Component {
 	
-	//console.log(props.dataSet)
+	constructor(props) {
+		super(props);
+		this.state = {
+			selected: "frequencyPercent",
+		}	
+	}
+	
+	changeSelected = (event) => {
+		this.setState({
+			selected:event.target.id,
+		})
+	}
+	
+	render() {
+	
+		let purity = this.props.dataSet["responsePurity"]
 		
-	let tableDisplay = []
-	let index;
-	
-	// Read the data from our state machine,
-	const currentPrompt = props.selectedPrompt
-	const currentAspect = props.selectedAspect
-	const currentSummaryDate = props.dataSet["forDate"]
-	const promptSet = props.dataSet["promptList"]
-	
-	let promptList = []
-	
-	// At least this is garunteed to exist
-	let fullData = props.dataSet['summaryResult']
-	// Check to see if the lower states exist...
-	
-	let displayStats = [];
-	let promptDisplay = "not valid prompt";
-	
-	// If fulldata is in the format we want, we can use it
-	if (!(fullData === null) && !(fullData === undefined)) {
-
-		for (let promptKey in fullData) {
-			promptList.push( {name:promptKey, value:promptKey} )
-		}
-		
-		// At this point if the array is still empty,we have nothing...
-		if (promptList.length === 0) {
-			promptList = [{name:"No Prompts", value:"None"}]
-		}
-		
-		//console.log(currentPrompt)
-		//console.log(fullData)
-		let sanityCheck = currentPrompt in fullData
-		if (sanityCheck) {
-			
-			// Switch state this bugger...
-			try {
-				promptDisplay = promptSet.find( element => element.identifier === currentPrompt )["text"]
-			}
-			catch (error) {
-				promptDisplay = "Prompt Display Error"
-			}
-			
-			let purity = fullData[currentPrompt]["responsePurity"]
-			
-			displayStats.push(
-				<div className="row m-2" key="1">
-					<div className="col">
-						<div className="progressBar">
-							<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
-						</div>
-					</div>
+		let showPrompts = []
+		for (let index in this.props.givenPrompt.promptChoices) {
+			showPrompts.push(
+				<div key={index}>
+					{index + ": " + this.props.givenPrompt.promptChoices[index]}
 				</div>
 			)
+		}
+		
+		let displayData = {}
+		let buttonSet = []
+		for (let index in this.props.dataSet["data"]) {
+			let activeSet = "outline-"
+			if (this.state.selected === index) {
+				activeSet = ""
+				
+				for (let i in this.props.givenPrompt.promptChoices) {
+					if (i in this.props.dataSet.data[index]) {
+						displayData[i] = this.props.dataSet.data[index][i]
+					}
+					else {
+						displayData[i] = 0
+					}
+				}
+				
+			}
+			
+			buttonSet.push(
+				<div className={"btn btn-"+activeSet+"primary"} id={index} onClick={this.changeSelected} key={index}>
+					{index}
+				</div>
+			)
+		}
+		
+		const dataBarSet = frequencyBarData( displayData )
+		const barOptionsFreq = getBarOptionsFreq()
+		
+		return (
+			<div className="MultiIteration">
+				<Accordion>
+					
+					<Accordion.Toggle as={Card.Header} variant="link" eventKey="0">
+						<div className="row" key="0">
+							<div className="col">
+								{this.props.givenPrompt["text"]}
+							</div>
+						</div>
+						<div className="row" key="1">
+							<div className="col">
+								<div className="progressBar">
+									<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
+								</div>
+							</div>
+						</div>
+					</Accordion.Toggle>
+				
+					<Accordion.Collapse eventKey="0">
+					
+						<Card>
+							<Card.Body>
+								{buttonSet}
+								<div className="row">								
+									<div className="col">
+										<Bar data={dataBarSet} options={barOptionsFreq} />
+									</div>
+								</div>
+								
+								<div className="row">
+									<div className="col">
+										{showPrompts}
+									</div>
+								</div>
+							</Card.Body>
+						</Card>
+						
+					</Accordion.Collapse>
+					
+				</Accordion>
+			</div>
+		)
+	}
+}
+
+class LikertIteration extends React.Component {
+
+	constructor(props) {
+		super(props);
+		this.state = {
+			selected: "frequencyPercent",
+		}	
+	}
+	
+	changeSelected = (event) => {
+		this.setState({
+			selected:event.target.id,
+		})
+	}
+
+	render() {
+		let purity = this.props.dataSet["responsePurity"]
+		
+		let displayData = {}
+		let buttonSet = []
+		let magicSet = ["Ext Dis", "Dis", "Neu", "Agr", "Ext Agr"]
+		
+		for (let index in this.props.dataSet["data"]) {
+			let activeSet = "outline-"
+			if (this.state.selected === index) {
+				activeSet = ""
+				
+				for (let i in magicSet) {
+					if (i in this.props.dataSet.data[index]) {
+						displayData[i] = this.props.dataSet.data[index][i]
+					}
+					else {
+						displayData[i] = 0
+					}
+				}
+				
+			}
+			
+			buttonSet.push(
+				<div className={"btn btn-"+activeSet+"primary"} id={index} onClick={this.changeSelected} key={index}>
+					{index}
+				</div>
+			)
+		}
+
+		// These come in as an object, not an array....
+		// Shift this to accept an array?
+		const dataBarSet = frequencyBarData( displayData )
+		const barOptionsFreq = getBarOptionsFreq()
+		
+		return (
+			<div className="LikertIteration">
+				<Accordion>
+					
+					<Accordion.Toggle as={Card.Header} variant="link" eventKey="0">
+						<div className="row" key="0">
+							<div className="col">
+								{this.props.givenPrompt["text"]}
+							</div>
+						</div>
+						<div className="row" key="1">
+							<div className="col">
+								<div className="progressBar">
+									<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
+								</div>
+							</div>
+						</div>
+					</Accordion.Toggle>
+				
+					<Accordion.Collapse eventKey="0">
+					
+						<Card>
+							<Card.Body>
+								{buttonSet}
+								<div className="row">
+									<div className="col">
+										<Bar data={dataBarSet} options={barOptionsFreq} />
+									</div>
+								</div>
+							</Card.Body>
+						</Card>
+						
+					</Accordion.Collapse>
+					
+				</Accordion>
+			</div>
+		)
+	}
+}
+
+class RatingIteration extends React.Component {
+	
+	constructor(props) {
+		super(props);
+		this.state = {
+			selected: "frequencyPercent",
+		}	
+	}
+	
+	changeSelected = (event) => {
+		this.setState({
+			selected:event.target.id,
+		})
+	}
+	
+	render() {
+	
+		let magicAmount = 10
+		
+		let displayData = {}
+		let buttonSet = []
+		for (let index in this.props.dataSet["data"]) {
+			let activeSet = "outline-"
+			if (this.state.selected === index) {
+				activeSet = ""
+				
+				for (let i = 1; i <= magicAmount; i++) {
+					if (i in this.props.dataSet.data[index]) {
+						displayData[i] = this.props.dataSet.data[index][i]
+					}
+					else {
+						displayData[i] = 0
+					}
+				}
+				
+			}
+			
+			buttonSet.push(
+				<div className={"btn btn-"+activeSet+"primary"} id={index} onClick={this.changeSelected} key={index}>
+					{index}
+				</div>
+			)
+		}
+		
+		let purity = this.props.dataSet["responsePurity"]
+		const dataBarSet = frequencyBarData( displayData )
+		const barOptionsFreq = getBarOptionsFreq()
+		
+		return (
+			<div className="RatingIteration">
+				<Accordion>
+					
+					<Accordion.Toggle as={Card.Header} variant="link" eventKey="0">
+						<div className="row" key="0">
+							<div className="col">
+								{this.props.givenPrompt["text"]}
+							</div>
+						</div>
+						<div className="row" key="1">
+							<div className="col">
+								<div className="progressBar">
+									<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
+								</div>
+							</div>
+						</div>
+					</Accordion.Toggle>
+				
+					<Accordion.Collapse eventKey="0">
+					
+						<Card>
+							<Card.Body>
+								{buttonSet}
+								<div className="row">
+									<div className="col">
+										<Bar data={dataBarSet} options={barOptionsFreq} />
+									</div>
+								</div>
+							</Card.Body>
+						</Card>
+						
+					</Accordion.Collapse>
+					
+				</Accordion>
+			</div>
+		)
+	}
+}
+
+class JournalIteration extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			selectedAspect: "emotion",
+		}	
+	}
+	
+	setAspect = (event) => {
+		this.setState({
+			selectedAspect:event.currentTarget.value
+		})
+	}
+	
+	render() {
+		
+		let purity = this.props.dataSet["responsePurity"]
+		if (purity < 0) {
+			purity = 0
+		}
+		
+		let dataSet = this.props.dataSet["data"][this.state.selectedAspect]
+		
+		let displayStats = []
+		let tableDisplay = []
+		
+		if (!(dataSet === null) && !(dataSet === undefined)) {
 			
 			// Check to see if we actually HAVE any data just before we do this...
 			try{
-				let dataSet = fullData[currentPrompt]["data"][currentAspect]
-			
-				switch(currentAspect) {
+				switch(this.state.selectedAspect) {
 					case "emotion":
 						let emoMax = parseEmotion( dataSet.max )
 						let emoAve = parseEmotion( dataSet.ave )
@@ -116,28 +363,21 @@ const companyViewSummary = (props) => {
 						const barOptions = testBarMultiOptions()
 						
 						displayStats.push(
-							<div className="row m-2 justify-content-center" key="2">
-								<div className="col-sm col-md col-lg">
-									<div className="card shadow">
-										<div className="card-header">
-											Averages + Max and min?
-										</div>
-										<div className="card-body">
-											<Radar data={dataDocumentEmo} options={radarOptions} />
-										</div>
-									</div>
-								</div>
-								<div className="col-sm col-md col-lg">
-									<div className="card shadow">
-										<div className="card-header">
-											"How many have hit this threshold"?
-										</div>
-										<div className="card-body">
-											<Bar data={dataBar} options={barOptions} />
-										</div>
-									</div>
-								</div>
-							</div>
+							<Table bordered responsive key="2">
+								<thead>
+									<tr>
+										<th scope="col">Emotion Data</th>
+										<th scope="col">Num Journals in data</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									<tr key={0}>
+										<th scope="row"> <Radar data={dataDocumentEmo} options={radarOptions} /> </th>
+										<td> <Bar data={dataBar} options={barOptions} /> </td>
+									</tr>
+								</tbody>
+							</Table>
 						)
 						
 						break;
@@ -150,29 +390,23 @@ const companyViewSummary = (props) => {
 						const dataBarNorm = sentimentBarData( dataTresh )
 						const barOptionsNorm = sentimentBarOptions()
 					
+						//<th scope="col">Whole Journal Emotion Data</th>
 						displayStats.push(
-							<div className="row m-2 justify-content-center" key="2">
-								<div className="col-sm col-md col-lg">
-									<div className="card shadow">
-										<div className="card-header">
-											Sentiment Values
-										</div>
-										<div className="card-body">
-											<Bar data={dataBarStack} options={barStackOptions} />
-										</div>
-									</div>
-								</div>
-								<div className="col-sm col-md col-lg">
-									<div className="card shadow">
-										<div className="card-header">
-											"How many have hit this threshold"?
-										</div>
-										<div className="card-body">
-											<Bar data={dataBarNorm} options={barOptionsNorm} />
-										</div>
-									</div>
-								</div>
-							</div>
+							<Table bordered responsive key="2">
+								<thead>
+									<tr>
+										<th scope="col">Sentiment Values</th>
+										<th scope="col">Num Journals in data</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									<tr key={0}>
+										<th scope="row"><Bar data={dataBarStack} options={barStackOptions} /></th>
+										<td><Bar data={dataBarNorm} options={barOptionsNorm} /></td>
+									</tr>
+								</tbody>
+							</Table>
 						)
 					
 						break;
@@ -180,7 +414,7 @@ const companyViewSummary = (props) => {
 					
 						//console.log(dataSet)
 					
-						for (index in dataSet) {
+						for (let index in dataSet) {
 							let entity = dataSet[index]
 							//console.log(entity)
 							
@@ -209,8 +443,16 @@ const companyViewSummary = (props) => {
 							)
 						}
 						
+						if (tableDisplay.length === 0) {
+							tableDisplay.push(
+								<tr key={0}>
+									<td colSpan="7">"Nothing!"</td>
+								</tr>
+							)
+						}
+						
 						displayStats.push(
-							<table className="table" key="2">
+							<Table bordered responsive key="2">
 								<thead>
 									<tr>
 										<th scope="col">Name</th>
@@ -226,7 +468,7 @@ const companyViewSummary = (props) => {
 								<tbody>
 									{tableDisplay}
 								</tbody>
-							</table>
+							</Table>
 						)
 					
 						break;
@@ -234,7 +476,7 @@ const companyViewSummary = (props) => {
 					
 						//console.log(dataSet)
 						
-						for (index in dataSet) {
+						for (let index in dataSet) {
 							let keyData = dataSet[index]
 							
 							//const dataKeySent = stackedBarData( [keyData.sentiment.min], [keyData.sentiment.ave], [keyData.sentiment.max] )
@@ -263,9 +505,17 @@ const companyViewSummary = (props) => {
 								</tr>
 							)
 						}
+						
+						if (tableDisplay.length === 0) {
+							tableDisplay.push(
+								<tr key={0}>
+									<td colSpan="5">"Nothing!"</td>
+								</tr>
+							)
+						}
 					
 						displayStats.push(
-							<table className="table" key="2">
+							<Table bordered responsive key="2">
 								<thead>
 									<tr>
 										<th scope="col">Name</th>
@@ -279,7 +529,7 @@ const companyViewSummary = (props) => {
 								<tbody>
 									{tableDisplay}
 								</tbody>
-							</table>
+							</Table>
 						)
 						
 						break;
@@ -287,7 +537,7 @@ const companyViewSummary = (props) => {
 					
 						//console.log(dataSet)
 						
-						for (index in dataSet) {
+						for (let index in dataSet) {
 							let relData = dataSet[index]
 							
 							const scoreData = stackedBarData( [relData.score.min], [relData.score.ave], [relData.score.max] )
@@ -303,9 +553,17 @@ const companyViewSummary = (props) => {
 								</tr>
 							)
 						}
+						
+						if (tableDisplay.length === 0) {
+							tableDisplay.push(
+								<tr key={0}>
+									<th scope="row">"Nothing!"</th>
+								</tr>
+							)
+						}
 					
 						displayStats.push(
-							<table className="table" key="2">
+							<Table bordered responsive key="2">
 								<thead>
 									<tr>
 										<th scope="col">#Appearances</th>
@@ -319,7 +577,7 @@ const companyViewSummary = (props) => {
 								<tbody>
 									{tableDisplay}
 								</tbody>
-							</table>
+							</Table>
 						)
 					
 						break;
@@ -341,23 +599,151 @@ const companyViewSummary = (props) => {
 			}
 		}
 		else {
+			// There was NO DATA in the day here, so we have to display nothing...
+			
 			displayStats.push(
 				<div className="row m-2 border" key="2">
 					<div className="col">
-						<p>Select a Prompt</p>
+						<p>There was no data to read!</p>
 					</div>
 				</div>
 			)
 		}
-	}
-	else {
-		// There was NO DATA in the day here, so we have to display nothing...
-		promptList = [{name:"No Prompts", value:"None"}]
 		
-		displayStats.push(
-			<div className="row m-2 border" key="2">
+		return (
+			<div className="JournalIteration">
+				<Accordion>
+				
+					<Accordion.Toggle as={Card.Header} variant="link" eventKey="0">
+						<div className="row" key="0">
+							<div className="col">
+								{this.props.givenPrompt["text"]}
+							</div>
+						</div>
+						<div className="row" key="1">
+							<div className="col">
+								<div className="progressBar">
+									<ProgressBar now={ purity } label={`${purity}% Response Rate`} />
+								</div>
+							</div>
+						</div>
+					</Accordion.Toggle>
+				
+					<Accordion.Collapse eventKey="0">
+					
+						<Card>
+							<Card.Body>
+								<div className="row my-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{AIAspect.map((radio, idx) => (
+												<ToggleButton
+													key={idx}
+													type="radio"
+													variant="info"
+													name="radio"
+													value={radio.value}
+													checked={this.state.selectedAspect === radio.value}
+													onChange={this.setAspect}
+													>
+													{radio.name}
+												</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
+								</div>
+								
+								<hr />
+							
+								{displayStats}
+							</Card.Body>
+						</Card>
+						
+					</Accordion.Collapse>
+					
+				</Accordion>
+			</div>
+		)
+	}
+}
+
+const companyViewSummary = (props) => {
+
+	const currentSummaryDate = props.dataSet["forDate"]
+	let showResult = []
+	let i = 0
+	for (let index in props.dataSet.summaryResult) {
+		let promptType = -1
+		
+		let promptSet = {"text":"No Text!"}
+		try {
+			promptSet = props.dataSet["promptList"].find( element => element.identifier === index )
+			promptType = promptSet["promptType"]
+		}
+		catch (error) {}
+		
+		//console.log(props.dataSet.summaryResult[index])
+		// What about the order of things?
+		// It will normally be in the order on the site...
+		// I may have to prioritise reordering this
+		
+		let promptBody = "No Prompt!"
+		switch ( promptType ) {
+			// Journal!
+			case 0:
+				promptBody = <JournalIteration
+					givenPrompt={promptSet}
+					dataSet={props.dataSet.summaryResult[index]}
+				/>
+				break;
+			// Likert
+			case 1:
+				promptBody = <LikertIteration
+					givenPrompt={promptSet}
+					dataSet={props.dataSet.summaryResult[index]}
+				/>
+				break;
+			// Rating
+			case 2:
+				promptBody = <RatingIteration
+					givenPrompt={promptSet}
+					dataSet={props.dataSet.summaryResult[index]}
+				/>
+				break;
+			// Multi
+			case 3:
+				promptBody = <MultiIteration
+					givenPrompt={promptSet}
+					dataSet={props.dataSet.summaryResult[index]}
+				/>
+				break;
+			default:
+				promptBody = promptBody = <JournalIteration
+					givenPrompt={ {"text":"No Prompt!"} }
+					dataSet={props.dataSet.summaryResult[index]}
+				/>
+				break;
+		}
+		
+		//console.log(props.dataSet.summaryResult[index])
+		
+		showResult.push(
+			<div className="row" key={i}>
 				<div className="col">
-					<p>There was no data to read!</p>
+					<div>{promptBody}</div>
+					<hr />
+				</div>
+			</div>
+		)
+		i += 1
+	}
+	
+	if (showResult.length === 0) {
+		showResult.push(
+			<div className="row" key={0}>
+				<div className="col">
+					<div>No Data to Display!</div>
+					<hr />
 				</div>
 			</div>
 		)
@@ -366,6 +752,7 @@ const companyViewSummary = (props) => {
 	const tileClassName = ({ date, view }) => {
 	
 		let hasSummary = false
+		let numValues = 0
 		
 		let year = String( date.getFullYear() )
 		let month =	String( date.getMonth()+1 )
@@ -385,7 +772,8 @@ const companyViewSummary = (props) => {
 		if (view === 'month') {
 			// Check if a date React-Calendar wants to check is on the list of dates to add class to
 			try {
-				hasSummary = props.validSummaryDates['day'].find( element => element === checkDate)
+				hasSummary = props.validSummaryDates['day'].find( element => element['date'] === checkDate)
+				numValues = hasSummary['num']
 			}
 			catch {
 				// This should trigger if DAY is not in the validSummaryDates
@@ -394,7 +782,12 @@ const companyViewSummary = (props) => {
 		}
 		
 		if (hasSummary) {
-			return 'btn btn-success'
+			if (numValues > 0) {
+				return 'btn btn-success'
+			}
+			else {
+				return 'btn btn-warning'
+			}
 		} else {
 			//return 'btn btn-outline-dark'
 		}
@@ -404,6 +797,23 @@ const companyViewSummary = (props) => {
 	let messageLine1 = "Showing Company Summary for: " + props.currentCompany
 	let messageLine2 = "For Date: " + currentSummaryDate
 	let messageLine3 = "Summary Type: " + convertSummaryType[props.summaryType]
+	
+	//let showIdle = props.getCompanyWeeklySummaryStatus === 0
+	let showWaiting = props.getCompanyWeeklySummaryStatus === 1
+	let showSuccess = false//props.getCompanyWeeklySummaryStatus === 2
+	let showError = props.getCompanyWeeklySummaryStatus === 3
+	
+	let errorParse = []
+		for (let index in props.getCompanyWeeklySummaryError) {
+			errorParse.push(
+				props.getCompanyWeeklySummaryError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
 	
 	return (
 		<div className="companyView">
@@ -423,7 +833,10 @@ const companyViewSummary = (props) => {
 							/>
 						</div>
 					</div>
-					<div className="col m-2">
+				</div>
+				
+				<div className="row m-2">
+					<div className="col">
 						<div className="card shadow">
 							<div className="card-header">
 								<div>{messageLine1}</div>
@@ -431,70 +844,39 @@ const companyViewSummary = (props) => {
 								<div>{messageLine3}</div>
 							</div>
 							<div className="card-body">
-								
-								<div className="row m-2">
-									<div className="col">
-										<ButtonGroup toggle>
-											{promptList.map((radio, idx) => (
-											<ToggleButton
-												key={idx}
-												type="radio"
-												variant="primary"
-												name="radio"
-												value={radio.value}
-												checked={props.selectedPrompt === radio.value}
-												onChange={props.setPrompt}
-												>
-												{radio.name}
-											</ToggleButton>
-											))}
-										</ButtonGroup>
-									</div>
-								</div>
-								
-								<div className="row m-2">
-									<div className="col">
-										<ButtonGroup toggle>
-											{AIAspect.map((radio, idx) => (
-											<ToggleButton
-												key={idx}
-												type="radio"
-												variant="info"
-												name="radio"
-												value={radio.value}
-												checked={props.selectedAspect === radio.value}
-												onChange={props.setAI}
-												>
-												{radio.name}
-											</ToggleButton>
-											))}
-										</ButtonGroup>
-									</div>
-								</div>
-							</div>
-						</div>
-
-					</div>
-				</div>
-				
-				<div className="row m-2">
-					<div className="col">
-						<div className="card shadow">
-							<div className="card-header">
-								<div>Showing Data for prompt: {promptDisplay}</div>
-							</div>
-							<div className="card-body">
-								{displayStats}
+								{showResult}
 							</div>
 						</div>
 					</div>
 				</div>
 				
-				<div className="row  my-2">
+				<Alert show={showWaiting} variant="warning">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
 					<p>
-						
+					  Waiting for server response...
 					</p>
-				</div>
+					<hr />
+				</Alert>
+				
+				<Alert show={showSuccess} variant="success">
+					<Alert.Heading>Success!</Alert.Heading>
+					<hr />
+					<p>
+					  Successfully obtained data!
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showError} variant="danger">
+					<Alert.Heading>Error!</Alert.Heading>
+					<hr />
+					<p>
+					  Failure!
+					</p>
+					<hr />
+				</Alert>
+				
 			</div>
 		</div>
 	);

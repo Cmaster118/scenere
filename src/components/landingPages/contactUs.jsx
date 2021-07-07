@@ -15,6 +15,8 @@ class contact extends React.Component {
 			company: '',
 			
 			content : '',
+			
+			emailContactState: 0,
         };
 	}
 	
@@ -39,17 +41,24 @@ class contact extends React.Component {
 		this.setState( {content: event.target.value} )
 	}
 	
-	callbackSuccess = () => {
-		
-	}
 	callbackFailure = () => {
-		
+		this.setState({
+			emailContactState: 3,
+		})
+	}
+	callbackSuccess = () => {
+		this.setState({
+			emailContactState: 2,
+		})
 	}
 	handleSubmit = (event) => {
 
-		APIContactUsEmail(this.props.APIHost, this.state.firstName, this.state.lastName, this.state.email, this.state.company, this.state.content, this.callbackSuccess, this.callbackFailure)
-
+		APIContactUsEmail(this.state.firstName, this.state.lastName, this.state.email, this.state.company, this.state.content, this.callbackSuccess, this.callbackFailure)
 		event.preventDefault();
+		
+		this.setState({
+			emailContactState: 1,
+		})
 	}
 	
 	render() {

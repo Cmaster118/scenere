@@ -1,6 +1,7 @@
 import React from "react";
 
 import { Link, withRouter } from 'react-router-dom';
+import { Alert } from 'react-bootstrap';
 
 import { APISignIn } from "../../utils";
 
@@ -16,12 +17,7 @@ class signIn extends React.Component {
 			// 1+ would be error codes...
 			// How can I change this screen as per this?
 			// Eh, thats later...
-			currentState: 0,
-
-			// This can take in the response code?
-			// Or Data?
-			lastAttemptCode: -1,
-			lastAttemptMessage: "",
+			signInState: 0,
 			
 			// Switches to display errors on the front page
 			// Hm, this seems a little bad.... Can I mesh these together while still being readable?
@@ -48,11 +44,8 @@ class signIn extends React.Component {
 		
 	};
 	
-	userFieldChange = (event) => {
+	resetErrors = () => {
 		this.setState({
-			username: event.target.value,
-		
-			// Reset Errors
 			usernameError: false,
 			passwordError: false,
 			isWrongError: false,
@@ -61,81 +54,109 @@ class signIn extends React.Component {
 		})
 	}
 	
+	userFieldChange = (event) => {
+		this.setState({
+			username: event.target.value,
+		})
+		this.resetErrors()
+	}
+	
 	passFieldChange = (event) => {
 		this.setState({
 			password: event.target.value,
-			
-			// Reset Errors
-			usernameError: false,
-			passwordError: false,
-			isWrongError: false,
-			networkError: false,			
-			miscError: false,
 		})
+		this.resetErrors()
 	}
 	
 	remFieldChange = (event) => {
 
 		this.setState({
 			remember: !this.state.remember,
-			
-			// Reset Errors
-			usernameError: false,
-			passwordError: false,
-			isWrongError: false,
-			networkError: false,			
-			miscError: false,
 		})
+		this.resetErrors()
 	}
 	
-	handleSubmitSuccess = (incomingToken) => {
-		//console.log(this.state.remember)
-		const sanityCheck = this.props.loginSave( incomingToken, this.state.username, this.state.remember )
-		if (sanityCheck) {
-			console.log("Token registered")
+	handleSubmitFailure = (responseData) => {
+		
+		let networkErrorFlag = false
+		
+		let usernameErrorFlag = false
+		let passwordErrorFlag = false
+		let isWrongErrorFlag = false
+		
+		let unhandledErrorFlag = false
+		let serverErrorFlag = false
+		
+		// Server is dead
+		if (responseData["action"] === 0) {
+			networkErrorFlag = true
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 1) {
+					usernameErrorFlag = true
+				}
+				else if (responseData['messages'][index]['mod'] === 2) {
+					passwordErrorFlag = true
+				} 
+				else if (responseData['messages'][index]['mod'] === 3) {
+					isWrongErrorFlag = true
+				}
+				else {
+					unhandledErrorFlag = true
+				}
+			}
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+			serverErrorFlag = true
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+			serverErrorFlag = true
+		}
+		
+		this.setState({
 			
-			// Change this to a dashboard lookin thing
-			this.props.history.push(this.props.reRouteTarget)
+			networkError: networkErrorFlag,
+				
+			usernameError: usernameErrorFlag,
+			passwordError: passwordErrorFlag,
+			isWrongError: isWrongErrorFlag,
+					
+			unhandledError: unhandledErrorFlag,
+			serverError: serverErrorFlag,
+			
+			signInState:3,
+		})
+	}
+	handleSubmitSuccess = (incomingToken) => {
+
+		let sanityCheck = this.props.loginSave( incomingToken, this.state.username, this.state.remember )
+		if (sanityCheck) {
+			//console.log("Token registered")
+			
+			/*
+			this.setState({
+				signInState:2,
+			})
+			*/
+
+			this.props.history.push(this.props.reRouteTarget)			
 		}
 		else {
 			console.log("Token Set on OUR END Failed..?")
 		}
 	}
-	// Alrighty, so error code, lets simplify it to simply hardcoding the errors that can come out of the API call
-	// Just in order, so:
-	// 0 = Network Error
-	// 1 = username blank Error
-	// 2 = password blank Error
-	// 3 = Credentials are wrong error
-	// Other = Uncaught
-	handleSubmitFailure = (errorCodes, errorDatas) => {
-		console.log("Connection failed...")
-		
-		let errorSet = [false, false, false, false]
-		let extra = false
-		
-		for (let index in errorCodes) {
-			//console.log(errorCodes)
-			if (errorCodes[index] > errorSet.length) {
-				extra = true
-			}
-			else {
-				errorSet[ errorCodes[index] ] = true
-			}
-		}
-		
-		this.setState({ 
-			networkError: errorSet[0],	
-			usernameError: errorSet[1],
-			passwordError: errorSet[2],
-			isWrongError: errorSet[3],
-					
-			miscError: extra,
-		})
-	}
 	handleSubmit = event => {
 		
-		APISignIn(this.props.APIHost, this.state.username, this.state.password, this.handleSubmitSuccess, this.handleSubmitFailure)
+		APISignIn(this.state.username, this.state.password, this.handleSubmitSuccess, this.handleSubmitFailure)
+		
+		this.setState({
+			signInState:1,
+		})
+		
 		event.preventDefault();		
 	}
 	
@@ -150,6 +171,11 @@ class signIn extends React.Component {
 		if (this.state.passwordError || this.state.isWrongError) {
 			passwordClass = 'bg-warning'
 		}
+		
+		//let show0 = this.state.signInState === 0
+		let show1 = this.state.signInState === 1
+		//let show2 = this.state.signInState === 2
+		//let show3 = this.state.signInState === 3
 	
 		return (
 			<div className='container text-center'>
@@ -194,6 +220,15 @@ class signIn extends React.Component {
 					</div>
 
 				</form>
+				
+				<Alert show={show1} variant="warning">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
+					<p>
+					  Waiting for server...
+					</p>
+					<hr />
+				</Alert>
 			</div>
 		);
 	}

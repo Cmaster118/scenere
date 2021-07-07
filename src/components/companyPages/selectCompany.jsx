@@ -1,166 +1,303 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
+import { Alert } from 'react-bootstrap';
 
-const selectCompany = (props) => {
-		
-	let keyID = 0
-	let backLayerButtons = []
-	
-	let currentLayer = props.companyDataTree
-	// Dig following each of the currentSelection...
-	
-	backLayerButtons.push(
-		<button key={keyID} onClick={props.backLayer} value={0} className="btn btn-outline-dark"> 
-			Root 
-		</button>
-	)
-	keyID += 1
-	
-	let selectedDivisionFull = ""
-	let selectedDivision = ""
-	let selectedPerms = 0
-	let selectedID = -1
-	
-	if (props.currentCompanySelections.length > 0) {
-		// Display the currently selected aspects...
-		
-		for (let i = 0; i < props.currentCompanySelections.length; i++) {
-			
-			// The last iteration of this is the one we are on, before the currentLayer is reset...
-			selectedDivisionFull += currentLayer[ props.currentCompanySelections[i] ]["name"] + "/"
+const permRender = ["Admin", "Viewer", "Governer"]
 
-			selectedDivision = currentLayer[ props.currentCompanySelections[i] ]["name"]
-			selectedPerms = currentLayer[ props.currentCompanySelections[i] ]["perm"]
-			selectedID = props.currentCompanySelections[i]
+// Move this to a util later.... Its used in CompanyPrompts, SelectCompany and Suggestions....
+class Paginator extends React.Component {
+	
+	constructor(props) {
+        super(props);
+		this.state = {
+			btnLen: 2,
+		}
+	}
+	
+	render() {
+		
+		let prevAlter = ""
+		let nextAlter = ""
+		
+		if (this.props.activePage <= 0) {
+			prevAlter = "disabled"
+		}
+
+		if (this.props.activePage >= this.props.totalLoaded/this.props.numPerPage-1) {
+			nextAlter = "disabled"
+		}
+		
+		let numberButtons = []
+		for (let i = -this.state.btnLen; i <= this.state.btnLen; i++) {
+			let altered = ""
 			
-			let thisClass = "btn"
-			if ( currentLayer[props.currentCompanySelections[i]]["perm"] ) {
-				thisClass += " btn-secondary"
+			let altI = i+this.props.activePage
+			if (altI < 0 || altI >= this.props.totalLoaded/this.props.numPerPage) {
+				continue;
 			}
-			else {
-				thisClass += " btn-outline-secondary"
+			
+			if (i === 0) {
+				altered = "active "
 			}
-			backLayerButtons.push(
-				<button key={keyID} onClick={props.backLayer} value={i+1} className={thisClass}> 
-					{ currentLayer[props.currentCompanySelections[i]]["name"] } 
+			
+			numberButtons.push(
+				<button key={i} className={"btn btn-outline-primary " + altered} value={altI} onClick={this.props.changeToNum}>
+					{altI}
 				</button>
 			)
-			keyID += 1
-			
-			// Enter the currentLayer, one stage at a time...
-			currentLayer = currentLayer[ props.currentCompanySelections[i] ].children
-		}
-	}
-	else {
-		selectedDivisionFull = "No Selection"
-	}
-
-	let currentLayerButtons = []
-	// Display the current layer we are selecting...
-	for (let key in currentLayer) {
-
-		let thisClass = "btn"
-		if ( currentLayer[key]["perm"] ) {
-			thisClass += " btn-primary"
-		}
-		else {
-			thisClass += " btn-outline-primary"
 		}
 		
-		currentLayerButtons.push(
-			<button key={keyID} onClick={props.selectLayer} value={key} className={thisClass}>
-				{currentLayer[key]["name"]}
-			</button>
-		)
-		keyID += 1
-	}
-	
-	// If we got to this point without putting anything into the array...
-	if (currentLayerButtons.length === 0) {
-		currentLayerButtons.push(
-			<div className="btn btn-outline-secondary" key={keyID}> 
-				End of Data
-			</div>
-		)
-		keyID += 1
-	}
-	
-	let getButtonClass = "btn "
-	let errorCheckingClass = ""
-	if (selectedPerms > 0) {
-		getButtonClass += "btn-success"
-		errorCheckingClass =' text-success'
-	}
-	else {
-		getButtonClass += "btn-danger"
-		errorCheckingClass =' text-danger'
-	}
-	
-	/*let responseCheckingClass = ' bg-success'
-	if (props.lastRequestStatus === false) {
-		responseCheckingClass = ' bg-danger'
-	}*/
-	
-	let currentSet = [selectedPerms, selectedDivision, selectedID]
-	
-	return (
-		<div className="testPages">
-			<div className="container-fluid">
-				
-				<div className="row my-2">
-					<div className="col">
-						<div className="card shadow">
-							<div className="card-header">
-								<div className="row">
-									<div className="col my-2">
-										Select a Company Division you have Viewing Privilege for:
-									</div>
-								</div>
-								<div className="row">
-									<div className="col my-2">
-										<div className={errorCheckingClass}>
-											{selectedDivisionFull}
-										</div>
-									</div>
-								</div>
-							</div>
-							<div className="card-body">
-								<div className="row my-2">
-									<div className="col btn-group btn-group-sm">
-										{backLayerButtons}
-									</div>
-								</div>
-								
-								<div className="row my-2">
-									<div className="col btn-group btn-group-sm">
-										{currentLayerButtons}
-									</div>
-								</div>
-								<div className="row my-2">
-									<div className="col">
-										<button onClick={props.getDataRequest} value={ currentSet } className={ getButtonClass }>
-											Get Data
-										</button>
-									</div>
-								</div>
-								
-								{props.lastRequestStatus > 0 && 
-									<div className="row">
-										<div className="col">
-											{ props.lastRequestStatus === 1 && "Data Obtained, Ready To Go!" }
-											{ props.lastRequestStatus === 2 && "Not Allowed!" }
-										</div>
-									</div>
-								}
-								
-							</div>
+		return (
+			<div className = "paginator">
+				<div className = "container">
+					<div className="row">
+						<div className="col">
+							<button className={"btn btn-outline-primary " + prevAlter} value="bck" onClick={this.props.changePrevNext}>
+								Prev
+							</button>
+							
+							{numberButtons}
+							
+							<button className={"btn btn-outline-primary " + nextAlter} value="fwd" onClick={this.props.changePrevNext}>
+								Next
+							</button>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	);
+		)
+	}
+}
+
+class selectCompany extends React.Component  {
+	
+	constructor(props) {
+        super(props);
+		this.state = {
+			pageNum:0,
+			numPerPage:10,
+			
+			numChooseLimit:5,
+			
+			subList: this.initializeSubList()
+		}
+	}
+	
+	componentWillUnmount() {
+		
+	}
+	
+	initializeSubList = () => {
+		
+		let generateingList = []
+		
+		// Hm, this may run multiple times due to my now-messed data reloading structure...
+		for (let index in this.props.userLoadedCompanyList) {
+			
+			let permType = -1
+			for (let permIndex in this.props.userLoadedCompanyList[index]["perm"]) {
+				if (this.props.userLoadedCompanyList[index]["perm"][permIndex] === 0) {
+					//console.log("Is Admin")
+					// Set the thing to admin no matter what
+					permType = 0
+				}
+				else if (this.props.userLoadedCompanyList[index]["perm"][permIndex] === 1) {
+					//console.log("Is Viewable")
+					// Set it to viewable... AS LONG AS it is NOT set to admin..
+					if (!(permType === 0)) {
+						permType = 1
+					}
+				}
+			}
+			
+			if (permType >= 0 && permType < 4) {
+				generateingList.push( [this.props.userLoadedCompanyList[index], permType] )
+			}
+		}
+		
+		return generateingList
+	}
+	
+	getData = (event) => {
+		this.props.getDataRequest( this.props.userLoadedCompanyList[event.target.value] )
+	}
+	
+	changePageTo = (event) => {
+		
+		let newPage = Number(event.target.value)
+		// Sanity check!
+		
+		this.setState({
+			pageNum: newPage
+		})
+	}
+	changePageFwdBck = (event) => {
+		
+		let newPage = Number(this.state.pageNum)
+		
+		if (event.target.value === "fwd") {
+			newPage = newPage + 1
+		
+			if (newPage > this.props.subList.length/this.state.numPerPage) {
+				return
+			}
+		}
+		else if (event.target.value === "bck") {
+			newPage = newPage - 1
+			
+			if (newPage < 0) {
+				return
+			}
+		}
+			
+		this.setState({
+			pageNum: newPage
+		})
+	}
+	
+	render() {
+		
+		let displayDivisionList = []
+		for (let index = 0; index < this.state.numPerPage; index++) {
+			
+			let adjustedIndex = index + this.state.pageNum*this.state.numPerPage			
+			if (adjustedIndex > this.state.subList.length || adjustedIndex < 0) {
+				continue
+			}
+			if (this.state.subList[adjustedIndex] === undefined) {
+				continue
+			}
+			
+			displayDivisionList.push(
+				<li className="list-group-item d-flex justify-content-between align-items-center" key={index}>
+						<div className="col">
+							{this.state.subList[adjustedIndex][0]["fullname"]}
+						</div>
+						<div className="col">
+							{permRender[this.state.subList[adjustedIndex][1]]}
+						</div>
+						<div className="col-2">
+							<button className="btn btn-primary" value={adjustedIndex} onClick={this.getData}>
+								GET!
+							</button>
+						</div>
+				</li>
+			)
+		}
+		
+		if (displayDivisionList.length === 0) {
+			displayDivisionList.push(
+				<div className="row" key="0">
+					<div className="col">
+						No Companies! If you see this page then this is an error!
+					</div>
+				</div>
+			)
+		}
+		
+		//let goodPermission = this.props.getCompanyDataStatus
+		
+		//let showIdle = this.props.getCompanyValidDatesStatus === 0 || this.props.getCompanyValidSuggestionDatesStatus === 0 || this.props.getCompanyEHIDataStatus === 0
+		let showWaiting = this.props.getCompanyValidDatesStatus === 1 || this.props.getCompanyValidSuggestionDatesStatus === 1 || this.props.getCompanyEHIDataStatus === 1
+		let showSuccess = this.props.getCompanyValidDatesStatus === 2 || this.props.getCompanyValidSuggestionDatesStatus === 2 || this.props.getCompanyEHIDataStatus === 2
+		let showError = this.props.getCompanyValidDatesStatus === 3 || this.props.getCompanyValidSuggestionDatesStatus === 3 || this.props.getCompanyEHIDataStatus === 3
+			
+		let errorParse = []
+		for (let index in this.props.getCompanyEHIDataError) {
+			errorParse.push(
+				this.props.getCompanyEHIDataError[index]["text"]
+			)
+		}
+		for (let index in this.props.getCompanyValidSuggestionDatesError) {
+			errorParse.push(
+				this.props.getCompanyValidSuggestionDatesError[index]["text"]
+			)
+		}
+		for (let index in this.props.getCompanyValidDatesError) {
+			errorParse.push(
+				this.props.getCompanyValidDatesError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
+			
+		return (
+			<div className="testPages">
+				<div className="container-fluid">
+					
+					<div className="row my-2">
+						<div className="col">
+							<div className="card shadow">
+							
+								<div className="card-header">
+									<div className="row">
+										<div className="col my-2">
+											<h3>
+												Your Company Divisions
+											</h3>
+										</div>
+									</div>
+								</div>
+								
+								<div className="card-body">
+									<div className="row">
+										<div className="col">
+											<ul className="list-group">
+												{displayDivisionList}
+											</ul>
+										</div>
+									</div>
+									
+									<Paginator
+										activePage={this.state.pageNum}
+										
+										changePrevNext={this.changePageFwdBck}
+										changeToNum={this.changePageTo}
+										
+										totalLoaded={this.state.subList.length}
+										numPerPage={this.state.numPerPage}
+									/>
+									
+								</div>
+							</div>
+						</div>
+					</div>
+						
+					<Alert show={showWaiting} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Success!</Alert.Heading>
+						<hr />
+						<p>
+						  Successfully obtained data!
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Error!</Alert.Heading>
+						<hr />
+						<p>
+						  Failure!
+						</p>
+						<hr />
+					</Alert>
+						
+				</div>
+			</div>
+		);
+	}
 }
 
 export default withRouter(selectCompany);

@@ -2,6 +2,7 @@ import React from "react";
 
 import { APIDivisionSettingsEdit, APIDivisionSettingsGet } from "../../utils";
 import { withRouter } from "react-router-dom";
+import { Alert } from 'react-bootstrap';
 
 const viewingPermsCheck = ['Public', 'Private', 'Governed Users']
 
@@ -18,6 +19,12 @@ class CompanySettings extends React.Component {
 			
 			companyFullName: "No Data",
 			divisionName: "No Data",
+			
+			getSettingsStatus: 0,
+			getSettingsError: [],
+			
+			saveChangesStatus: 0,
+			saveChangesError: [],
 		}
 	}
 	
@@ -29,6 +36,43 @@ class CompanySettings extends React.Component {
 		this.getDivisionData()
 	}
 	
+	forceLogout = () => {
+		this.props.forceLogout()
+	}
+	
+	getFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getSettingsStatus: 3,
+			getSettingsError: returnData,
+		})
+	}
 	getSuccess = (successData) => {
 		//console.log("Get Data Success")
 		this.setState({
@@ -39,12 +83,9 @@ class CompanySettings extends React.Component {
 			expiryDate: successData["getCompanyExpiryDate"],
 			
 			viewPerms: successData["summaryViewAccess"],
+			
+			getSettingsStatus: 2,
 		})
-	}
-	getFailure = (errorCodes, errorMessages) => {
-		console.log("Get Data Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
 	}
 	getDivisionData = () => {
 		// Verify that the division is valid?
@@ -52,7 +93,10 @@ class CompanySettings extends React.Component {
 			let checkData = undefined//Store.get(props.currentDivisionID+"-Data")
 			if (checkData === undefined) {
 				//console.log("Requesting Division Data From Server...")
-				APIDivisionSettingsGet( this.props.APIHost, this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				APIDivisionSettingsGet( this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				this.setState({
+					getSettingsStatus: 1,
+				})
 			}
 			else {
 				console.log("Data will do here...")
@@ -61,18 +105,48 @@ class CompanySettings extends React.Component {
 		}
 	}
 	
+	setFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			saveChangesStatus: 3,
+			saveChangesError: returnData,
+		})
+	}
 	setSuccess = (successData) => {
 		console.log("Set Data Success")
 		console.log(successData)
 		
 		this.props.triggerRefresh()
-	}
-	setFailure = (errorCodes, errorMessages) => {
-		console.log("Set Data Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
 		
-		//triggerLogout?
+		this.setState({
+			saveChangesStatus: 2,
+		})
 	}
 	saveChanges = () => {
 		
@@ -86,7 +160,10 @@ class CompanySettings extends React.Component {
 			"chName": chName,
 		}
 		
-		APIDivisionSettingsEdit( this.props.APIHost, this.props.authToken, testData, this.setSuccess, this.setFailure )
+		APIDivisionSettingsEdit( this.props.authToken, testData, this.setSuccess, this.setFailure )
+		this.setState({
+			saveChangesStatus: 1,
+		})
 	}
 	
 	divisionFieldChange = (event) => {
@@ -102,6 +179,23 @@ class CompanySettings extends React.Component {
 	}
 	
 	render() {
+		
+		//let showIdle = this.state.getSettingsStatus === 0
+		let showWaiting = this.state.getSettingsStatus === 1
+		let showSuccess = false//this.state.getSettingsStatus === 2
+		let showError = this.state.getSettingsStatus === 3
+	
+		let errorParse = []
+		for (let index in this.state.getSettingsError) {
+			errorParse.push(
+				this.state.getSettingsError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
 	
 		return (
 			<div className="companySett">
@@ -169,6 +263,34 @@ class CompanySettings extends React.Component {
 					<button className="btn btn-primary" onClick={this.saveChanges} disabled>
 						Save Changes
 					</button>
+					
+					<Alert show={showWaiting} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Success!</Alert.Heading>
+						<hr />
+						<p>
+						  Successfully obtained data!
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Error!</Alert.Heading>
+						<hr />
+						<p>
+						  {errorParse}
+						</p>
+						<hr />
+					</Alert>
+					
 				</div>
 			</div>
 		)

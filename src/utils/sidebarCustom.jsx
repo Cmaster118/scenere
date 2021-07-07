@@ -13,9 +13,23 @@ export class Sidebar extends React.Component {
 			enabled:false,
 			displayState:0,
 			
+			showFullCompanyFlag:0,
+			
 			currentCompanyName:"No Company!",
 			currentUserName:"No User!",
 		}
+	}
+	
+	setCompanyFlag = (nextThing) => {
+		//console.log("Swap Company Flag")
+		//console.log(typeof nextThing)
+		if (typeof nextThing !== "number") {
+			return false
+		}
+		
+		this.setState({
+			showFullCompanyFlag: nextThing,
+		})
 	}
 	
 	setCompanyName = (name) => {
@@ -31,13 +45,15 @@ export class Sidebar extends React.Component {
 	}
 	
 	disableMenu = () => {
+		//console.log("Disable Menu")
 		this.setState({
 			enabled: false,
 		})
 	}
 	
 	activateMenu = (reqState) => {
-		
+		//console.log("Activate Menu")
+		//console.log(reqState)
 		let foundState = validStates.find(element => element === reqState);
 		
 		if (foundState !== undefined) {
@@ -80,43 +96,68 @@ export class Sidebar extends React.Component {
 				break;
 			case 1:
 				displayMenu.push(
-
 					<Link className="list-group-item list-group-item-secondary" to={this.props.basePath+"/dashboard/companyMode/companySelect"} key="0">
 						<h3>
 							{this.state.currentCompanyName}
 						</h3>
-					</Link>,
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyEHI"} key="1">
-						View EHI
-					</Link>,
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySummary"} key="2">
-						View Summaries
-					</Link>,
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
-						View Suggestion Box
-					</Link>,
-					
-					/*
-					<div className="list-group-item list-group-item-secondary" key="3.5">
-						<h4>
-							Company Settings
-						</h4>
-					</div>, 
-					*/
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="4">
-						Edit Prompt Events
-					</Link>,
-					/*Yo! Split these next!*/
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="5">
-						User Invites
-					</Link>,
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPerms"} key="6">
-						Permission Settings
-					</Link>,
-					<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySettings"} key="7">
-						Misc. Settings
-					</Link>,
+					</Link>
 				)
+				
+				if (this.state.showFullCompanyFlag === 1) {
+					displayMenu.push(
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyEHI"} key="1">
+								View EHI
+							</Link>,
+							<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySummary"} key="2">
+								View Summaries
+							</Link>,
+							<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
+								View Suggestion Box
+						</Link>,
+					)
+				}
+				else if (this.state.showFullCompanyFlag === 2) {
+					displayMenu.push(
+					
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyEHI"} key="1">
+							View EHI
+						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySummary"} key="2">
+							View Summaries
+						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
+							View Suggestion Box
+						</Link>,
+						
+						<div className="list-group-item list-group-item-secondary" key="3.5">
+							<h4>
+								Settings
+							</h4>
+						</div>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="4">
+							Edit Prompt Events
+						</Link>,
+						/*Yo! Split these next!*/
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="5">
+							User Invites
+						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPerms"} key="6">
+							Permission Settings
+						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySettings"} key="7">
+							Misc. Settings
+						</Link>,
+					)
+				}
+				else {
+					displayMenu.push(
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySelect"} key="1">
+							<h5>
+								Select Company
+							</h5>
+						</Link>
+					)
+				}
 				break;
 			default:
 				displayMenu.push(

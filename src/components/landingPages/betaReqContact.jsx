@@ -8,6 +8,7 @@ class contact extends React.Component {
         super(props);
         this.state = {
 			email: '',
+			handleEmailStatus: 0,
         };
 	}
 	
@@ -15,17 +16,24 @@ class contact extends React.Component {
 		this.setState( {email: event.target.value} )
 	}
 	
-	callbackSuccess = () => {
-		
-	}
 	callbackFailure = () => {
-		
+		this.setState({
+			handleEmailStatus: 3,
+		})
 	}	
+	callbackSuccess = () => {
+		this.setState({
+			handleEmailStatus: 2,
+		})
+	}
 	handleSubmit = (event) => {
 
-		APIBetaSignEmail(this.props.APIHost, this.state.email, this.callbackSuccess, this.callbackFailure)
-
+		APIBetaSignEmail(this.state.email, this.callbackSuccess, this.callbackFailure)
 		event.preventDefault();
+		
+		this.setState({
+			handleEmailStatus: 1,
+		})
 	}
 	
 	render() {

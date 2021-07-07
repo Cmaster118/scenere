@@ -2,6 +2,7 @@ import React from "react";
 
 import { withRouter } from "react-router-dom";
 import { APIUserSettingsEdit} from "../../utils";
+import { Alert } from 'react-bootstrap';
 
 // Trying this in function form instead of class
 class UserProfile extends React.Component {
@@ -12,118 +13,189 @@ class UserProfile extends React.Component {
 			delViews:[],
 			togSends: [],
 			delGoverns: [],
+			
+			viewSubList: this.initViews(),
+			sendSubList: this.initSends(),
+			govSubList: this.initGovs(),
+			
+			selectedName: "No Name!",
+			saveChangesStatus: 0,
+			saveChangesError: [],
         };
 	}
 	
-	toggleDelete = (event) => {
-		let valueInt = Number(event.target.value)
+	forceLogout = () => {
+		// Gonna do this like this, in case we got something else we wana overwrite
+		this.props.logout()
+	}
+	
+	initViews = () => {
+		let viewSubList = []
+		for (let index in this.props.userLoadedCompanyList) {
+			// View
+			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(1) > -1 ) {
+				viewSubList.push(this.props.userLoadedCompanyList[index])
+			}
+		}
+		return viewSubList
+	}
+	
+	initSends = () => {
+		let sendSubList = []
+		for (let index in this.props.userLoadedCompanyList) {
+			// Send
+			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(2) > -1 ) {
+				sendSubList.push(this.props.userLoadedCompanyList[index])
+			}
+		}
+		return sendSubList
+	}
+	
+	initGovs = () => {
+		let govSubList = []
+		for (let index in this.props.userLoadedCompanyList) {
+			// Govern
+			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(3) > -1 ) {
+				govSubList.push(this.props.userLoadedCompanyList[index])
+			}
+		}
+		return govSubList
+	}
+	
+	setCurrentData = (event) => {
+		
+		let valueIndex = Number(event.target.value)
+		
+		let selectedName = "No Name!"
 		//console.log("Leave")
 		//console.log(valueInt)
 		
-		let temp = []
-		let index = -1
+		let tempGov = []
+		let tempSen = []
+		let tempVie = []
 		switch(event.target.name) {
 			case "gov":
-				temp = this.state.delGoverns.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delGoverns: temp,
-				})
+				tempGov.push( this.state.govSubList[valueIndex]["id"] )
+				selectedName = this.state.govSubList[valueIndex]["fullname"]
 				break;
 			case "sen":
-				temp = this.state.togSends.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					togSends: temp,
-				})
+				tempSen.push( this.state.viewSubList[valueIndex]["id"] )
+				selectedName = this.state.viewSubList[valueIndex]["fullname"]
 				break;
 			case "vie":
-				temp = this.state.delViews.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delViews: temp,
-				})
+				tempVie.push( this.state.viewSubList[valueIndex]["id"] )
+				selectedName = this.state.viewSubList[valueIndex]["fullname"]
 				break;
 			default:
 				console.log("Failed to have the correct name")
 		}
+		
+		this.setState({
+			delGoverns: tempGov,
+			togSends: tempSen,
+			delViews: tempVie,
+			
+			selectedName: selectedName,
+		})
 	}
 	
+	setFailure = (responseData) => {
+		let returnData = []
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			saveChangesError: returnData,
+			saveChangesStatus: 3,
+		})
+	}
 	setSuccess = (successData) => {
 		console.log("Set Data Success")
 		console.log(successData)
 		
 		// This needs to be a props refresh..
 		this.props.triggerRefresh()
-	}
-	setFailure = (errorCodes, errorMessages) => {
-		console.log("Set Data Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
+		this.setState({
+			saveChangesStatus: 2,
+		})
 	}
 	saveChanges = () => {
 		let testData = {
 			
 			// Hmm, perhaps the generic way wont work...
-			//"delViews":this.state.delViews,
+			"delViews":this.state.delViews,
 			"togEmails":this.state.togSends,
-			"delGovern":this.state.delGoverns,
+			"delGoverns":this.state.delGoverns,
 		}
 		
-		APIUserSettingsEdit( this.props.APIHost, this.props.authToken, testData, this.setSuccess, this.setFailure )
+		APIUserSettingsEdit( this.props.authToken, testData, this.setSuccess, this.setFailure )
+		
+		this.setState({
+			delGoverns: [],
+			togSends: [],
+			delViews: [],
+			
+			selectedName: "No Name!",
+			saveChangesStatus: 1,
+		})
 	}
 	
 	render() {
 		
 		let displayViewSends = []
-		if (this.props.viewNameList.length > 0) {
-			for (let i in this.props.viewNameList) {
+		if (this.state.viewSubList.length > 0) {
+			for (let i in this.state.viewSubList) {
 				let extra = ""
 				// Blank will just be admin/view for now... Highlighted in green means Email...
-				let index = this.props.sendIDList.indexOf(this.props.viewIDList[i])
+				let index = this.state.sendSubList.indexOf(this.state.viewSubList[i])
 				if (index >= 0) {
-					extra = 'bg-success'
+					extra = 'bg-info'
 				}
+				
 				// Sends we are toggling....
-				index = this.state.togSends.indexOf(this.props.viewIDList[i])
+				index = this.state.togSends.indexOf(this.state.viewSubList[i]["id"])
 				if (index >= 0) {
 					extra = 'bg-warning'
 				}
 				// Views we are deleting
-				index = this.state.delViews.indexOf(this.props.viewIDList[i])
+				index = this.state.delViews.indexOf(this.state.viewSubList[i]["id"])
 				if (index >= 0) {
 					extra = 'bg-danger'
 				}
 				
 				displayViewSends.push(
 					<li key={i} className={"list-group-item d-flex justify-content-around "+extra}>
-						{this.props.viewNameList[i]}
-						<button className="badge badge-success badge-pill" name="sen" value={this.props.viewIDList[i]} onClick={this.toggleDelete}>View</button>
-						<button className="badge badge-danger badge-pill" name="vie" value={this.props.viewIDList[i]} onClick={this.toggleDelete}>X</button>
+						<div className="col alignOverride">
+							{this.state.viewSubList[i]["fullname"]}
+						</div>
+						<div className="col-2">
+							<button className="badge badge-success badge-pill" name="sen" value={i} data-toggle="modal" data-target="#viewToggleConfirm" onClick={this.setCurrentData}>View</button>
+						</div>
+						<div className="col-1">
+							<button className="badge badge-danger badge-pill" name="vie" value={i} data-toggle="modal" data-target="#deleteConfirm" onClick={this.setCurrentData}>X</button>
+						</div>
 					</li>
 				)
 			}
@@ -138,18 +210,23 @@ class UserProfile extends React.Component {
 		}
 		
 		let displayOwningCompanyList = []
-		if (this.props.governedNameList.length > 0) {
-			for (let i in this.props.governedNameList) {
+		if (this.state.govSubList.length > 0) {
+			for (let i in this.state.govSubList) {
 				let extra = ""
-				let index = this.state.delGoverns.indexOf(this.props.governedIDList[i])
+				
+				let index = this.state.delGoverns.indexOf(this.state.govSubList[i]["id"])
 				if (index >= 0) {
 					extra = 'bg-danger'
 				}
 				
 				displayOwningCompanyList.push(
 					<li key={i} className={"list-group-item d-flex justify-content-around "+extra}>
-						{this.props.governedNameList[i]}
-						<button className="badge badge-danger badge-pill" name="gov" value={this.props.governedIDList[i]} onClick={this.toggleDelete}>X</button>
+						<div className="col alignOverride">
+							{this.state.govSubList[i]["fullname"]}
+						</div>
+						<div className="col-1">
+							<button className="badge badge-danger badge-pill" name="gov" value={i} data-toggle="modal" data-target="#deleteConfirm" onClick={this.setCurrentData}>X</button>
+						</div>
 					</li>
 				)
 			}
@@ -160,6 +237,23 @@ class UserProfile extends React.Component {
 				<li key={0} className="list-group-item d-flex justify-content-around">
 					None!
 				</li>
+			)
+		}
+
+		//let showIdle = this.state.saveChangesStatus === 0
+		let showWaiting = this.state.saveChangesStatus === 1
+		let showSuccess = false//this.state.saveChangesStatus === 2
+		let showError = this.state.saveChangesStatus === 3
+		
+		let errorParse = []
+		for (let index in this.state.saveChangesError) {
+			errorParse.push(
+				this.state.saveChangesError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
 			)
 		}
 
@@ -177,9 +271,6 @@ class UserProfile extends React.Component {
 									<ul className="list-group">
 										{displayViewSends}
 									</ul>
-									<button className="btn btn-secondary" data-toggle="modal" data-target="#deleteConfirm">
-										Confirm
-									</button>
 								</div>
 							</div>
 						</div>
@@ -195,11 +286,36 @@ class UserProfile extends React.Component {
 									<ul className="list-group">
 										{displayOwningCompanyList}
 									</ul>
-									<button className="btn btn-secondary" data-toggle="modal" data-target="#deleteConfirm">
-										Confirm
-									</button>
 								</div>
 							</div>
+							
+							<Alert show={showWaiting} variant="warning">
+								<Alert.Heading>Waiting</Alert.Heading>
+								<hr />
+								<p>
+								  Waiting for server response...
+								</p>
+								<hr />
+							</Alert>
+							
+							<Alert show={showSuccess} variant="success">
+								<Alert.Heading>Success!</Alert.Heading>
+								<hr />
+								<p>
+								  Success!
+								</p>
+								<hr />
+							</Alert>
+							
+							<Alert show={showError} variant="danger">
+								<Alert.Heading>Danger!</Alert.Heading>
+								<hr />
+								<p>
+									{errorParse}
+								</p>
+								<hr />
+							</Alert>
+							
 						</div>
 					</div>
 				
@@ -213,7 +329,30 @@ class UserProfile extends React.Component {
 							</button>
 						  </div>
 						  <div className="modal-body">
-							Are you SURE you want to make these changes? 
+							<div>Are you SURE you want to revoke permission for:</div>
+							<div>{this.state.selectedName}?</div>
+							<div>You will need to be invited back!</div>
+						  </div>
+						  <div className="modal-footer">
+							<button type="button" className="btn btn-danger" data-dismiss="modal" onClick={this.saveChanges}>Yes</button>
+							<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
+						  </div>
+						</div>
+					  </div>
+					</div>
+					
+					<div className="modal fade" id="viewToggleConfirm" tabIndex="-1" role="dialog" aria-labelledby="viewToggleConfirm" aria-hidden="true">
+					  <div className="modal-dialog modal-dialog-centered" role="document">
+						<div className="modal-content">
+						  <div className="modal-header">
+							<h5 className="modal-title" id="deleteTitleConfirm">Toggle Notification Confirmation</h5>
+							<button type="button" className="close" data-dismiss="modal" aria-label="Close">
+							  <span aria-hidden="true">&times;</span>
+							</button>
+						  </div>
+						  <div className="modal-body">
+							<div>Are you SURE you want to toggle notifications for:</div>
+							<div>{this.state.selectedName}?</div>
 						  </div>
 						  <div className="modal-footer">
 							<button type="button" className="btn btn-danger" data-dismiss="modal" onClick={this.saveChanges}>Yes</button>

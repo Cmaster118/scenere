@@ -1,6 +1,7 @@
 import React from "react";
 
 //Link
+//import { Alert } from 'react-bootstrap';
 import { withRouter, Route, Switch } from "react-router-dom";
 //import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
@@ -31,6 +32,8 @@ class ContentPages extends React.Component {
 			EHITimespan: 3,
 			EHISelectedPrompt: "none",
 			EHISelectedTimescale: "none",
+			
+			companySelectPage: 1,
 		}
 	}
 	
@@ -63,48 +66,13 @@ class ContentPages extends React.Component {
 	// So far it doesnt look all that different 
 	render() {
 	
-		//console.log(this.props.currentDivisionID)
-	
 		return (
 			<div className="contentPages">
 				<div className="container">
 					<div className="row m-1 my-5">
-					{/*
-						<div className="col- m-1">
-							<div className="row">
-								<div className="col">
-									<div className="card shadow">
-										<div className="card-header">
-											<h5>Today's Date</h5>
-										</div>
-										<div className="card-body">
-											{this.props.currentDate.toString().split("(")[0]}
-										</div>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className="card shadow">
-										<div className="card-header">
-											<Link className="list-group-item" to={this.props.reRouteCompany}>Return To Dashboard</Link>
-										</div>
-										<div className="card-body">
-											<div className="list-group">
-												<Link className={this.props.currentDivisionID === -1? "list-group-item bg-warning":"list-group-item bg-light"} to={this.props.match.url+"/selectCompany"}>{this.props.currentDivisionName}</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/companyEHI"}>Review Company EHI</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/companySummary"}>Review Company Summaries</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/companySuggestions"}>View Suggestions</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/companyProfile"}>View/Edit Company Settings</Link>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>		
-						</div>
-					*/}
 						<div className="col m-1">
 							
+							{/*
 							{ this.props.currentDivisionID === -1 &&
 								<div className="row m-2">
 									<div className="col"/>
@@ -114,44 +82,60 @@ class ContentPages extends React.Component {
 									<div className="col"/>
 								</div>
 							}
+							*/}
 						
 							<Switch>
 								<Route path={this.props.match.url+"/companySelect"} exact component={() => <SelectCompany
-										currentCompanySelections={this.props.currentCompanyIndexes}
-										companyDataTree={this.props.companyViewableDataTree}
-										lastRequestStatus={this.props.lastCompanyRequestStatus}
+							
 										
-										selectLayer={this.props.selectCompanyLayer}
-										backLayer={this.props.backCompanyLayer}
+										companySelectPage={this.state.companySelectPage}
+										
+										currentDivisionName={this.props.currentDivisionName}
+										userLoadedCompanyList={this.props.userLoadedCompanyList}
+										
 										getDataRequest={this.props.getCompanyDataRequest}
+										
+										getCompanyDataStatus={this.props.getCompanyDataStatus}
+										
+										getCompanyValidDatesStatus={this.props.getCompanyValidDatesStatus}
+										getCompanyValidDatesError={this.props.getCompanyValidDatesError}
+										
+										getCompanyValidSuggestionDatesStatus={this.props.getCompanyValidSuggestionDatesStatus}
+										getCompanyValidSuggestionDatesError={this.props.getCompanyValidSuggestionDatesError}
+										
+										getCompanyEHIDataStatus={this.props.getCompanyEHIDataStatus}
+										getCompanyEHIDataError={this.props.getCompanyEHIDataError}
 									/>} 
 								/>
 								
 								<Route path={this.props.match.url+"/companyInvites"} component={() => <CompanyInvites
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
+										forceLogout={this.props.forceLogout}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companyPerms"} component={() => <CompanyPermissions
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
+										forceLogout={this.props.forceLogout}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySettings"} component={() => <CompanySettings
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
+										forceLogout={this.props.forceLogout}
 									/>} 
 								/>
 								
@@ -165,6 +149,9 @@ class ContentPages extends React.Component {
 										pickDate={this.props.getCompanySuggestionData}
 										
 										currentDivisionID={this.props.currentDivisionID}
+										
+										getCompanySuggestionDataStatus={this.props.getCompanySuggestionDataStatus}
+										getCompanySuggestionDataError={this.props.getCompanySuggestionDataError}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companyEHI"} component={() => <EHIDisplay
@@ -181,7 +168,7 @@ class ContentPages extends React.Component {
 										EHISetTimescale={this.changeEHITimescale}
 										EHITimeToggle={this.EHITimeToggle}
 									/>} 
-								/>
+								/>	
 								<Route path={this.props.match.url+"/companySummary"} component={() => <ViewCompany
 										currentDate={this.props.selectedCompanyDate}
 										
@@ -192,6 +179,7 @@ class ContentPages extends React.Component {
 
 										displayMessage={this.props.companyMessage}
 										dataSet={this.props.selectedSummaryWeekData}
+										
 										selectedDay={this.props.selectedCompanyDay}
 										selectedPrompt={this.props.selectedCompanyPrompt}
 										selectedAspect={this.props.selectedCompanyAspect}
@@ -201,14 +189,16 @@ class ContentPages extends React.Component {
 										setDay={this.props.changeCompanyDay}
 										setCompany={this.props.changeSelectedCompany}
 								
-										loadCompanyList={this.props.getUserCompanyAdminViewTree}
 										getValidDates={this.props.getCompanyValidDates}
 										pickDate={this.props.getCompanyWeeklySummary}
+										
+										getCompanyWeeklySummaryStatus={this.props.getCompanyWeeklySummaryStatus}
+										getCompanyWeeklySummaryError={this.props.getCompanyWeeklySummaryError}
 									/>} 
 								/>
 								
 								<Route path={this.props.match.url+"/companyPrompts"} component={() => <PromptEdit
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
 										forceLogout={this.props.forceLogout}

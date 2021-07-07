@@ -2,6 +2,7 @@ import React from "react";
 
 import { APIDivisionSettingsEdit, APIDivisionSettingsGet } from "../../utils";
 import { withRouter } from "react-router-dom";
+import { Alert } from 'react-bootstrap';
 
 class CompanyPermissions extends React.Component {
 	
@@ -28,6 +29,11 @@ class CompanyPermissions extends React.Component {
 			delGoverns: [],
 			
 			numChild: 0,
+			
+			getPermissionsStatus: 0,
+			getPermissionsError: [],
+			setPermissionsStatus: 0,
+			setPermissionsError: [],
 		}
 	}
 	
@@ -39,6 +45,43 @@ class CompanyPermissions extends React.Component {
 		this.getDivisionData()
 	}
 	
+	forceLogout = () => {
+		this.props.forceLogout()
+	}
+	
+	getFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getPermissionsStatus: 3,
+			getPermissionsError: returnData,
+		})
+	}
 	getSuccess = (successData) => {
 		//console.log("Get Data Success")
 		this.setState({
@@ -61,12 +104,9 @@ class CompanyPermissions extends React.Component {
 			delViews: [],
 			delSends: [],
 			delGoverns: [],
+			
+			getPermissionsStatus: 2,
 		})
-	}
-	getFailure = (errorCodes, errorMessages) => {
-		console.log("Get Data Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
 	}
 	getDivisionData = () => {
 		// Verify that the division is valid?
@@ -74,7 +114,10 @@ class CompanyPermissions extends React.Component {
 			let checkData = undefined//Store.get(props.currentDivisionID+"-Data")
 			if (checkData === undefined) {
 				//console.log("Requesting Division Data From Server...")
-				APIDivisionSettingsGet( this.props.APIHost, this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				APIDivisionSettingsGet( this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				this.setState({
+					getPermissionsStatus: 1,
+				})
 			}
 			else {
 				//console.log("Data will do here...")
@@ -84,18 +127,48 @@ class CompanyPermissions extends React.Component {
 		}
 	}
 	
+	setFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			setPermissionsStatus: 3,
+			setPermissionsError: returnData,
+		})
+	}
 	setSuccess = (successData) => {
 		console.log("Set Data Success")
 		console.log(successData)
 		
 		this.props.triggerRefresh()
-	}
-	setFailure = (errorCodes, errorMessages) => {
-		console.log("Set Data Failure")
-		console.log(errorCodes)
-		console.log(errorMessages)
 		
-		//triggerLogout?
+		this.setState({
+			setPermissionsStatus: 2,
+		})
 	}
 	saveChanges = () => {
 		
@@ -114,83 +187,57 @@ class CompanyPermissions extends React.Component {
 			"delGovern": this.state.delGoverns,
 		}
 		
-		APIDivisionSettingsEdit( this.props.APIHost, this.props.authToken, testData, this.setSuccess, this.setFailure )
+		APIDivisionSettingsEdit( this.props.authToken, testData, this.setSuccess, this.setFailure )
+		this.setState({
+			setPermissionsStatus: 1,
+		})
 	}
 	
 	toggleDelete = (event) => {
 		
-		let valueInt = Number(event.target.value)
+		let splitEvent = event.target.value.split(",")
+		let valueNameIndex = Number(splitEvent[0])
+		let valueInt = Number(splitEvent[1])
 		
-		let temp = []
-		let index = -1
+		let selectedName = "No Name!"
+		
+		let tempAdm = []
+		let tempVie = []
+		let tempSen = []
+		let tempGov = []
 		switch(event.target.name) {
 			case "adm":
-				temp = this.state.delAdmins.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delAdmins:temp,
-				})
+				tempAdm.push( valueInt )
+				selectedName = this.state.admins[valueNameIndex]
 				break;
 				
 			case "vie":
-				temp = this.state.delViews.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delViews:temp,
-				})
+				tempVie.push( valueInt )
+				selectedName = this.state.views[valueNameIndex]
 				break;
 				
 			case "sen":
-				temp = this.state.delSends.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delSends:temp,
-				})
+				tempSen.push( valueInt )
+				selectedName = this.state.sends[valueNameIndex]
 				break;
 				
 			case "gov":
-				temp = this.state.delGoverns.slice()
-				// It was NOT found, so add it
-				index = temp.indexOf( valueInt )
-				if ( index === -1) {
-					temp.push( valueInt )
-				}
-				// It WAS found, so delete it
-				else {
-					temp.splice(index, 1)
-				}
-				this.setState({
-					delGoverns:temp,
-				})
+				tempGov.push( valueInt )
+				selectedName = this.state.governs[valueNameIndex]
 				break;
 				
 			default:
 				console.log("Failed to have the correct name")
 		}
+		
+		this.setState({
+			delAdmins:tempAdm,
+			delViews:tempVie,
+			delSends:tempSen,
+			delGoverns:tempGov,
+			
+			selectedName: selectedName,
+		})
 	}
 	
 	render() {
@@ -205,7 +252,7 @@ class CompanyPermissions extends React.Component {
 			adminUserList.push(
 				<li className={"list-group-item d-flex justify-content-around"+extra} key={i}>
 					{this.state.admins[i]}
-					{/*<button className="badge badge-danger badge-pill" name="adm" value={adminsIDs[i]} onClick={toggleDelete}>
+					{/*<button className="badge badge-danger badge-pill" name="adm" value={ [i, adminsIDs[i]] } onClick={toggleDelete}>
 						X
 					</button>*/}
 				</li>
@@ -230,7 +277,7 @@ class CompanyPermissions extends React.Component {
 			viewingUserList.push(
 				<li className={"list-group-item d-flex justify-content-around "+extra} key={i}>
 					{this.state.views[i]}
-					<button className="badge badge-danger badge-pill" name="vie" value={this.state.viewsIDs[i]} onClick={this.toggleDelete}>
+					<button className="badge badge-danger badge-pill" name="vie" value={ [i, this.state.viewsIDs[i]] } data-toggle="modal" data-target="#deleteConfirm" onClick={this.toggleDelete}>
 						X
 					</button>
 				</li>
@@ -255,9 +302,11 @@ class CompanyPermissions extends React.Component {
 			sentUserList.push(
 			<li className={"list-group-item d-flex justify-content-around "+extra} key={i}>
 					{this.state.sends[i]}
-					<button className="badge badge-danger badge-pill" name="sen" value={this.state.sendsIDs[i]} onClick={this.toggleDelete}>
+					{/*
+					<button className="badge badge-danger badge-pill" name="sen" value={ [i, this.state.sendsIDs[i]] } data-toggle="modal" data-target="#deleteConfirm" onClick={this.toggleDelete}>
 						X
 					</button>
+					*/}
 				</li>
 			)
 		}
@@ -271,6 +320,7 @@ class CompanyPermissions extends React.Component {
 
 		let governedUserList = []
 		for (let i in this.state.governs) {
+			
 			let extra = ""
 			let index = this.state.delGoverns.indexOf(this.state.governsIDs[i])
 			if (index >= 0) {
@@ -280,7 +330,7 @@ class CompanyPermissions extends React.Component {
 			governedUserList.push(
 				<li className={"list-group-item d-flex justify-content-around "+extra} key={i}>
 					{this.state.governs[i]}
-					<button className="badge badge-danger badge-pill" name="gov" value={this.state.governsIDs[i]} onClick={this.toggleDelete}>
+					<button className="badge badge-danger badge-pill" name="gov" value={ [i, this.state.governsIDs[i]] } data-toggle="modal" data-target="#deleteConfirm" onClick={this.toggleDelete}>
 						X
 					</button>
 				</li>
@@ -298,6 +348,28 @@ class CompanyPermissions extends React.Component {
 				And {this.state.numChild} others in child nodes
 			</li>
 		)
+		
+		//let showIdle = this.state.setPermissionsStatus === 0
+		let showWaiting = this.state.setPermissionsStatus === 1 || this.state.getPermissionsStatus === 1
+		let showSuccess = this.state.setPermissionsStatus === 2 //|| this.state.getPermissionsStatus === 2 
+		let showError = this.state.setPermissionsStatus === 3 || this.state.getPermissionsStatus === 3
+		
+		let errorParse = []
+		for (let index in this.state.getPermissionsError) {
+			errorParse.push(
+				this.state.getPermissionsError[index]["text"]
+			)
+		}
+		for (let index in this.state.getPermissionsError) {
+			errorParse.push(
+				this.state.getPermissionsError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
 	
 		return (
 			<div className="companySett">
@@ -339,6 +411,8 @@ class CompanyPermissions extends React.Component {
 								</div>
 							</div>
 						</div>
+						
+						{/*
 						<div className="col">
 							<div className="card shadow">
 								<div className="card-header">
@@ -351,6 +425,7 @@ class CompanyPermissions extends React.Component {
 								</div>
 							</div>
 						</div>
+						*/}
 					</div>
 					
 					<div className="row">
@@ -368,9 +443,54 @@ class CompanyPermissions extends React.Component {
 						</div>
 					</div>
 					
-					<button className="btn btn-primary" onClick={this.saveChanges}>
-						Save Changes
-					</button>
+					<Alert show={showWaiting} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Success!</Alert.Heading>
+						<hr />
+						<p>
+						  Successfull!
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Error!</Alert.Heading>
+						<hr />
+						<p>
+							{errorParse}
+						</p>
+						<hr />
+					</Alert>
+					
+					<div className="modal fade" id="deleteConfirm" tabIndex="-1" role="dialog" aria-labelledby="deleteConfirmation" aria-hidden="true">
+					  <div className="modal-dialog modal-dialog-centered" role="document">
+						<div className="modal-content">
+						  <div className="modal-header">
+							<h5 className="modal-title" id="deleteTitleConfirm">Delete Confirmation</h5>
+							<button type="button" className="close" data-dismiss="modal" aria-label="Close">
+							  <span aria-hidden="true">&times;</span>
+							</button>
+						  </div>
+						  <div className="modal-body">
+							<div>Are you SURE you want to revoke permission for:</div>
+							<div>{this.state.selectedName}?</div>
+							<div>You will need to reinvite the user!</div>
+						  </div>
+						  <div className="modal-footer">
+							<button type="button" className="btn btn-danger" data-dismiss="modal" onClick={this.saveChanges}>Yes</button>
+							<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
+						  </div>
+						</div>
+					  </div>
+					</div>
 				</div>
 			</div>
 		)

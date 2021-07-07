@@ -1,6 +1,8 @@
 import React from "react";
 import { withRouter, Link } from "react-router-dom";
 
+//import { Alert } from 'react-bootstrap'
+
 const modeSelector = (props) => {
 
 	return (
@@ -17,7 +19,11 @@ const modeSelector = (props) => {
 							</div>
 							<div className="card-body">
 								<Link className="list-group-item" to={props.toUserPage}>Go To User Mode</Link>
-								<Link className="list-group-item" to={props.toCompanyPage}>Go to Company Mode</Link>
+								
+								{ (props.userLoadedCompanyList.length) > 0
+									? <Link className="list-group-item" to={props.toCompanyPage}>Go to Company Mode</Link>
+									: <div className="list-group-item">No Companies to view!</div>
+								}
 							</div>
 						</div>
 						

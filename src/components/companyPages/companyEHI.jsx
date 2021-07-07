@@ -97,7 +97,7 @@ const EHIDisplay = (props) => {
 	}
 	
 	if (timescaleList.length === 0) {
-		timescaleList.push( {name:"Waiting for prompt...", value:"none"} )
+		timescaleList.push( {name:"Nothing to select!", value:"none"} )
 	}
 	
 	const dataLabels = []
@@ -150,7 +150,7 @@ const EHIDisplay = (props) => {
 												variant="primary"
 												name="radio"
 												value={radio.value}
-												checked={props.selectedPrompt === radio.value}
+												checked={usedPrompt === radio.value}
 												onChange={props.EHISetPrompt}
 												>
 												{radio.name}
@@ -170,7 +170,7 @@ const EHIDisplay = (props) => {
 												variant="secondary"
 												name="radio"
 												value={radio.value}
-												checked={props.selectedTimescale === radio.value}
+												checked={usedTimescale === radio.value}
 												onChange={props.EHISetTimescale}
 												>
 												{radio.name}

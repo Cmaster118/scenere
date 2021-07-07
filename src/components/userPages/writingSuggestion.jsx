@@ -3,7 +3,73 @@ import React from "react";
 import { withRouter } from "react-router-dom";
 //EditorState, convertToRaw, convertFromRaw
 import {Editor, RichUtils,  } from 'draft-js';
+import { Alert } from 'react-bootstrap';
 //ContentState
+
+// Move this to a util later.... Its used in CompanyPrompts, SelectCompany and Suggestions....
+class Paginator extends React.Component {
+	
+	constructor(props) {
+        super(props);
+		this.state = {
+			btnLen: 2,
+		}
+	}
+	
+	render() {
+		
+		let prevAlter = ""
+		let nextAlter = ""
+		
+		if (this.props.activePage <= 0) {
+			prevAlter = "disabled"
+		}
+
+		if (this.props.activePage >= this.props.totalLoaded/this.props.numPerPage-1) {
+			nextAlter = "disabled"
+		}
+		
+		let numberButtons = []
+		for (let i = -this.state.btnLen; i <= this.state.btnLen; i++) {
+			let altered = ""
+			
+			let altI = i+this.props.activePage
+			if (altI < 0 || altI >= this.props.totalLoaded/this.props.numPerPage) {
+				continue;
+			}
+			
+			if (i === 0) {
+				altered = "active "
+			}
+			
+			numberButtons.push(
+				<button key={i} className={"btn btn-outline-primary " + altered} value={altI} onClick={this.props.changeToNum}>
+					{altI}
+				</button>
+			)
+		}
+		
+		return (
+			<div className = "paginator">
+				<div className = "container">
+					<div className="row">
+						<div className="col">
+							<button className={"btn btn-outline-primary " + prevAlter} value="bck" onClick={this.props.changePrevNext}>
+								Prev
+							</button>
+							
+							{numberButtons}
+							
+							<button className={"btn btn-outline-primary " + nextAlter} value="fwd" onClick={this.props.changePrevNext}>
+								Next
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		)
+	}
+}
 
 const styles = {
   editor: {
@@ -105,10 +171,39 @@ class journalView extends React.Component {
 	constructor(props) {
         super(props);
         this.state = {
+			pageNum:0,
+			numPerPage:3,
 			
+			numChooseLimit:5,
+			
+			subList: this.initializeSubList(),
 		}	
 		
 		this.focusMe = () => this.refs.editor.focus();
+	}
+	
+	initializeSubList = () => {
+		
+		let generateingList = []
+		
+		// Hm, this may run multiple times due to my now-messed data reloading structure...
+		for (let index in this.props.userLoadedCompanyList) {
+			
+			let permType = -1
+			for (let permIndex in this.props.userLoadedCompanyList[index]["perm"]) {
+				if (this.props.userLoadedCompanyList[index]["perm"][permIndex] === 3) {
+					//console.log("Is Admin")
+					// Set the thing to admin no matter what
+					permType = 3
+				}
+			}
+			
+			if (permType >= 0 && permType < 4) {
+				generateingList.push( this.props.userLoadedCompanyList[index] )
+			}
+		}
+		
+		return generateingList
 	}
 	
 	// Example code... Can I alter this to be more my style?
@@ -142,149 +237,93 @@ class journalView extends React.Component {
 		return 'not-handled';
 	}
 	
-	render() {
-	
-		let keyID = 0
-		let backLayerButtons = []
+	changePageTo = (event) => {
 		
-		let currentLayer = this.props.companyDataTree
+		let newPage = Number(event.target.value)
+		// Sanity check!
+		
+		this.setState({
+			pageNum: newPage
+		})
+	}
+	changePageFwdBck = (event) => {
+		
+		let newPage = Number(this.state.pageNum)
+		
+		if (event.target.value === "fwd") {
+			newPage = newPage + 1
+		
+			if (newPage > this.state.subList.length/this.state.numPerPage) {
+				return
+			}
+		}
+		else if (event.target.value === "bck") {
+			newPage = newPage - 1
+			
+			if (newPage < 0) {
+				return
+			}
+		}
+			
+		this.setState({
+			pageNum: newPage
+		})
+	}
+	
+	setCompany = (event) => {
+		this.props.setSuggestionDivision(Number(event.target.value))
+	}
+	
+	render() {
 		// Dig following each of the currentSelection...
 		
-		backLayerButtons.push(
-			<button key={keyID} onClick={this.props.backLayer} value={0} className="btn btn-outline-dark"> 
-				Root 
-			</button>
-		)
-		keyID += 1
+		let displayDivisionList = []
 		
-		let selectedDivisionFull = ""
-		//let selectedDivision = ""
+		let selectedDivisionFull = "No Valid Company!"
 		let selectedPerms = 0
-		//let selectedID = -1
 		
-		let showSuccess = false
-		let showNormalError = false
-		let showUnknownError = false
-		
-		let successData = false
-		let successData2 = false
-		let normalError = false
-		let unknownError = false
-		for (let index in this.props.suggestionErrors[0]) {
-			// Display Success 1!
-			if (this.props.suggestionErrors[0][index] === 1) {
-				showSuccess = true
-				successData = 
-					<div className="row">
-						<div className="col text-success">
-							{this.props.suggestionErrors[1][index]}
-						</div>
-					</div>
-			}
-			// Display Success 2!
-			else if (this.props.suggestionErrors[0][index] === 2) {
-				showSuccess = true
-				successData2 = 
-					<div className="row">
-						<div className="col text-success">
-							{"Created Suggestion for: "+ this.props.suggestionErrors[1][index].targetDivision + ", " + this.props.suggestionErrors[1][index].createdDate}
-						</div>
-					</div>
-			}
-			// Wrong Company
-			else if (this.props.suggestionErrors[0][index] === 3) {
-				showNormalError = true
-				normalError =
-					<div className="row">
-						<div className="col text-danger">
-							{this.props.suggestionErrors[1][index]}
-						</div>
-					</div>
-			}
-			// No Company
-			else if (this.props.suggestionErrors[0][index] === 4) {
-				showNormalError = true
-				normalError =
-					<div className="row">
-						<div className="col text-danger">
-							{this.props.suggestionErrors[1][index]}
-						</div>
-					</div>
-			}
-			// Unknown
-			else if (this.props.suggestionErrors[0][index] === 10) {
-				showUnknownError = true
-				unknownError =
-					<div className="row">
-						<div className="col text-danger">
-							{this.props.suggestionErrors[1][index]}
-						</div>
-					</div>
+		for (let index in this.props.userLoadedCompanyList) {
+			if (this.props.currentDivisionID === this.props.userLoadedCompanyList[index]["id"]) {
+				selectedDivisionFull = this.props.userLoadedCompanyList[index]["name"]
+				
+				if (this.props.userLoadedCompanyList[index]["perm"].indexOf(3)) {
+					selectedPerms = 1
+				}
 			}
 		}
 		
-		if (this.props.currentCompanySelections.length > 0) {
-			// Display the currently selected aspects...
+		for (let index = 0; index < this.state.numPerPage; index++) {
 			
-			for (let i = 0; i < this.props.currentCompanySelections.length; i++) {
-				
-				// The last iteration of this is the one we are on, before the currentLayer is reset...
-				selectedDivisionFull += currentLayer[ this.props.currentCompanySelections[i] ]["name"] + "/"
-
-				//selectedDivision = currentLayer[ this.props.currentCompanySelections[i] ]["name"]
-				selectedPerms = currentLayer[ this.props.currentCompanySelections[i] ]["perm"]
-				//selectedID = this.props.currentCompanySelections[i]
-				
-				let thisClass = "btn"
-				if ( currentLayer[this.props.currentCompanySelections[i]]["perm"] ) {
-					thisClass += " btn-secondary"
-				}
-				else {
-					thisClass += " btn-outline-secondary"
-				}
-				backLayerButtons.push(
-					<button key={keyID} onClick={this.props.backLayer} value={i+1} className={thisClass}> 
-						{ currentLayer[this.props.currentCompanySelections[i]]["name"] } 
-					</button>
-				)
-				keyID += 1
-				
-				// Enter the currentLayer, one stage at a time...
-				currentLayer = currentLayer[ this.props.currentCompanySelections[i] ].children
+			let adjustedIndex = index + this.state.pageNum*this.state.numPerPage			
+			if (adjustedIndex > this.state.subList.length || adjustedIndex < 0) {
+				continue
 			}
-		}
-		else {
-			selectedDivisionFull = "No Selection"
-		}
-
-		let currentLayerButtons = []
-		// Display the current layer we are selecting...
-		for (let key in currentLayer) {
-
-			let thisClass = "btn"
-			if ( currentLayer[key]["perm"] ) {
-				thisClass += " btn-primary"
-			}
-			else {
-				thisClass += " btn-outline-primary"
+			if (this.state.subList[adjustedIndex] === undefined) {
+				continue
 			}
 			
-			currentLayerButtons.push(
-				<button key={keyID} onClick={this.props.selectLayer} value={key} className={thisClass}>
-					{currentLayer[key]["name"]}
-				</button>
+			displayDivisionList.push(
+				<li className="list-group-item d-flex justify-content-between align-items-center" key={index}>
+						<div className="col">
+							{this.state.subList[adjustedIndex]["fullname"]}
+						</div>
+						<div className="col-2">
+							<button className="btn btn-primary" value={this.state.subList[adjustedIndex]["id"]} onClick={this.setCompany}>
+								Choose!
+							</button>
+						</div>
+				</li>
 			)
-			keyID += 1
 		}
 		
-		// If we got to this point without putting anything into the array...
-		if (currentLayerButtons.length === 0) {
-			currentLayerButtons.push(
-				<div className="btn btn-outline-secondary" key={keyID}> 
-					End of Data
+		if (displayDivisionList.length === 0) {
+			displayDivisionList.push(
+				<div className="row" key="0">
+					<div className="col">
+						No Companies! If you see this page then this is an error!
+					</div>
 				</div>
 			)
-			keyID += 1
 		}
 		
 		let getButtonClass = "btn "
@@ -301,6 +340,23 @@ class journalView extends React.Component {
 		}		
 		
 		let placeholder = ""
+		
+		//let showIdle = this.props.postSuggestionStatus === 0
+		let showSubmit = this.props.postSuggestionStatus === 1
+		let showSuccess = this.props.postSuggestionStatus === 2
+		let showError = this.props.postSuggestionStatus === 3
+		
+		let errorParse = []
+		for (let index in this.props.suggestionErrors) {
+			errorParse.push(
+				this.props.suggestionErrors[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
 
 		return (
 			<div className="makeView">
@@ -319,17 +375,24 @@ class journalView extends React.Component {
 									</div>
 								</div>
 								<div className="card-body">
-									<div className="row my-2">
-										<div className="col btn-group btn-group-sm">
-											{backLayerButtons}
+								
+									<div className="row">
+										<div className="col">
+											<ul className="list-group">
+												{displayDivisionList}
+											</ul>
 										</div>
 									</div>
 									
-									<div className="row my-2">
-										<div className="col btn-group btn-group-sm">
-											{currentLayerButtons}
-										</div>
-									</div>
+									<Paginator
+										activePage={this.state.pageNum}
+										
+										changePrevNext={this.changePageFwdBck}
+										changeToNum={this.changePageTo}
+										
+										totalLoaded={this.state.subList.length}
+										numPerPage={this.state.numPerPage}
+									/>
 								</div>
 							</div>
 						</div>
@@ -393,14 +456,41 @@ class journalView extends React.Component {
 										</div>
 									</div>
 									
-									{showSuccess && successData}
+									{/*{showSuccess && successData}
 									{showSuccess && successData2}
 									{showNormalError && normalError}
-									{showUnknownError && unknownError}
+									{showUnknownError && unknownError}*/}
 								</div>
 							</div>
 						</div>
 					</div>
+					
+					<Alert show={showSubmit} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Success!</Alert.Heading>
+						<hr />
+						<p>
+						  Successfully submitted suggestion!
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Danger!</Alert.Heading>
+						<hr />
+						<p>
+							{errorParse}
+						</p>
+						<hr />
+					</Alert>
 					
 				</div>
 			</div>
