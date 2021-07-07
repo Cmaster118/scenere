@@ -1,6 +1,7 @@
 import React from "react";
 
 import { withRouter } from "react-router-dom";
+import { Alert } from 'react-bootstrap';
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 
@@ -67,6 +68,23 @@ const suggesstionBox = (props) => {
 		currentSelectedDayFilter = new Date()
 	}
 	
+	//let showIdle = props.getCompanySuggestionDataStatus === 0
+	let showWaiting = props.getCompanySuggestionDataStatus === 1
+	let showSuccess = false//props.getCompanySuggestionDataStatus === 2
+	let showError = props.getCompanySuggestionDataStatus === 3
+	
+	let errorParse = []
+		for (let index in props.getSettingsError) {
+			errorParse.push(
+				props.getSettingsError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
+	
 	return (
 		<div className="testPages">
 			<div className="container-fluid">
@@ -84,7 +102,7 @@ const suggesstionBox = (props) => {
 						/>
 					</div>
 					
-					<div className="col m-2">
+					<div className="col-md-12 col-lg-6 m-2">
 						<div className="card shadow">
 							<div className="card-header">
 								<div>Suggestions for Date: {props.dataDay && props.dataDay.toString()}</div>
@@ -95,11 +113,33 @@ const suggesstionBox = (props) => {
 						</div>
 					</div>
 				</div>
-				<div className="row">
-					<div className="col">
-					
-					</div>
-				</div>
+				
+				<Alert show={showWaiting} variant="warning">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
+					<p>
+					  Waiting for server response...
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showSuccess} variant="success">
+					<Alert.Heading>Success!</Alert.Heading>
+					<hr />
+					<p>
+					  Successfully obtained data!
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showError} variant="danger">
+					<Alert.Heading>Error!</Alert.Heading>
+					<hr />
+					<p>
+						{errorParse}
+					</p>
+					<hr />
+				</Alert>
 			</div>	
 		</div>
 	);

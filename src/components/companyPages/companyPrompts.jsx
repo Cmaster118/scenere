@@ -2,8 +2,9 @@ import React from "react";
 import { Search } from 'react-bootstrap-icons';
 
 import { withRouter, } from "react-router-dom";
+import { Alert } from 'react-bootstrap';
 
-import { APIGetSearchPrompts, APIGetDivisionEvents, APISetDivisionEvents, APIDeleteDivisionEvents } from "../../utils";
+import { APIGetSearchPrompts, APIGetDivisionEvents, APISetDivisionEvents, APIDeleteDivisionEvents, APISetNonDivisionEvents } from "../../utils";
 
 const triggerType = [
 	"Never",
@@ -17,6 +18,15 @@ const triggerType = [
 	"On Sunday",
 ]
 
+const promptType = [
+	"Open",
+	"Likert",
+	"Rating",
+	"Multi",
+	"Boolean",
+]
+
+// Move this to a util later.... Its used in CompanyPrompts, SelectCompany and Suggestions....
 class Paginator extends React.Component {
 	
 	constructor(props) {
@@ -88,9 +98,10 @@ class PromptDisplay extends React.Component {
         super(props);
 		this.state = {
 			
-			//eventsGlobBin: [],
+			eventsGlobBin: [],
 			eventsCompBin: [],
-			//eventsDivBin: [],
+			eventsDivBin: [],
+			
 			promptsBin: [],
 			
 			pageNum: 0,
@@ -101,13 +112,21 @@ class PromptDisplay extends React.Component {
 			
 			hasSent: false,
 			
-			eventSuccessIndex: -1,
-			eventErrorIndex: -1,
-			eventErrorMessage: "",
-			
 			lastClickedEventIndex: -1,
 			
 			addedPrompt: 0,
+			
+			getEventsStatus: 0,
+			getEventsError: [],
+			
+			saveEventStatus: 0,
+			saveEventError: [],
+			
+			searchForStatus: 0,
+			searchForError: [],
+			
+			deleteEventStatus: 0,
+			deleteEventError: [],
 		}
 	}
 	
@@ -115,58 +134,149 @@ class PromptDisplay extends React.Component {
 		this.getEvents()
 	};
 	
+	forceLogout = () => {
+		this.props.forceLogout()
+	}
+	
 	setLastClickedEvent = (event) => {
 		this.setState({
 			lastClickedEventIndex: Number(event.target.value)
 		})
 	}
 	
-	getEventsSuccess = (incomingEvents) => {
-		//console.log(incomingEvents)
+	getEventsFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
 		this.setState({
-			eventsCompBin: incomingEvents
+			getEventsStatus: 3,
+			getEventsError: returnData,
 		})
 	}
-	getEventsFailure = (errorCodes, errorData) => {
-		console.log(errorCodes)
-		console.log(errorData)
+	getEventsSuccess = (incomingEvents) => {
+		//console.log(this.props.currentDivisionID)
 		
-		this.props.forceLogout()
+		// I need to sort these here....
+		//console.log(incomingEvents)
+		
+		let sortedGlobal = []
+		let sortedCompany = []
+		let sortedDivision = []
+		
+		for (let index in incomingEvents) {
+			//console.log(incomingEvents[index])
+			if (incomingEvents[index]["creatorCompany"] === null) {
+				sortedGlobal.push(incomingEvents[index])
+			}
+			else if (incomingEvents[index]["creatorDivision"] === this.props.currentDivisionID) {
+				sortedDivision.push(incomingEvents[index])
+			}
+			// This should only trigger if the company made this, as that is what is sent here...
+			// However, that may not be the case in the future, so this needs to be better!
+			else {
+				sortedCompany.push(incomingEvents[index])
+			}
+		}
+		
+		this.setState({
+			eventsGlobBin: sortedGlobal,
+			eventsCompBin: sortedCompany,
+			eventsDivBin: sortedDivision,
+			
+			getEventsStatus: 2,
+		})
 	}
 	getEvents = () => {
 		if (!(this.props.currentDivisionID === -1)) {
 			let checkData = undefined
 			if (checkData === undefined) {
-				APIGetDivisionEvents( this.props.APIHost, this.props.authToken, this.props.currentDivisionID, this.getEventsSuccess, this.getEventsFailure )
+				APIGetDivisionEvents( this.props.authToken, this.props.currentDivisionID, this.getEventsSuccess, this.getEventsFailure )
+				this.setState({
+					getEventsStatus: 1,
+				})
 			}
 			else {
 				//getEventsSuccess( ??? )
 			}
 		}
+		else {
+			console.log("MOVE IT BACK TO THE SELECT COMPANY HERE!")
+		}
 	}
 	
+	saveEventsFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			saveEventStatus: 3,
+			saveEventError: returnData,
+		})
+	}
 	saveEventsSuccess = (savedIndex, incomingMessage) => {
-		if ( !this.state.eventsCompBin[savedIndex]["fromServer"] ) {
-			let temp = this.state.eventsCompBin.slice()
+		if ( !this.state.eventsDivBin[savedIndex]["fromServer"] ) {
+			let temp = this.state.eventsDivBin.slice()
 			temp[savedIndex]["id"] = Number(incomingMessage.split(":")[1])
 			temp[savedIndex]["fromServer"] = true
 
 			this.setState({
-				eventsCompBin: temp,
+				eventsDivBin: temp,
 			})
 		}
 		this.setState({
-			eventSuccessIndex: savedIndex,
+			saveEventStatus: 2,
 		})
 	}
-	saveEventsFailure = (savedIndex, errorCodes, errorData) => {
-		console.log(errorCodes)
-		console.log(errorData)
-		
-		this.props.forceLogout()
-	}
-	saveCompEvent = (event) => {
-		let selectedEvent = this.state.eventsCompBin[event.target.value]
+	saveDivEvent = (event) => {
+		let selectedEvent = this.state.eventsDivBin[event.target.value]
 
 		let id = selectedEvent["id"]
 		let newTrigger = selectedEvent["triggerType"]
@@ -178,27 +288,123 @@ class PromptDisplay extends React.Component {
 			newPrompts.push( selectedEvent["promptPool"][index]["identifier"] )
 		}
 		
-		APISetDivisionEvents(this.props.APIHost, this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, newEnabled, newTrigger, newPrompts, this.saveEventsSuccess, this.saveEventsFailure )
+		APISetDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, newEnabled, newTrigger, newPrompts, this.saveEventsSuccess, this.saveEventsFailure )
+		this.setState({
+			saveEventStatus: 0,
+		})
 	}
 	
+	saveNonDivEventsFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			saveEventStatus: 3,
+			saveEventError: returnData,
+		})
+	}
+	saveNonDivEventsSuccess = (savedIndex, incomingMessage) => {
+		this.setState({
+			saveEventStatus: 2,
+		})
+	}
+	saveGlobEvent = (event) => {
+		let selectedEvent = this.state.eventsGlobBin[event.target.value]
+
+		let id = selectedEvent["id"]
+		let newEnabledDiv = selectedEvent["usedBy"]
+		
+		APISetNonDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
+		this.setState({
+			saveEventStatus: 0,
+		})
+	}
+	saveCompEvent = (event) => {
+		let selectedEvent = this.state.eventsCompBin[event.target.value]
+
+		let id = selectedEvent["id"]
+		let newEnabledDiv = selectedEvent["usedBy"]
+		
+		APISetNonDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
+		this.setState({
+			saveEventStatus: 0,
+		})
+	}
+	
+	searchForPromptsFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			searchForStatus: 3,
+			searchForError: returnData,
+		})
+	}
 	searchForPromptsCallback = (incomingPrompts) => {
 
 		this.setState({
 			promptsBin: incomingPrompts,
 			hasSent: true,
+			
+			searchForStatus: 2,
 		})
-	}
-	searchForPromptsFailure = (errorCodes, errorData) => {
-		console.log(errorCodes)
-		console.log(errorData)
-		
-		this.props.forceLogout()
 	}
 	searchForPrompts = () => {
 		let checkData = undefined
 		if (checkData === undefined) {
 			//console.log("Prompts are not in storage!")
-			APIGetSearchPrompts(this.props.APIHost, this.props.authToken, this.state.searchText, this.state.searchType, this.searchForPromptsCallback, this.searchForPromptsFailure)			
+			APIGetSearchPrompts(this.props.authToken, this.state.searchText, this.state.searchType, this.searchForPromptsCallback, this.searchForPromptsFailure)			
+			this.setState({
+				searchForStatus: 1,
+			})
 		}
 		else {
 			console.log("Prompts ARE in storage!")
@@ -206,25 +412,53 @@ class PromptDisplay extends React.Component {
 		}
 	}
 	
+	deleteEventFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			deleteEventStatus: 3,
+			deleteEventError: returnData,
+		})
+	}
 	deleteEventCallback = (storedID, incomingMessage) => {
 		
 		let valueInt = Number(storedID)
-		let temp = this.state.eventsCompBin.slice()
+		let temp = this.state.eventsDivBin.slice()
 		temp.splice(valueInt,1)
 		
 		this.setState({
-			eventsCompBin: temp,
+			eventsDivBin: temp,
+			deleteEventStatus: 2,
 		})
 		
 	}
-	deleteEventFailure = (errorCodes, errorData) => {
-		console.log(errorCodes)
-		console.log(errorData)
-		
-		this.props.forceLogout()
-	}
 	deleteEvent = (event) => {
-		let selectedEvent = this.state.eventsCompBin[ Number(event.target.value) ]
+		let selectedEvent = this.state.eventsDivBin[ Number(event.target.value) ]
 
 		let id = selectedEvent["id"]
 		
@@ -232,12 +466,15 @@ class PromptDisplay extends React.Component {
 			this.deleteEventCallback( Number(event.target.value), "Not On The Server")
 		}
 		else{			
-			APIDeleteDivisionEvents(this.props.APIHost, this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, this.deleteEventCallback, this.deleteEventFailure )
+			APIDeleteDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, this.deleteEventCallback, this.deleteEventFailure )
+			this.setState({
+				deleteEventStatus: 1,
+			})
 		}
 	}
 
 	createEvent = () => {
-		let newEvents = this.state.eventsCompBin.slice()
+		let newEvents = this.state.eventsDivBin.slice()
 		
 		// I can proboly replace the "Fromserver" with an id of -1?
 		newEvents.push(
@@ -245,7 +482,7 @@ class PromptDisplay extends React.Component {
 		)
 		
 		this.setState({
-			eventsCompBin: newEvents,
+			eventsDivBin: newEvents,
 		})
 	}
 	
@@ -260,14 +497,14 @@ class PromptDisplay extends React.Component {
 		let eventIndex = Number(event.target.name)
 		let promptIndex = Number(event.target.value)
 
-		let temp = this.state.eventsCompBin.slice()
+		let temp = this.state.eventsDivBin.slice()
 		temp[eventIndex]["promptPool"].splice( promptIndex,1 )
 		
 		//console.log(eventIndex)
 		//console.log(promptIndex)
 		
 		this.setState({
-			eventsCompBin: temp,
+			eventsDivBin: temp,
 		})
 	}
 	
@@ -277,7 +514,7 @@ class PromptDisplay extends React.Component {
 		let targetIndex = this.state.lastClickedEventIndex
 		
 		if (targetIndex >= 0) {
-			let temp = this.state.eventsCompBin.slice()
+			let temp = this.state.eventsDivBin.slice()
 			
 			// Check to see if it is already here...
 			let sanity = temp[targetIndex]["promptPool"].find(element => element["identifier"] === this.state.promptsBin[ promptIndex ]["identifier"] )
@@ -292,7 +529,7 @@ class PromptDisplay extends React.Component {
 			}
 
 			this.setState({
-				eventsCompBin: temp,
+				eventsDivBin: temp,
 				addedPrompt: promptReport,
 			})
 		}
@@ -301,15 +538,23 @@ class PromptDisplay extends React.Component {
 	changeTrigger = (event) => {
 		let idNumberName = event.target.name.split(",")
 	
-		let alteredEvents = this.state.eventsCompBin.slice()
+		let alteredEvents = this.state.eventsDivBin.slice()
 		alteredEvents[ idNumberName[0] ]["triggerType"] = Number(idNumberName[1])
 		
 		this.setState({
-			eventsCompBin: alteredEvents,
+			eventsDivBin: alteredEvents,
 		})
 	}
 	
-	enabledDivFieldChange = (event) => {
+	enabledGlobalFieldChange = (event) => {
+		let alteredEvents = this.state.eventsGlobBin.slice()
+		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
+		
+		this.setState({
+			eventsGlobBin: alteredEvents,
+		})
+	}
+	enabledCompanyFieldChange = (event) => {
 		let alteredEvents = this.state.eventsCompBin.slice()
 		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
 		
@@ -317,12 +562,20 @@ class PromptDisplay extends React.Component {
 			eventsCompBin: alteredEvents,
 		})
 	}
-	enabledGloFieldChange = (event) => {
-		let alteredEvents = this.state.eventsCompBin.slice()
+	enabledDivisionFieldChange = (event) => {
+		let alteredEvents = this.state.eventsDivBin.slice()
+		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
+		
+		this.setState({
+			eventsDivBin: alteredEvents,
+		})
+	}
+	enabledDivisionFieldChangeSuper = (event) => {
+		let alteredEvents = this.state.eventsDivBin.slice()
 		alteredEvents[event.target.name]["enabled"] = !alteredEvents[event.target.name]["enabled"]
 		
 		this.setState({
-			eventsCompBin: alteredEvents,
+			eventsDivBin: alteredEvents,
 		})
 	}
 	
@@ -361,10 +614,169 @@ class PromptDisplay extends React.Component {
 	
 	render() {
 		
+		//let showIdle = this.state.getEventsStatus === 0 || this.state.saveEventStatus === 0 || this.state.searchForStatus === 0 || this.state.deleteEventStatus === 0
+		let showWaiting = this.state.getEventsStatus === 1 || this.state.saveEventStatus === 1 || this.state.deleteEventStatus === 1 //|| this.state.searchForStatus === 1 
+		let showSuccess = this.state.saveEventStatus === 2 || this.state.deleteEventStatus === 2 //|| this.state.searchForStatus === 2 || this.state.getEventsStatus === 2 || 
+		let showError = this.state.getEventsStatus === 3 || this.state.saveEventStatus === 3 || this.state.deleteEventStatus === 3 //|| this.state.searchForStatus === 3
+		
+		let errorParse = []
+		for (let index in this.state.getEventsError) {
+			errorParse.push(
+				this.state.getEventsError[index]["text"]
+			)
+		}
+		for (let index in this.state.saveEventError) {
+			errorParse.push(
+				this.state.saveEventError[index]["text"]
+			)
+		}
+		for (let index in this.state.deleteEventError) {
+			errorParse.push(
+				this.state.deleteEventError[index]["text"]
+			)
+		}
+		for (let index in this.state.searchForError) {
+			errorParse.push(
+				this.state.searchForError[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
+		
+		let globModals = []
 		let showGlobalEvents = []
-		/*for (let index in this.state.eventsGlobBin) {
+		for (let index in this.state.eventsGlobBin) {
 			let thisEvent = this.state.eventsGlobBin[index]
-		}*/
+			
+			showGlobalEvents.push(
+				<div className="col" key={index}>
+					<div className="card">
+						<div className="card-header">
+
+						</div>
+						<div className="card-body">
+							<div className="row">
+								<div className="col">
+									Trigger Type: { triggerType[ thisEvent["triggerType"] ] }
+								</div>
+							</div>
+							<div className="row m-1">
+								<div className="col">
+									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
+									<button className="btn btn-secondary mx-2" data-toggle="modal" data-target={"#globPrompts"+index}>
+										Show
+									</button>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckGlob'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledGlobalFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckGlob'+index} >Enabled For This Division</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckGlob2'+index} name={index} value={thisEvent["enabled"]} checked={thisEvent["enabled"]} disabled />
+										<label className='custom-control-label' htmlFor={'customCheckGlob2'+index} >Is Enabled</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-primary" value={index} onClick={this.saveGlobEvent}>
+										Save Changes
+									</button>
+								</div>
+							</div>
+							
+						</div>
+					</div>
+				</div>
+			)
+			
+			//console.log(thisEvent)
+			
+			let displayCurrentPrompts = []
+			for (let indexSub in thisEvent["promptPool"]) {
+				let subset = thisEvent["promptPool"][indexSub]["text"].substring(0, 12) + "...";
+				
+				//console.log(thisEvent["promptPool"][indexSub])
+				displayCurrentPrompts.push(
+				
+					<tr key={indexSub}>
+						<th scope="row">
+							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#displayGlobPromptCollapse"+index+indexSub}>
+								{subset}
+							</button>
+						</th>
+						<td>{thisEvent["promptPool"][indexSub]["identifier"]}</td>
+						<td>{promptType[thisEvent["promptPool"][indexSub]["promptType"]]}</td>
+					</tr>,
+					<tr key={1 + indexSub + thisEvent["promptPool"].length}>
+						<th scope="row" colSpan="4" className="collapse" id={"displayGlobPromptCollapse"+index+indexSub}>
+							{thisEvent["promptPool"][indexSub]["text"]}
+						</th>
+					</tr>
+				)
+			}
+			
+			if (displayCurrentPrompts.length === 0) {
+				displayCurrentPrompts.push(
+					<tr key={0}>
+						<th scope="row" colSpan="4">
+							Nothing here!
+						</th>
+					</tr>
+				)
+			}
+			
+			globModals.push(
+				<div key={index} className="modal fade" id={"globPrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="globPromptsDisplayer" aria-hidden="true">
+					<div className="modal-dialog modal-dialog-centered" role="document">
+						<div className="modal-content">
+							<div className="modal-header">
+
+								<h5 className="modal-title">Altering Prompts</h5>
+								<button type="btn btn-danger" className="close" data-dismiss="modal" aria-label="Close">
+								  <span aria-hidden="true">&times;</span>
+								</button>
+
+							</div>
+							<div className="modal-body">
+									
+								<table className="table" key="1">
+									<thead>
+										<tr>
+											<th scope="col">Text</th>
+											<th scope="col">IID?</th>
+											<th scope="col">Type</th>
+										</tr>
+									</thead>
+									
+									<tbody>
+										{displayCurrentPrompts}
+									</tbody>
+								</table>
+							</div>
+							<div className="modal-footer">
+
+								{/*
+								<button type="button" className="btn btn-danger" data-dismiss="modal">Yes</button>
+								<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
+								*/}
+
+							</div>
+						</div>
+					</div>
+				</div>
+			)
+		}
 		
 		if (showGlobalEvents.length === 0) {
 			showGlobalEvents.push(
@@ -373,14 +785,155 @@ class PromptDisplay extends React.Component {
 				</div>
 			)
 		}
-		
-		// Lets try doing MODALS like this....
-		let modals = []
-		let showEvents = []
+
+		let compModals = []
+		let showCompEvents = []
 		for (let index in this.state.eventsCompBin) {
 			let thisEvent = this.state.eventsCompBin[index]
+			
+			showCompEvents.push(
+				<div className="col" key={index}>
+					<div className="card">
+						<div className="card-header">
 
-			showEvents.push(
+						</div>
+						<div className="card-body">
+							<div className="row">
+								<div className="col">
+									Trigger Type: { triggerType[ thisEvent["triggerType"] ] }
+								</div>
+							</div>
+							<div className="row m-1">
+								<div className="col">
+									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
+									<button className="btn btn-secondary mx-2" data-toggle="modal" data-target={"#compPrompts"+index}>
+										Show
+									</button>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckComp'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledCompanyFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckComp'+index} >Enabled For This Division</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckComp2'+index} name={index} value={thisEvent["enabled"]} checked={thisEvent["enabled"]} disabled />
+										<label className='custom-control-label' htmlFor={'customCheckComp2'+index} >Is Enabled</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-primary" value={index} onClick={this.saveCompEvent}>
+										Save Changes
+									</button>
+								</div>
+							</div>
+							
+						</div>
+					</div>
+				</div>
+			)
+			
+			let displayCurrentPrompts = []
+			for (let indexSub in thisEvent["promptPool"]) {
+				
+				let subset = thisEvent["promptPool"][indexSub]["text"].substring(0, 12) + "...";
+				
+				//console.log(thisEvent["promptPool"][indexSub])
+				displayCurrentPrompts.push(
+				
+					<tr key={indexSub}>
+						<th scope="row">
+							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#displayCompPromptCollapse"+index+indexSub}>
+								{subset}
+							</button>
+						</th>
+						<td>{thisEvent["promptPool"][indexSub]["identifier"]}</td>
+						<td>{promptType[thisEvent["promptPool"][indexSub]["promptType"]]}</td>
+					</tr>,
+					<tr key={1 + indexSub + thisEvent["promptPool"].length}>
+						<th scope="row" colSpan="4" className="collapse" id={"displayCompPromptCollapse"+index+indexSub}>
+							{thisEvent["promptPool"][indexSub]["text"]}
+						</th>
+					</tr>
+					
+				)
+			}
+			
+			if (displayCurrentPrompts.length === 0) {
+				displayCurrentPrompts.push(
+					<tr key={0}>
+						<th scope="row" colSpan="4">
+							Nothing here!
+						</th>
+					</tr>
+				)
+			}
+			
+			compModals.push(
+				<div key={index} className="modal fade" id={"compPrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="compPromptsDisplayer" aria-hidden="true">
+					<div className="modal-dialog modal-dialog-centered" role="document">
+						<div className="modal-content">
+							<div className="modal-header">
+
+								<h5 className="modal-title">Altering Prompts</h5>
+								<button type="btn btn-danger" className="close" data-dismiss="modal" aria-label="Close">
+								  <span aria-hidden="true">&times;</span>
+								</button>
+
+							</div>
+							<div className="modal-body">
+									
+								<table className="table" key="1">
+									<thead>
+										<tr>
+											<th scope="col">Text</th>
+											<th scope="col">IID?</th>
+											<th scope="col">Type</th>
+										</tr>
+									</thead>
+									
+									<tbody>
+										{displayCurrentPrompts}
+									</tbody>
+								</table>
+							</div>
+							<div className="modal-footer">
+
+								{/*
+								<button type="button" className="btn btn-danger" data-dismiss="modal">Yes</button>
+								<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
+								*/}
+
+							</div>
+						</div>
+					</div>
+				</div>
+			)
+		}
+		if (showCompEvents.length === 0) {
+			showCompEvents.push(
+				<div className="col" key={0}>
+					Nothing Here!
+				</div>
+			)
+		}
+		
+		//console.log(this.state.eventsDivBin)
+		
+		// Lets try doing MODALS like this....
+		let divModals = []
+		let showDivisionEvents = []
+		for (let index in this.state.eventsDivBin) {
+			let thisEvent = this.state.eventsDivBin[index]
+
+			showDivisionEvents.push(
 				
 				<div className="col" key={index}>
 					<div className="card">
@@ -427,34 +980,27 @@ class PromptDisplay extends React.Component {
 							<div className="row">
 								<div className="col">
 									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheck1'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledDivFieldChange} checked={thisEvent["usedBy"]} />
-										<label className='custom-control-label' htmlFor={'customCheck1'+index} >Enabled For This Division</label>
+										<input type='checkbox' className='custom-control-input' id={'customCheckDiv'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledDivisionFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckDiv'+index} >Enabled For This Division</label>
 									</div>
 								</div>
 							</div>
 							<div className="row">
 								<div className="col">
 									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheck2'+index} name={index} value={thisEvent["enabled"]} onChange={this.enabledGloFieldChange} checked={thisEvent["enabled"]} disabled />
-										<label className='custom-control-label' htmlFor={'customCheck2'+index} >Enabled For ALL Divisions</label>
+										<input type='checkbox' className='custom-control-input' id={'customCheckDiv2'+index} name={index} value={thisEvent["enabled"]} onChange={this.enabledDivisionFieldChangeSuper} checked={thisEvent["enabled"]} disabled />
+										<label className='custom-control-label' htmlFor={'customCheckDiv2'+index} >Enabled For ALL Divisions</label>
 									</div>
 								</div>
 							</div>
 							<div className="row">
 								<div className="col">
-									<button className="btn btn-primary" value={index} onClick={this.saveCompEvent}>
+									<button className="btn btn-primary" value={index} onClick={this.saveDivEvent}>
 										Save
 									</button>
 								</div>
 							</div>
 							
-							{this.state.eventSuccessIndex === Number(index) &&
-								<div className="row">
-									<div className="col text-success">
-										Saved!
-									</div>
-								</div>
-							}
 						</div>
 					</div>
 				</div>
@@ -470,12 +1016,12 @@ class PromptDisplay extends React.Component {
 				
 					<tr key={indexSub}>
 						<th scope="row">
-							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#displayPromptCollapse"+indexSub}>
+							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#displayPromptCollapse"+index+indexSub}>
 								{subset}
 							</button>
 						</th>
 						<td>{thisEvent["promptPool"][indexSub]["identifier"]}</td>
-						<td>{thisEvent["promptPool"][indexSub]["property1"]}</td>
+						<td>{promptType[thisEvent["promptPool"][indexSub]["promptType"]]}</td>
 						<th>
 							<button className="close" type="button" value={indexSub} name={index} onClick={this.deleteEventPrompt} aria-label="Close">
 								&times;
@@ -483,7 +1029,7 @@ class PromptDisplay extends React.Component {
 						</th>
 					</tr>,
 					<tr key={1 + indexSub + thisEvent["promptPool"].length}>
-						<th scope="row" colSpan="4" className="collapse" id={"displayPromptCollapse"+indexSub}>
+						<th scope="row" colSpan="4" className="collapse" id={"displayPromptCollapse"+index+indexSub}>
 							{thisEvent["promptPool"][indexSub]["text"]}
 						</th>
 					</tr>
@@ -500,7 +1046,7 @@ class PromptDisplay extends React.Component {
 				)
 			}
 			
-			modals.push(
+			divModals.push(
 				<div key={index} className="modal fade" id={"changePrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="promptChanger" aria-hidden="true">
 					<div className="modal-dialog modal-dialog-centered" role="document">
 						<div className="modal-content">
@@ -519,7 +1065,7 @@ class PromptDisplay extends React.Component {
 										<tr>
 											<th scope="col">Text</th>
 											<th scope="col">IID?</th>
-											<th scope="col">Prop 1?</th>
+											<th scope="col">Type</th>
 											<th scope="col">Delete</th>
 										</tr>
 									</thead>
@@ -548,8 +1094,8 @@ class PromptDisplay extends React.Component {
 			)
 		}
 		
-		if (showEvents.length === 0) {
-			showEvents.push(
+		if (showCompEvents.length === 0) {
+			showCompEvents.push(
 				<div className="col" key={0}>
 					Nothing Here!
 				</div>
@@ -622,7 +1168,43 @@ class PromptDisplay extends React.Component {
 			<div className="EHIDisplay">
 				<div className="container-fluid">
 				
-					{/*
+					<div className="row">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
+									<h5>This Division's Events</h5>
+								</div>
+								<div className="card-body">
+									<div className="row">
+										{showDivisionEvents}
+									</div>
+									<div className="row my-2">
+										<div className="col">
+											<button className="btn btn-primary" onClick={this.createEvent}>
+												Create Event
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				
+					<div className="row">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
+									<h5>This Company's Shared Events</h5>
+								</div>
+								<div className="card-body">
+									<div className="row">
+										{showCompEvents}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					
 					<div className="row">
 						<div className="col">
 							<div className="card shadow">
@@ -637,29 +1219,33 @@ class PromptDisplay extends React.Component {
 							</div>
 						</div>
 					</div>
-					*/}
-				
-					<div className="row">
-						<div className="col">
-							<div className="card shadow">
-								<div className="card-header">
-									<h5>This Company's Shared Events</h5>
-								</div>
-								<div className="card-body">
-									<div className="row">
-										{showEvents}
-									</div>
-									<div className="row my-2">
-										<div className="col">
-											<button className="btn btn-primary" onClick={this.createEvent}>
-												Create Event
-											</button>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+					
+					<Alert show={showWaiting} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Success!</Alert.Heading>
+						<hr />
+						<p>
+						  Successfully obtained data or saved!
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Error!</Alert.Heading>
+						<hr />
+						<p>
+						  {errorParse}
+						</p>
+						<hr />
+					</Alert>
 					
 					{/*
 					<div className="row">
@@ -678,7 +1264,9 @@ class PromptDisplay extends React.Component {
 					</div>
 					*/}
 					
-					{modals}
+					{globModals}
+					{compModals}
+					{divModals}
 					
 					<div className="modal fade" id="addPrompts" tabIndex="-1" role="dialog" aria-labelledby="promptAdder" aria-hidden="true">
 						<div className="modal-dialog modal-dialog-centered" role="document">

@@ -1,6 +1,7 @@
 import React from "react";
 
 import { APISignIn, APISignUp, APIResendValidator } from "../../utils";
+import { Alert } from 'react-bootstrap';
 
 import { withRouter} from "react-router-dom";
 
@@ -29,9 +30,16 @@ class signup extends React.Component {
 			passwordError:false,
 			passwordErrorDetail:'Passwords do not match!',
 			
-			uncaughtError:false,
+			unhandledError:false,
+			serverError:false,
 			
 			checkField: false,
+			
+			nowSendEmailState: 0,
+			nowSignInState: 0,
+			handleSignUpSubmitState:0,
+			
+			legalError:false
         };
 	}
 	
@@ -75,22 +83,40 @@ class signup extends React.Component {
 	}
 	
 	// CHAIN STEP 3! 
-	nowSendEmailCallback = () => {
-		// Change this to the validator view
-		this.props.history.push(this.props.reRouteTarget)
-	}
 	nowSendEmailFailure = () => {
 		// If we fail here, we are totally boned...
 		console.log("Oh no. We failed")
 		this.props.history.push(this.props.reRouteTarget)
+		this.setState({
+			nowSendEmailState:3,
+		})
+	}
+	nowSendEmailCallback = () => {
+		// Change this to the validator view
+		this.props.history.push(this.props.reRouteTarget)
+		this.setState({
+			nowSendEmailState:2,
+		})
 	}
 	nowSendEmail = (newToken) => {
 		// Now sending the validator email...
-		APIResendValidator(this.props.APIHost, newToken, this.nowSendEmailCallback, this.nowSendEmailFailure)
+		APIResendValidator(newToken, this.nowSendEmailCallback, this.nowSendEmailFailure)
+		this.setState({
+			nowSendEmailState:1,
+		})
 	}
 	
 	// Chain Step 2!
 	
+	nowSignInFailure = () => {
+		// O h n o
+		console.log("Sign in failed, I dont even know what to do here... Normal errors dont work here...")
+		this.props.history.push(this.props.reRouteTarget)
+		// This is probobly unecessary...
+		this.setState({
+			nowSignInState:3,
+		})
+	}
 	// I can probobly use this as a intemediary to straight get the incoming token instead of tossing it back up to App.js...
 	nowSignInCallback = (incomingToken) => {
 		const sanityCheck = this.props.loginSave( incomingToken, this.state.username, false )
@@ -102,58 +128,110 @@ class signup extends React.Component {
 			console.log("Token Failed..?")
 			this.props.history.push(this.props.reRouteTarget)
 		}
-	}
-	nowSignInFailure = () => {
-		// O h n o
-		console.log("Sign in failed, I dont even know what to do here...")
-		this.props.history.push(this.props.reRouteTarget)
+		this.setState({
+			nowSignInState:2,
+		})
 	}
 	nowSignIn = () => {
-		APISignIn(this.props.APIHost, this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
+		APISignIn(this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
+		this.setState({
+			nowSignInState:1,
+		})
 	}
 	
+	handleSignUpSubmitFailure = (responseData) => {
+		//console.log(errorCodes)
+		let networkErrorFlag = false
+		
+		let usernameErrorFlag = false
+		let usernameErrorDetails = ""
+		
+		let passwordErrorFlag = false
+		let passwordErrorDetails = ""
+		
+		let emailErrorFlag = false
+		let emailErrorDetails = ""
+		
+		let unhandledErrorFlag = false
+		let serverErrorFlag = false
+		
+		// Server is dead
+		if (responseData["action"] === 0) {
+			networkErrorFlag = true
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 1) {
+					usernameErrorFlag = true
+					usernameErrorDetails = responseData['messages'][index]['text']
+				}
+				else if (responseData['messages'][index]['mod'] === 2) {
+					passwordErrorFlag = true
+					passwordErrorDetails = responseData['messages'][index]['text']
+				} 
+				else if (responseData['messages'][index]['mod'] === 4) {
+					emailErrorFlag = true
+					//emailErrorDetails = responseData['messages'][index]['text']
+					emailErrorDetails = "Email is taken!"
+				}
+				else {
+					unhandledErrorFlag = true
+				}
+			}
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+			serverErrorFlag = true
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+			serverErrorFlag = true
+		}
+		
+		this.setState({
+			networkError:networkErrorFlag,
+			
+			usernameError:usernameErrorFlag,
+			usernameErrorDetail:usernameErrorDetails,
+			
+			passwordError:passwordErrorFlag,
+			passwordErrorDetail:passwordErrorDetails,
+			
+			emailError:emailErrorFlag,
+			emailErrorDetail:emailErrorDetails,
+			
+			unhandledError:unhandledErrorFlag,
+			serverError:serverErrorFlag,
+			
+			handleSignUpSubmitState:3,
+		})
+	}
 	handleSignUpSubmitCallback = (responseStatus) => {
 		if (responseStatus === 201) {
 			//this.props.history.push(this.props.reRouteTarget)
 			console.log("Successful Sign up, now signing in...")
 			this.nowSignIn()
-		}
-	}
-	handleSignUpSubmitFailure = (errorCodes, errorDatas) => {
-		//console.log(errorCodes)
-		let errorSet = [false, false, false, false]
-		let errorSetData = ["", "", "", ""]
-		let extra = false
-		
-		for (let index in errorCodes) {
-			if (errorCodes[index] > errorSet.length) {
-				extra = true
-			}
-			else {
-				errorSet[ errorCodes[index] ] = true
-				errorSetData[ errorCodes[index] ] = errorDatas[index]
-			}
-		}
-		
-		this.setState({
-			networkError:errorSet[0],
-			usernameError:errorSet[1],
-			passwordError:errorSet[2],
-			emailError:errorSet[3],
-			uncaughtError:extra,
 			
-			usernameErrorDetail:errorSetData[1],
-			passwordErrorDetail:errorSetData[2],
-			emailErrorDetail:errorSetData[3],
-		})
+			this.setState({
+				handleSignUpSubmitState:2,
+			})
+		}
 	}
 	handleSignUpSubmit = (event) => {
 		
 		if (!this.state.checkField) {
 			console.log("Field was not checked")
+			this.setState({
+				legalError: true
+			})
 		}
 		else {
-			APISignUp(this.props.APIHost, this.state.username, this.state.password, this.state.password2, this.state.email, this.state.firstName, this.state.lastName, this.handleSignUpSubmitCallback, this.handleSignUpSubmitFailure)
+			APISignUp(this.state.username, this.state.password, this.state.password2, this.state.email, this.state.firstName, this.state.lastName, this.handleSignUpSubmitCallback, this.handleSignUpSubmitFailure)
+			this.setState({
+				handleSignUpSubmitState:1,
+				legalError: false
+			})
 		}
 		
 		event.preventDefault();
@@ -174,6 +252,9 @@ class signup extends React.Component {
 		if (this.state.passwordError) {
 			passwordClass += ' bg-warning'
 		}
+		
+		let show0 = this.state.legalError
+		let show1 = this.state.handleSignUpSubmitState === 1
 		
 		return (
 			
@@ -253,13 +334,31 @@ class signup extends React.Component {
 								<button type='submit' className='btn btn-dark btn-block'>Submit</button>
 							</div>
 						</div>		
-						
-						<div className="row my-5">
-							<div className="col">	
-							
-							</div>
-						</div>
 					</form>
+					
+					<Alert show={show0} variant="danger">
+						<Alert.Heading>Warning</Alert.Heading>
+						<hr />
+						<p>
+						  You have to accept the non-existant legal documents
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={show1} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  This should display while waiting for the return
+						</p>
+						<hr />
+					</Alert>
+					
+					<div className="row my-5">
+						<div className="col">	
+						
+						</div>
+					</div>
 				</div>
 			</div>
 		);

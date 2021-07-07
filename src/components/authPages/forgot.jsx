@@ -1,5 +1,6 @@
 import React from "react";
 
+import { Alert } from 'react-bootstrap';
 import { withRouter } from 'react-router-dom';
 import { APIForgotEmailSend, APIForgotEmailValidate, APIForgotEmailChangePassword } from "../../utils";
 
@@ -37,7 +38,10 @@ class forgotPassword extends React.Component {
 			passwordErrorDetail: '',
 			
 			uncaughtError: false,
-						
+			
+			sendEmailState: 0,
+			validateCodeState: 0,
+			submitPasswordState: 0,
         };
 		
 	}
@@ -47,8 +51,9 @@ class forgotPassword extends React.Component {
 			email: '',
 			resetToken: '',
 			password1: '',
-			password2: ''},
-		)
+			password2: '',
+		
+		})
 	}
 
 	goSignIn = () => {
@@ -70,103 +75,177 @@ class forgotPassword extends React.Component {
 			currentState: 1,
 			networkError: false,
 			uncaughtError: false,
+			
+			sendEmailState:2,
 		})
 	}
-	sendEmailFailure = (errorCodes, errorDatas) => {
-		console.log("Email Send Failure")
-		let errorSet = [false, false]
-		let errorSetData = ["", ""]
-		let extra = false
+	sendEmailFailure = (responseData) => {
 		
-		for (let index in errorCodes) {
-			if (errorCodes[index] > errorSet.length) {
-				extra = true
-			}
-			else {
-				errorSet[ errorCodes[index] ] = true
-				errorSetData[ errorCodes[index] ] = errorDatas[index]
+		let networkErrorFlag = false
+		let emailErrorFlag = false
+		let unknownErrorFlag = false
+		
+		let emailErrorDetails = ""
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 4) {
+					emailErrorFlag = true
+					emailErrorDetails = responseData['messages'][index]['text']
+				}
 			}
 		}
-		
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+
 		this.setState({
-			networkError:errorSet[0],
-			emailError:errorSet[1],
-			uncaughtError:extra,
+			networkError:networkErrorFlag,
+			emailError:emailErrorFlag,
+			uncaughtError:unknownErrorFlag,
 			
-			emailErrorDetail:errorSetData[1],
+			emailErrorDetail:emailErrorDetails,
+			
+			sendEmailState:3,
 		})
 	}
 	sendEmail = () => {
 		console.log("Sending the Email Here...")
-		APIForgotEmailSend(this.props.APIHost, this.state.email, this.sendEmailSuccess, this.sendEmailFailure)
+		APIForgotEmailSend(this.state.email, this.sendEmailSuccess, this.sendEmailFailure)
+		
+		this.setState({
+			sendEmailState:1,
+		})
 	}
 
+	checkTokenFailure = (responseData) => {
+		
+		let networkErrorFlag = false
+		let tokenErrorFlag = false
+		let unknownErrorFlag = false
+		
+		let tokenErrorDetails = ""
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 4) {
+					tokenErrorFlag = true
+					tokenErrorDetails = responseData['messages'][index]['text']
+				}
+			}
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		this.setState({
+			networkError:networkErrorFlag,
+			tokenError:tokenErrorFlag,
+			uncaughtError:unknownErrorFlag,
+			
+			tokenErrorDetail:tokenErrorDetails[1],
+			
+			validateCodeState:3,
+		})
+	}
 	checkTokenSuccess = (successCode) => {
 		console.log("Token Matched!")
 		this.setState({
 			currentState: 2,
 			networkError: false,
 			uncaughtError: false,
-		})
-	}
-	checkTokenFailure = (errorCodes, errorDatas) => {
-		console.log("Token Failed!")
-		let errorSet = [false, false]
-		let errorSetData = ["", ""]
-		let extra = false
-		
-		for (let index in errorCodes) {
-			if (errorCodes[index] > errorSet.length) {
-				extra = true
-			}
-			else {
-				errorSet[ errorCodes[index] ] = true
-				errorSetData[ errorCodes[index] ] = errorDatas[index]
-			}
-		}
-		
-		this.setState({
-			networkError:errorSet[0],
-			tokenError:errorSet[1],
-			uncaughtError:extra,
 			
-			tokenErrorDetail:errorSetData[1],
+			validateCodeState:2,
 		})
 	}
 	checkToken = () => {
 		console.log("Send Token Here...")
-		APIForgotEmailValidate(this.props.APIHost, this.state.resetToken, this.checkTokenSuccess, this.checkTokenFailure)
+		APIForgotEmailValidate( this.state.resetToken, this.checkTokenSuccess, this.checkTokenFailure)
+
+		this.setState({
+			validateCodeState:1,
+		})
 	}
 	
+	submitPasswordFailure = (responseData) => {
+		let networkErrorFlag = false
+		let passwordErrorFlag = false
+		let unknownErrorFlag = false
+		
+		let passwordErrorDetail = ""
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 2) {
+					passwordErrorFlag = true
+					passwordErrorDetail = responseData['messages'][index]['text']
+				}
+				else {
+					unknownErrorFlag = true
+				}
+			}
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		this.setState({
+			networkError:networkErrorFlag,
+			passwordError:passwordErrorFlag,
+			uncaughtError:unknownErrorFlag,
+			
+			passwordErrorDetail:passwordErrorDetail,
+			
+			submitPasswordState:3,
+		})
+	}
 	submitPasswordSuccess = (successCode) => {
 		console.log("Password Reset Success!")
 		this.setState({
 			currentState: 3,
 			networkError: false,
 			uncaughtError: false,
-		})
-	}
-	submitPasswordFailure = (errorCodes, errorDatas) => {
-		let errorSet = [false, false]
-		let errorSetData = ["", ""]
-		let extra = false
-		
-		for (let index in errorCodes) {
-			if (errorCodes[index] > errorSet.length) {
-				extra = true
-			}
-			else {
-				errorSet[ errorCodes[index] ] = true
-				errorSetData[ errorCodes[index] ] = errorDatas[index]
-			}
-		}
-		
-		this.setState({
-			networkError:errorSet[0],
-			passwordError:errorSet[1],
-			uncaughtError:extra,
 			
-			passwordErrorDetail:errorSetData[1],
+			submitPasswordState:2,
 		})
 	}
 	submitPasswords = () => {
@@ -174,7 +253,11 @@ class forgotPassword extends React.Component {
 		console.log("Checking Passwords...")
 		if (this.arePasswordsSame()) {
 			console.log("Passwords Checked out!")
-			APIForgotEmailChangePassword(this.props.APIHost, this.state.resetToken, this.state.password1, this.state.password2, this.submitPasswordSuccess, this.submitPasswordFailure)
+			APIForgotEmailChangePassword(this.state.resetToken, this.state.password1, this.state.password2, this.submitPasswordSuccess, this.submitPasswordFailure)
+			
+			this.setState({
+				submitPasswordState:1,
+			})
 		}
 		else {
 			console.log("Passwords Failed!")
@@ -380,6 +463,11 @@ class forgotPassword extends React.Component {
 				</div>
 			)
 		}
+		
+		//let showIdle = this.state.sendEmailState === 0
+		let showWaiting = this.state.sendEmailState === 1 || this.state.validateCodeState === 1 || this.state.submitPasswordState === 1
+		let showSuccess = this.state.sendEmailState === 2 || this.state.validateCodeState === 2 || this.state.submitPasswordState === 2
+		let showError = this.state.sendEmailState === 3 || this.state.validateCodeState === 3 || this.state.submitPasswordState === 3
 
 		return (
 			<div className='container-sm'>
@@ -394,6 +482,33 @@ class forgotPassword extends React.Component {
 				{currentMessage}
 				{currentField}
 				{currentButton}
+				
+				<Alert show={showWaiting} variant="warning">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
+					<p>
+					  Waiting for server response for submission...
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showSuccess} variant="success">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
+					<p>
+					  This should display if we got a success
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showError} variant="danger">
+					<Alert.Heading>Error!</Alert.Heading>
+					<hr />
+					<p>
+					  This should display if we got an error
+					</p>
+					<hr />
+				</Alert>
 
 			</div>
 		);

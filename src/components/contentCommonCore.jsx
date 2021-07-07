@@ -1,15 +1,16 @@
 import React from "react";
 
-import Store from "store"
-
 import { withRouter, Route, Switch } from "react-router-dom";
 //import { ButtonGroup, ToggleButton } from 'react-bootstrap'
+import { Alert } from 'react-bootstrap';
 
 //SetCompany
 import { UserPages, CompanyPages, Dashboard } from "."
+
+import { timedLoadStorage } from "../utils";
 //import { CompanyPages } from "./companyPages"
 //import { UserPages } from "./userPages"
-import { APIGetJournalDates, APIGetSuggestionDates, APIGetSuggestionData, APIGetUsersPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APICheckActive } from "../utils";
+import { APIGetJournalPrompts, APIGetJournalDates, APIGetNonJournalDates, APIGetSuggestionDates, APIGetSuggestionData, APIGetUsersPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APICheckActive } from "../utils";
 //convertFromRaw
 
 // This needs to be changed out as this is now in 2 files....
@@ -53,16 +54,6 @@ class ContentPages extends React.Component {
 			// Version 2 of the Company Data Selection
 			currentDivisionID:-1,
 			currentDivisionName:"None",
-			currentCompanyIndexes:[],
-			companyViewableDataTree:{},
-			companyViewableDataRawList:[],
-			companyViewableDataRawIDs:[],
-			
-			companySendDataTree: {},
-			companySendDataRawList: [],
-			companySendDataRawIDList: [],
-			// Use a state hook for this? Hmmmm,
-			lastCompanyRequestStatus:0,
 			
 			// Last data obtained for company summary
 			currentCompanyDataName:undefined,
@@ -75,12 +66,42 @@ class ContentPages extends React.Component {
 			selectedSuggestDayData: [],
 			validDivisionSuggestionDates:[],
 			
-			companyGovernedDataTree: {},
-			companyGovernedDataRawList: [],
-			companyGovernedDataRawIDList: [],
 			lastGovernedCompanyRequestStatus:undefined,
 			
-			authToken: this.props.authToken
+			userLoadedCompanyList: [],
+			
+			authToken: this.props.authToken,
+			
+			checkActiveUserStatus: 0,
+			checkActiveUserError: [],
+			
+			getJournalDatesStatus: 0,
+			getJournalDatesError: [],
+			
+			getUserCompanyPermsAppStatus: 0,
+			getUserCompanyPermsAppError: [],
+			
+			getCompanyValidDatesStatus: 0,
+			getCompanyValidDatesError: [],
+			getCompanyValidSuggestionDatesStatus: 0,
+			getCompanyValidSuggestionDatesError: [],
+			getCompanyEHIDataStatus: 0,
+			getCompanyEHIDataError: [],
+			
+			getCompanySuggestionDataStatus: 0,
+			getCompanySuggestionDataError: [],
+			getCompanyWeeklySummaryStatus: 0,
+			getCompanyWeeklySummaryError: [],
+			
+			getCompanyDataStatus: true,
+			
+			journalValidPrompts: [],
+			journalPromptsErrors: [],
+			getJournalPromptsStatus: 0,
+			
+			validNonJournalDates: [],
+			getNonJournalDatesError: [],
+			getNonJournalDatesStatus: 0,
         };
 	}
 	
@@ -88,23 +109,41 @@ class ContentPages extends React.Component {
 	componentDidMount = () => {
 		// On refresh, these will load before App.js has a chance to load in the token...
 		
+		if ( this.state.currentDivisionID === -1) {
+			this.props.changeCompanyMenuItems(0)
+		}
+		
 		if ( this.state.authToken === undefined ) {
-			let loginData = Store.get('lastUser') 
+			let loginData = timedLoadStorage('lastUser') 
 			
-			try {
-				let spareToken = loginData.session
-				// Doing this will force a refresh... Hm
-				if ( spareToken !== undefined ) {
-					this.setState({
-						authToken: spareToken,
-					})
+			if (loginData === 0) {
+				console.log("No User In the Storage!")
+				this.forceLogout()
+			}
+			else if (loginData === 1) {
+				console.log("Session was expired!")
+				this.forceLogout()
+			}
+			else if (loginData === 2) {
+				console.log("Invalid Save!")
+				this.forceLogout()
+			}
+			else {
+				try {
+					let spareToken = loginData.session
+					// Doing this will force a refresh... Hm
+					if ( spareToken !== undefined ) {
+						this.setState({
+							authToken: spareToken,
+						})
+					}
+					else {
+						this.forceLogout()
+					}
 				}
-				else {
+				catch {
 					this.forceLogout()
 				}
-			}
-			catch {
-				this.forceLogout()
 			}
 		}
 		else {
@@ -130,28 +169,127 @@ class ContentPages extends React.Component {
 	
 	loadData = () => {
 		
+		// Do have this as a check on the server side in everything... A special error
 		this.checkActiveUser()
 		
 		this.getValidJournalDates()
+		this.getValidNonJournalDates()
+		this.getJournalPrompts()
 		
-		// I need to merge this into a SINGLE CALL
-		this.getUserCompanyAdminViewTree()
-		this.getUserCompanySendsTree()
-		this.getUserGovernedPermTree()
+		this.getUserCompanyPermsApp()
 	}
 	
 	forceLogout = () => {
 		// Gonna do this like this, in case we got something else we wana do on logout...
+		
 		this.props.logout()
 		this.props.history.push(this.props.reRouteTarget);
 	}
 	
 	// I should consider rolling this into the other callbacks...
 	// All API calls WILL fail if they are not active...
+	journalPromptsFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			journalPromptsErrors:returnData,
+			getJournalPromptsStatus:3,
+		})
+	}
+	journalPromptsCallback = (incomingPrompts) => {
+		// I could define the new Editors here?
+		// Or do I just store this shiz into storage?
+		// Hm, how much... SHOULD go into storage?
+		//console.log(incomingPrompts)
+		this.setState({
+			journalValidPrompts: incomingPrompts,
+			getJournalPromptsStatus:2,
+		})
+	}
+	getJournalPrompts = () => {
+		if (!(this.props.currentUser === undefined)) {	
+			let checkData = undefined
+			if (checkData === undefined) {
+				//console.log("Prompts are not in storage!")
+				APIGetJournalPrompts(this.props.authToken, this.journalPromptsCallback, this.journalPromptsFailure)			
+				this.setState({
+					getJournalPromptsStatus:1,
+				})
+			}
+			else {
+				console.log("Prompts ARE in storage!")
+				//this.journalPromptsCallback(checkData.???, checkData.???)
+			}
+		}
+	}
 	
 	// There IS a *Isactive* in Django, but that will be used to close accounds due to how its coded
 	// But we should check here, and redirect to the Verification page if we fail...
+	checkActiveUserFailure = (responseData) => {
+		
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			checkActiveUserStatus: 3,
+			checkActiveUserError: returnData,
+		})
+	}
 	checkActiveUserCallback = (ActiveState) => {
+		
+		this.setState({
+			checkActiveUserStatus: 2,
+		})
+		
 		if (ActiveState === true) {
 			//console.log("User is considered Active")
 		}
@@ -162,22 +300,59 @@ class ContentPages extends React.Component {
 	}
 	checkActiveUser = () => {
 		//console.log(this.state.authToken)
-		APICheckActive(this.props.APIHost, this.state.authToken, this.checkActiveUserCallback, this.forceLogout)
+		APICheckActive(this.state.authToken, this.checkActiveUserCallback, this.checkActiveUserFailure)
+		this.setState({
+			checkActiveUserStatus: 1,
+		})
 	}
 	
+	journalDatesFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getJournalDatesStatus: 3,
+			getJournalDatesError: returnData,
+		})
+	}
 	// Journal Date Stuff----------------------------------------------------------------------
 	journalDatesCallback = (incomingJournalDates, incomingJournalAIDates) => {
+		
+		//console.log(incomingJournalDates)
+		//console.log(incomingJournalAIDates)
 		
 		//Store.set(this.props.currentUser+"-ValidDates", {"journalDates":incomingJournalDates ,"AIDates":incomingJournalAIDates})
 		this.setState({
 			validJournalDates: incomingJournalDates,
 			validJournalScanDates: incomingJournalAIDates,
+			getJournalDatesStatus: 2,
 		})
 	}
 	getValidJournalDates = () => {
-		// Check the values...
-		//this.state.validJournalDates
-		//this.state.validJournalScanDates
 		
 		//console.log("Running a journal dates check")
 		
@@ -187,7 +362,10 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+"-ValidDates")
 			if (checkData === undefined) {
 				//console.log("Valid journal Dates were not in the cookies!")
-				APIGetJournalDates(this.props.APIHost, this.state.authToken, this.journalDatesCallback, this.forceLogout)
+				APIGetJournalDates(this.state.authToken, this.journalDatesCallback, this.journalDatesFailure)
+				this.setState({
+					getJournalDatesStatus: 1,
+				})
 			}
 			else {
 				//console.log("Valid Journal dates WERE in the cockies!")
@@ -200,76 +378,152 @@ class ContentPages extends React.Component {
 		}
 	}
 	
-	// getting the data for which companies you are allowed to post to...
-	governedPermTreeCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
-		
-		//Store.set(this.props.currentUser+'-companyPermGovernedTree', incomingCompanyTree)
-		//Store.set(this.props.currentUser+'-companyPermGovernedNames', incomingCompanyNames)
-		//Store.set(this.props.currentUser+'-companyPermGovernedNames', incomingCompanyIDs)
-		this.setState({
-			companyGovernedDataTree: incomingCompanyTree,
-			companyGovernedDataRawList: incomingCompanyNames,
-			companyGovernedDataRawIDList: incomingCompanyIDs,
-		})
-		//console.log(incomingStuff)
-	}
-	governedPermTreeFailure = (errorCodes, errorDatas) => {
-		
-		for (let index in errorCodes) {
-				
-			if (errorCodes[index] === 401) {
-				this.forceLogout()
-			}
+	nonJournalDatesFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
 		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getNonJournalDatesStatus: 3,
+			getNonJournalDatesError: returnData,
+		})
 	}
-	getUserGovernedPermTree = () => {
-		if (!(this.props.currentUser === undefined)) {	
-			// We still have to check for date related reworks...
-			// It may be benificial to merge this into the other perm tree...
-			// But for now I will keep them seperate....
-			let checkData = undefined//Store.get(this.props.currentUser+"-companyGovernedPermTree")
-			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermGovernedNames")
-			let checkData3 = undefined//Store.get(this.props.currentUser+"-incomingCompanyIDs")
-			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
-				//console.log("Governed list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["gov"], this.governedPermTreeCallback, this.governedPermTreeFailure)
+	// Journal Date Stuff----------------------------------------------------------------------
+	nonJournalDatesCallback = (incomingNonJournalDates) => {
+		
+		//console.log(incomingNonJournalDates)
+		
+		//Store.set(this.props.currentUser+"-ValidDates", {"journalDates":incomingJournalDates ,"AIDates":incomingJournalAIDates})
+		this.setState({
+			validNonJournalDates: incomingNonJournalDates,
+			getNonJournalDatesStatus: 2,
+		})
+	}
+	getValidNonJournalDates = () => {
+		
+		// Check if the user is a valid one... As this is loaded in App.js
+		if (!(this.props.currentUser === undefined)) {		
+			// We have to overwrite it if the data is old though...
+			let checkData = undefined//Store.get(this.props.currentUser+"-ValidDates")
+			if (checkData === undefined) {
+				//console.log("Valid journal Dates were not in the cookies!")
+				APIGetNonJournalDates(this.state.authToken, this.nonJournalDatesCallback, this.nonJournalDatesFailure)
+				this.setState({
+					getNonJournalDatesStatus: 1,
+				})
 			}
 			else {
-				//console.log("Company Tree WAS in the cookies!")
-				this.governedPermTreeCallback(checkData, checkData2, checkData3)
+				//console.log("Valid Journal dates WERE in the cockies!")
+				this.nonJournalDatesCallback(checkData)
 			}
+		}
+		else {
+			//console.log("Invalid User")
+			//this.forceLogout()
 		}
 	}
 	
 	// Company Axios/State stuff---------------------------------------------------------------------
-	companyListCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
+	companyListFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
 
-		//Store.set(this.props.currentUser+'-companyPermViewTree', incomingCompanyTree)
-		//Store.set(this.props.currentUser+'-companyPermViewNames', incomingCompanyNames)
-		//Store.set(this.props.currentUser+'-companyPermViewIDs', incomingCompanyIDs)
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
 		this.setState({
-			companyViewableDataTree: incomingCompanyTree,
-			companyViewableDataRawList: incomingCompanyNames,
-			companyViewableDataRawIDs: incomingCompanyIDs,
+			getUserCompanyPermsAppStatus: 3,
+			getUserCompanyPermsAppError: returnData,
 		})
 	}
-	companyListFailure = (errorCodes, errorDatas) => {
+	companyListCallback = (incomingCompanyList) => {
+		//console.log(incomingCompanyList)
+		//Store.set(this.props.currentUser+'-loadedList', incomingCompanyList)
+		this.setState({
+			userLoadedCompanyList: incomingCompanyList,
+			getUserCompanyPermsAppStatus: 2,
+		})
 		
-		for (let index in errorCodes) {
+		// Check to see if the loaded stuff has any admin or viewers in it
+		// If the answer is ONLY ONE, auto load the company data...
+		// Note to self, I could maybe use this down in te Company pages core...
+		let selectableCount = 0
+		let selectableIndex = -1
+		for (let index in incomingCompanyList) {
+			let checkIndex1 = incomingCompanyList[index]["perm"].indexOf(0)
+			let checkIndex2 = incomingCompanyList[index]["perm"].indexOf(1)
+			if ( checkIndex1 > -1 || checkIndex2 > -1 ) {
+				selectableCount += 1
 				
-			if (errorCodes[index] === 401) {
-				this.forceLogout()
+				selectableIndex = checkIndex2
+				if (checkIndex1 > -1) {
+					selectableIndex = checkIndex1
+				}
 			}
 		}
+
+		// Auto trigger a load? This may be bad if the user is not needing the company mode
+		// It MAY BE BETTER to put this over into the company pages....
+		// Perms can be loaded here... Hm
+		if (selectableCount === 1 && selectableCount > -1) {
+			this.getCompanyDataRequest( incomingCompanyList[selectableIndex] )
+		}
 	}
-	getUserCompanyAdminViewTree = (  ) => {
+	getUserCompanyPermsApp = (  ) => {
 		if (!(this.props.currentUser === undefined)) {	
 			// We still have to check for date related reworks...
 			let checkData = undefined//Store.get(this.props.currentUser+"-companyPermViewTree")
 			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermViewNames")
 			if (checkData === undefined || checkData2 === undefined) {
 				//console.log("Company list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["admin", "view"], this.companyListCallback, this.companyListFailure)
+				APIGetUsersPermTree(this.state.authToken, ["admin", "view", 'send', 'gov'], this.companyListCallback, this.companyListFailure)
+				this.setState({
+					getUserCompanyPermsAppStatus: 1,
+				})
 			}
 			else {
 				//console.log("Company Tree WAS in the cookies!")
@@ -278,47 +532,44 @@ class ContentPages extends React.Component {
 		}
 	}
 	
-	companySendCallback = (incomingCompanyTree, incomingCompanyNames, incomingCompanyIDs) => {
+	companyDatesFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
 
-		//Store.set(this.props.currentUser+'-companyPermSendTree', incomingCompanyTree)
-		//Store.set(this.props.currentUser+'-companyPermSendNames', incomingCompanyNames)
-		//Store.set(this.props.currentUser+'-companyPermSendIDs', incomingCompanyIDs)
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
 		this.setState({
-			companySendDataTree: incomingCompanyTree,
-			companySendDataRawList: incomingCompanyNames,
-			companySendDataRawIDList: incomingCompanyIDs,
+			getCompanyValidDatesStatus: 3,
+			getCompanyValidDatesError: returnData,
 		})
 	}
-	companySendFailure = (errorCodes, errorDatas) => {
-		
-		for (let index in errorCodes) {
-				
-			if (errorCodes[index] === 401) {
-				this.forceLogout()
-			}
-		}
-	}
-	getUserCompanySendsTree = () => {
-		if (!(this.props.currentUser === undefined)) {	
-			// We still have to check for date related reworks...
-			let checkData = undefined//Store.get(this.props.currentUser+"-companyPermSendTree")
-			let checkData2 = undefined//Store.get(this.props.currentUser+"-companyPermSendNames")
-			let checkData3 = undefined//Store.get(this.props.currentUser+"-companyPermSendIDs")
-			if (checkData === undefined || checkData2 === undefined || checkData3 === undefined) {
-				//console.log("Company list was not in the cookies!")
-				APIGetUsersPermTree(this.props.APIHost, this.state.authToken, ["send"], this.companySendCallback, this.companySendFailure)
-			}
-			else {
-				//console.log("Company Tree WAS in the cookies!")
-				this.companyListCallback(checkData, checkData2)
-			}
-		}
-	}
-	
 	companyDatesCallback = (incomingDatesObject) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidDates", {'dates':incomingDatesList})
 		this.setState({
-			validCompanySummaryDates: incomingDatesObject
+			validCompanySummaryDates: incomingDatesObject,
+			getCompanyValidDatesStatus: 2,
 		})
 	}
 	getCompanyValidDates = () => {
@@ -326,7 +577,10 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidDates")
 			if (checkData === undefined) {
 				//console.log("Company dates were not in the cookies")
-				APIGetCompanyValidDates(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companyDatesCallback, this.forceLogout)
+				APIGetCompanyValidDates(this.state.authToken, this.state.currentDivisionID, this.companyDatesCallback, this.companyDatesFailure)
+				this.setState({
+					getCompanyValidDatesStatus: 1,
+				})
 			}
 			else {
 				//console.log("Company Dates WERE in the coockies!")
@@ -338,11 +592,45 @@ class ContentPages extends React.Component {
 		}
 	}
 	
+	companySuggestionDateFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getCompanyValidSuggestionDatesStatus: 3,
+			getCompanyValidSuggestionDatesError: returnData,
+		})
+	}
 	companySuggestionDateCallback = (incomingDatesList) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidSuggestionDates", {'dates':incomingDatesList})
 		
 		this.setState({
-			validDivisionSuggestionDates: incomingDatesList
+			validDivisionSuggestionDates: incomingDatesList,
+			getCompanyValidSuggestionDatesStatus: 2,
 		})
 	}
 	getCompanyValidSuggestionDates = () => {
@@ -350,7 +638,10 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidSuggestionDates")
 			if (checkData === undefined) {
 				//console.log("Division suggestion dates were not in the cookies...")
-				APIGetSuggestionDates(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companySuggestionDateCallback, this.forceLogout)
+				APIGetSuggestionDates(this.state.authToken, this.state.currentDivisionID, this.companySuggestionDateCallback, this.companySuggestionDateFailure)
+				this.setState({
+					getCompanyValidSuggestionDatesStatus: 1,
+				})
 			}
 			else {
 				//console.log("Division suggestion dates WERE in the coockies!")
@@ -362,6 +653,39 @@ class ContentPages extends React.Component {
 		}
 	}
 	
+	companySuggestionDataFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getCompanySuggestionDataStatus: 3,
+			getCompanySuggestionDataError: returnData,
+		})
+	}
 	companySuggestionDataCallback = (targetDate, incomingData) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+targetDate+"-suggestions", {'data':incomingData})
 		//console.log(incomingData)
@@ -369,6 +693,7 @@ class ContentPages extends React.Component {
 		this.setState({
 			selectedSuggestDay: givenDate,
 			selectedSuggestDayData: incomingData,
+			getCompanySuggestionDataStatus: 2,
 		})
 	}
 	getCompanySuggestionData = (selectedDate) => {
@@ -382,7 +707,10 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+selectedDate+"-suggestions")
 			if (checkData === undefined) {
 				//console.log("Division suggestion data was not in the cookies")
-				APIGetSuggestionData(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, selectedDate, this.companySuggestionDataCallback, this.forceLogout)
+				APIGetSuggestionData(this.state.authToken, this.state.currentDivisionID, selectedDate, this.companySuggestionDataCallback, this.companySuggestionDataFailure)
+				this.setState({
+					getCompanySuggestionDataStatus: 1,
+				})
 			}
 			else {
 				//console.log("Division suggestion dates WERE in the coockies!")
@@ -397,7 +725,41 @@ class ContentPages extends React.Component {
 		}
 	}
 	
+	companyDataFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getCompanyWeeklySummaryStatus: 3,
+			getCompanyWeeklySummaryError: returnData,
+		})
+	}
 	companyDataCallback = (incomingDataDict, summaryType) => {
+		
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data", {'data':incomingDataDict})
 		this.setState({
 
@@ -407,22 +769,10 @@ class ContentPages extends React.Component {
 			currentCompanyDataName: this.state.currentDivisionName,
 			currentCompanyDataID: this.state.currentDivisionID,
 
+			getCompanyWeeklySummaryStatus: 2,
 		})
 	}
 	getCompanyWeeklySummary = (selectedDate) => {
-		//console.log(selectedDate)
-		// First, we need to check if we clicked in the same week as our currently loaded data...
-		let todayWeekday = (selectedDate.getDay()-1)
-		if (todayWeekday < 0) {
-			todayWeekday = 6
-		}
-		
-		//let copiedDate = new Date(selectedDate.getTime());
-
-		//copiedDate.setDate(copiedDate.getDate()-(todayWeekday))
-		//const anchorDate = copiedDate.toJSON().split("T")[0]
-		
-		//console.log( selectedDate.toJSON() )
 		
 		let summaryType = 0
 		
@@ -434,7 +784,10 @@ class ContentPages extends React.Component {
 			let checkData = undefined//Store.get(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data")
 			if (checkData === undefined) {
 				//console.log("Company Summary Data was not in the coockies")
-				APIGetCompanySummary(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, summaryType, selectedDate, this.companyDataCallback, this.forceLogout)
+				APIGetCompanySummary(this.state.authToken, this.state.currentDivisionID, summaryType, selectedDate, this.companyDataCallback, this.companyDataFailure)
+				this.setState({
+					getCompanyWeeklySummaryStatus: 1,
+				})
 			}
 			else {
 				this.companyDataCallback(checkData["data"], summaryType)
@@ -445,10 +798,44 @@ class ContentPages extends React.Component {
 		}
 	}
 	
+	companyEHIFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			getCompanyEHIDataStatus: 3,
+			getCompanyEHIDataError: returnData,
+		})
+	}
 	companyEHICallback = (incomingEHIData) => {
 		//Store.set(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI', {'labelsDays':incomingEHIDaysLabels, 'dataDays':incomingEHIDaysData, 'labelsWeeks':incomingEHIWeeksLabels, 'dataWeeks':incomingEHIWeeksData})
 		this.setState({
-			EHIData: incomingEHIData
+			EHIData: incomingEHIData,
+			getCompanyEHIDataStatus: 2,
 		})
 	}
 	// EHI Stuff
@@ -458,7 +845,10 @@ class ContentPages extends React.Component {
 			// How am I going to check for redos?
 			if (checkData === undefined) {
 				//console.log("Company EHI Data was not in the coockies")
-				APIGetServerEHIData(this.props.APIHost, this.state.authToken, this.state.currentDivisionID, this.companyEHICallback, this.forceLogout)
+				APIGetServerEHIData(this.state.authToken, this.state.currentDivisionID, this.companyEHICallback, this.companyEHIFailure)
+				this.setState({
+					getCompanyEHIDataStatus: 1,
+				})
 			}
 			else {
 				this.companyEHICallback(checkData["labelsDays"], checkData["dataDays"], checkData["labelsWeeks"], checkData["dataWeeks"])
@@ -467,26 +857,6 @@ class ContentPages extends React.Component {
 		else {
 			//console.log("Invalid company!")
 		}
-	}
-	
-	// For V2 of the Company Choosing...
-	selectCompanyLayer = (event) => {
-		let values = this.state.currentCompanyIndexes
-		values.push(event.target.value)
-		
-		this.setState({
-			currentCompanyIndexes:values,
-			lastCompanyRequestStatus:0,
-		})
-	}
-	backCompanyLayer = (event) => {
-		let values = this.state.currentCompanyIndexes
-		values.splice(event.target.value)
-		
-		this.setState({
-			currentCompanyIndexes:values,
-			lastCompanyRequestStatus:0,
-		})
 	}
 	
 	getThatData = () => {
@@ -498,24 +868,34 @@ class ContentPages extends React.Component {
 		this.getCompanyValidDates()
 		this.getCompanyValidSuggestionDates()
 	}
-	getCompanyDataRequest = (event) => {
-		// Going to have to define permission styles...
-		let splitUp = event.target.value.split(",")
-		let permCheck = ( Number(splitUp[0]) > 0)
-		if (permCheck) {
-			// Hm, combine this with the one down there perhaps....
+	getCompanyDataRequest = (divisionObj) => {
+		
+		//console.log(divisionObj.perm)
+		// SANITY CHECK! If I somehow break this and send one that isnt an admin/viewer
+		let adminCheck = divisionObj.perm.indexOf(0) > -1 
+		let viewerCheck = divisionObj.perm.indexOf(1) > -1
+		
+		if (adminCheck) {
+			this.props.changeCompanyMenuItems(2)
+		}
+		else if (viewerCheck) {
+			this.props.changeCompanyMenuItems(1)
+		}
+		
+		if (adminCheck || viewerCheck) {
+
 			this.setState({
-				currentDivisionName: splitUp[1],
-				currentDivisionID: splitUp[2],
-				lastCompanyRequestStatus:1,
+				currentDivisionName: divisionObj.name,
+				currentDivisionID: divisionObj.id,
+				currentDivisionPerms: divisionObj.perm,
 			}, this.getThatData )
 			
-			this.props.changeMenuCompanyName(splitUp[1])
+			this.props.changeMenuCompanyName(divisionObj.name)
 		}
 		else {
 			//console.log("Not allowed!")
 			this.setState({
-				lastCompanyRequestStatus:2
+				getCompanyDataStatus:false
 			})
 		}
 	}
@@ -541,6 +921,9 @@ class ContentPages extends React.Component {
 	// So far it doesnt look all that different 
 	render() {
 		
+		let showWaiting = this.state.getJournalPromptsStatus === 1 || this.state.checkActiveUserStatus === 1 || this.state.getJournalDatesStatus === 1 || this.state.getUserCompanyPermsAppStatus === 1
+		//let showError = this.state.getJournalPromptsStatus === 3
+		
 		return (
 			<div className="contentPages">
 			
@@ -550,6 +933,8 @@ class ContentPages extends React.Component {
 						<Route path={this.props.match.url} exact component={() => <Dashboard
 								toUserPage={this.props.match.url+"/userMode/journalWrite"}
 								toCompanyPage={this.props.match.url+"/companyMode/companySelect"}
+
+								userLoadedCompanyList={this.state.userLoadedCompanyList}
 							/>} 
 						/>
 						<Route path={this.props.match.url+"/userMode"} component={() => <UserPages
@@ -560,50 +945,40 @@ class ContentPages extends React.Component {
 								
 								forceLogout={this.forceLogout}
 
-								APIHost={this.props.APIHost}
 								authToken={this.state.authToken}
 								
 								currentUser={this.props.currentUser}
 								
-								companyViewableDataRawList={this.state.companyViewableDataRawList}
-								companyViewableDataRawIDs={this.state.companyViewableDataRawIDs}
-								companySendDataRawIDList={this.state.companySendDataRawIDList}
-								
-								companyGovernedDataRawList={this.state.companyGovernedDataRawList}
-								companyGovernedDataRawIDList={this.state.companyGovernedDataRawIDList}
-								
 								loadCompanyData={this.loadData}
 								
+								validNonJournalDates={this.state.validNonJournalDates}
 								validJournalDates={this.state.validJournalDates}
 								validJournalScanDates={this.state.validJournalScanDates}
 										
-								currentCompanyGovernedIndexes={this.state.currentCompanyGovernedIndexes}
-								companyGovernedDataTree={this.state.companyGovernedDataTree}
 								lastGovernedCompanyRequestStatus={this.state.lastGovernedCompanyRequestStatus}
 								
 								disableMenu={this.props.disableMenu}
 								activateUserMenu={this.props.activateUserMenu}
+								
+								userLoadedCompanyList={this.state.userLoadedCompanyList}
+								
+								journalValidPrompts={this.state.journalValidPrompts}
+								journalPromptsErrors={this.state.journalPromptsErrors}
 							/>} 
 						/>
 						<Route path={this.props.match.url+"/companyMode"} component={() => <CompanyPages
 								
+								authToken={this.state.authToken}
 								forceLogout={this.forceLogout}
 								
 								reRouteCompany={this.props.reRouteCompany}
+								userLoadedCompanyList={this.state.userLoadedCompanyList}
+								resetCompanySelectStatus={this.resetCompanySelectStatus}
 								
 								currentDate={this.state.currentDate}
 						
 								currentDivisionName={this.state.currentDivisionName}
-								currentCompanyIndexes={this.state.currentCompanyIndexes}
-								companyViewableDataTree={this.state.companyViewableDataTree}
-								lastCompanyRequestStatus={this.state.lastCompanyRequestStatus}
-								
-								selectCompanyLayer={this.selectCompanyLayer}
-								backCompanyLayer={this.backCompanyLayer}
 								getCompanyDataRequest={this.getCompanyDataRequest}
-								
-								APIHost={this.props.APIHost}
-								authToken={this.state.authToken}
 								
 								currentDivisionID={this.state.currentDivisionID}
 										
@@ -616,7 +991,7 @@ class ContentPages extends React.Component {
 								getCompanySuggestionData={this.getCompanySuggestionData}
 								
 								EHIData={this.state.EHIData}
-										
+									
 								currentCompanyDataName={this.state.currentCompanyDataName}
 								currentCompanyDataType={this.state.currentCompanyDataType}
 								
@@ -632,8 +1007,7 @@ class ContentPages extends React.Component {
 								changeCompanyAspect={this.changeCompanyAspect}
 								changeCompanyDay={this.changeCompanyDay}
 								changeSelectedCompany={this.changeSelectedCompany}
-						
-								getUserCompanyAdminViewTree={this.getUserCompanyAdminViewTree}
+								
 								getCompanyValidDates={this.getCompanyValidDates}
 								getCompanyWeeklySummary={this.getCompanyWeeklySummary}
 								
@@ -641,9 +1015,41 @@ class ContentPages extends React.Component {
 								
 								disableMenu={this.props.disableMenu}
 								activateCompanyMenu={this.props.activateCompanyMenu}
+								
+								getCompanyDataStatus={this.state.getCompanyDataStatus}
+								getCompanyValidDatesStatus={this.state.getCompanyValidDatesStatus}
+								getCompanyValidDatesError={this.state.getCompanyValidDatesError}
+								
+								getCompanyValidSuggestionDatesStatus={this.state.getCompanyValidSuggestionDatesStatus}
+								getCompanyValidSuggestionDatesError={this.state.getCompanyValidSuggestionDatesError}
+								
+								getCompanyEHIDataStatus={this.state.getCompanyEHIDataStatus}
+								getCompanyEHIDataError={this.state.getCompanyEHIDataError}
+								
+								getCompanySuggestionDataStatus={this.state.getCompanySuggestionDataStatus}
+								getCompanySuggestionDataError={this.state.getCompanySuggestionDataError}
+								
+								getCompanyWeeklySummaryStatus={this.state.getCompanyWeeklySummaryStatus}
+								getCompanyWeeklySummaryError={this.state.getCompanyWeeklySummaryError}
 							/>} 
 						/>
 					</Switch>
+					
+					<div className="container">
+						<div className="row">
+							<div className="col">
+								{/*Perhaps I should move forward with moving this to its own component?*/}
+								<Alert show={showWaiting} variant="warning">
+									<Alert.Heading>Waiting</Alert.Heading>
+									<hr />
+									<p>
+									  Waiting for server...
+									</p>
+									<hr />
+								</Alert>
+							</div>
+						</div>
+					</div>
 					
 				</div>
 			</div>

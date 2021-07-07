@@ -5,7 +5,7 @@ export * from "./axiosAPI"
 export * from "./graphs"
 export * from "./sidebarCustom"
 
-export const testLoadStorage = (key) => {
+export const timedLoadStorage = (key) => {
 	
 	let loadData = Store.get(key)
 
@@ -13,33 +13,49 @@ export const testLoadStorage = (key) => {
 	if (loadData === undefined) {
 		return 0
 	}
+	if (loadData["data"] === undefined) {
+		Store.remove(key)
+		return 2
+	}
+	
 	// Return 1 if the it is to "old"
 	let dateSaved = loadData["expiryDate"]
 	let now = Date.now()
-
-	console.log(dateSaved)
-	console.log(now)
 	
 	if (now > dateSaved) {
-		console.log("Expired")
+		//console.log("Expired")
 		Store.remove(key)
 		return 1
 	}
 	else {
-		console.log("Allowed")
+		//console.log("Allowed")
 	}
 
 	return loadData["data"]
 }
-export const testSaveStorage = (key, value) => {
+export const timedSaveStorage = (key, data, length) => {
 
 	// Now, How exactly do I determine when the expiry should be?
 
-	let storageTime = new Date()
-	storageTime.setSeconds(storageTime.getSeconds()+70)
-	
-	let storeData = {"expiryDate":storageTime.getTime(), "data":value}
-	Store.set(key, storeData)
+	try {
+		let storageTime = new Date()
+		
+		if (length === 0) {
+			storageTime.setHours(storageTime.getHours()+1)
+		}
+		else if (length === 1) {
+			storageTime.setDate(storageTime.getDate()+1)
+		}
+		else {
+			// BASIC!
+			storageTime.setSeconds(storageTime.getSeconds()+90)
+		}
+		
+		let storeData = {"expiryDate":storageTime.getTime(), "data":data}
+		Store.set(key, storeData)
+	} catch (error) {
+		return false
+	}
 
 	return true
 }
@@ -58,7 +74,7 @@ export const checkStorageContents = () => {
 		let dateSaved = value["expiryDate"]
 		let now = Date.now()
 		if (now > dateSaved) {
-			console.log("Expired!")
+			console.log("Found Expired Key!")
 			Store.remove(key)
 		}
 	})
@@ -75,6 +91,10 @@ export const displayStorageContents = () => {
 	console.log("Done!")
 	
 	return false
+}
+
+export const deleteStorageKey = (key) => {
+	Store.remove(key)
 }
 
 // THIS IS EXAMPLE COMPANY TEST DATA!!!

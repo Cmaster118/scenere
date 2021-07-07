@@ -10,7 +10,8 @@ import { LandingPages, ContentCommonPages} from "./components";
 
 import { Sidebar } from "./utils";
 import { APIRefreshToken } from "./utils";
-import Store from "store"
+
+import { timedLoadStorage, timedSaveStorage, deleteStorageKey, checkStorageContents} from "./utils";
 
 //import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
@@ -36,13 +37,17 @@ class App extends React.Component {
 			sessionToken: undefined,
 			remember: false,
 			
+			refreshTokenStatus: 0,
         };
 	}
 	
 	componentDidMount() {
 		this.loadFromCookies();
+		
+		checkStorageContents()
 	};
 	
+	// Menu Controls...
 	disableMenu = () => {
 		try {
 			this.refs.sidebar.disableMenu()
@@ -68,6 +73,15 @@ class App extends React.Component {
 		}
 	}
 	
+	changeCompanyMenuItems = (nextState) => {
+		try {
+			this.refs.sidebar.setCompanyFlag(nextState)
+		}
+		catch {
+			
+		}
+	}
+	
 	changeMenuUserName = (newName) => {
 		try {
 			this.refs.sidebar.setUserName(newName)
@@ -86,35 +100,35 @@ class App extends React.Component {
 	}
 	
 	loadFromCookies = () => {
-		const lastUserSet = Store.get('lastUser');
-
-		try{			
-			let nowDate = new Date()
-			let checkDate = new Date(lastUserSet.expire)
-			
-			//console.log(checkDate)
-			//console.log(nowDate)
-			if ( nowDate > checkDate ) {
-				console.log("SESSION WAS EXPIRED!")
-				Store.remove('lastUser')
-			}
-			else {
-				this.changeMenuUserName(lastUserSet.user)
-			
-				// IF we are successful, then we also want to set remember to true... As it must have been in that state to get this
-				this.setState({ 
-					currentUser: lastUserSet.user, 
-					sessionToken: lastUserSet.session,
-					remember: true,
-				}) 
-			}
+		let lastUserSet = timedLoadStorage('lastUser');
+		if (lastUserSet === 0) {
+			console.log("No User In the Storage!")
 		}
-		catch{
-			console.log("User was NOT found in the storage")
-		};
+		else if (lastUserSet === 1) {
+			console.log("Session was expired!")
+		}
+		else if (lastUserSet === 2) {
+			console.log("Invalid Save!")
+		}
+		else {
+			this.changeMenuUserName(lastUserSet.user)
+			
+			this.setState({ 
+				currentUser: lastUserSet.user, 
+				sessionToken: lastUserSet.session,
+				remember: true,
+			}) 
+		}
 	}
 	
 	setToken = ( token, username, remember ) => {
+		
+		this.changeMenuUserName(username)
+		
+		if (remember === true) {
+			timedSaveStorage( "lastUser", {user:username, session:token}, 0 )
+		}
+		
 		// Verify this before we sent it in I guess?
 		this.setState({ 
 			sessionToken: token, 
@@ -122,31 +136,30 @@ class App extends React.Component {
 			rememberMe: remember,
 		})
 		
-		this.changeMenuUserName(username)
-		
-		let expireTime = new Date()
-		expireTime = new Date(expireTime.getTime() + 30*60000);
-		
-		if (remember === true) {
-			Store.set('lastUser', { user:username, session:token, expire:expireTime })
-			//console.log("Remembered User")
-		}
-		
 		// Return if we succeeded or not
 		return true
 	}
 	
-	
-	refreshCallback = (incomingToken) => {
-		this.setToken(incomingToken, this.state.currentUser, this.status.rememberMe)
-	}
 	refreshFailure = () => {
 		this.logout()
+		this.setState({
+			refreshTokenStatus: 3,
+		})
+	}
+	refreshCallback = (incomingToken) => {
+		this.setToken(incomingToken, this.state.currentUser, this.status.rememberMe)
+		this.setState({
+			refreshTokenStatus: 2,
+		})
 	}
 	// Test out refreshing the token...
 	// Should do this every page reload...
 	refresh = () => {
-		APIRefreshToken(hostName, this.state.sessionToken, this.refreshCallback, this.refreshFailure)
+		APIRefreshToken(this.state.sessionToken, this.refreshCallback, this.refreshFailure)
+		
+		this.setState({
+			refreshTokenStatus: 1,
+		})
 	}
 
 	// Should move this over to the UTIL...
@@ -158,8 +171,7 @@ class App extends React.Component {
 
 		this.changeMenuUserName("No User")
 
-		// Store this as a cookie instead?
-		Store.remove('lastUser')
+		deleteStorageKey('lastUser')
 	}
 	
 	render() {
@@ -196,13 +208,12 @@ class App extends React.Component {
 						{/*To catch ONLY the landing page, this one has to be exact...*/}
 						{/*Unless I am also missing something*/}
 						<Route path={basePath+"/"} exact component={() => <LandingPages 
-								APIHost={hostName}
 								
 							/>} 
 						/>
 						
 						<Route path={basePath+"/signin"} exact component={() => <SignIn 
-								APIHost={hostName}
+								
 								loginSave={this.setToken}
 
 								reRouteTarget={basePath+"/dashboard"}
@@ -210,7 +221,7 @@ class App extends React.Component {
 							/>}
 						/>	
 						<Route path={basePath+"/signup"} exact component={() => <SignUp 
-								APIHost={hostName}
+								
 								reRouteTarget={basePath+"/verify"}
 								
 								loginSave={this.setToken}
@@ -220,7 +231,7 @@ class App extends React.Component {
 							/>} 
 						/>
 						<Route path={basePath+"/verify"} exact component={() => <VerifyEmail 
-								APIHost={hostName}
+								
 								authToken={this.state.sessionToken}
 								
 								forceLogout={this.logout}
@@ -230,19 +241,16 @@ class App extends React.Component {
 							/>} 
 						/>
 						<Route path={basePath+"/forgot"} exact component={() => <Forgot 
-								APIHost={hostName}
-								
 								reRouteTarget={basePath+"/signin"}
 							/>} 
 						/>
 						
 						<Route path={basePath+"/contact"} exact component={() => <ContactUs 
-								APIHost={hostName}
+								
 							/>} 
 						/>
 						
 						<Route path={basePath+"/dashboard"} component={() => <ContentCommonPages 
-								APIHost={hostName}
 								
 								tokenRefresh={this.refresh}
 								reRouteTarget={basePath+"/signin"}
@@ -259,12 +267,14 @@ class App extends React.Component {
 								disableMenu={this.disableMenu}
 								activateUserMenu={this.activateUserMenu}
 								activateCompanyMenu={this.activateCompanyMenu}
-								
 								changeMenuCompanyName={this.changeMenuCompanyName}
+								changeCompanyMenuItems={this.changeCompanyMenuItems}
 							/>}
 						/>
 
 					</Switch>
+					
+					<div className="row m-5"/>
 
 					<Footer 
 					

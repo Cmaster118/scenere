@@ -25,14 +25,14 @@ class FreePages extends React.Component {
 			
 				<Header />
 				<BetaContact 
-					APIHost={this.props.APIHost}
+					
 				/>
 				<Features />
 				<About />
 				{/* <Services /> */}
 				{/* <Testimonials /> */}
 				<ContactUs 
-					APIHost={this.props.APIHost}
+					
 				/>
 				{/* <ContactInfo /> */}
 				{/*Would this be better as an empty set?*/}

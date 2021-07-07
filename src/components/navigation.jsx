@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, withRouter } from "react-router-dom";
 
-import {testSaveStorage, testLoadStorage, clearStorage, checkStorageContents} from "../utils";
+//import {timedSaveStorage, timedLoadStorage, clearStorage, checkStorageContents} from "../utils";
 
 class navigation extends React.Component {
 	
@@ -12,10 +12,12 @@ class navigation extends React.Component {
         };
 	}
 
+
 	triggerLogout = () => {
 		this.props.logout()
 	}
-	
+
+	/*	
 	checkTheStorage = () => {
 		checkStorageContents()
 	}
@@ -27,14 +29,15 @@ class navigation extends React.Component {
 		//const valueTest = ["derp","dorp","yaboi"]
 		const valueTest = {"SecondKey":"asdf","thirdKey":"boop"}
 		
-		testSaveStorage(keyTest, valueTest)
+		timedSaveStorage(keyTest, valueTest, -1)
 	};
 	
 	getFromStorage = () => {
 		const keyTest = "asdf"
-		let dataTest = testLoadStorage(keyTest)		
+		let dataTest = timedLoadStorage(keyTest)		
 		console.log(dataTest)
 	};
+	*/
 	
 	render() {
 		let iconButton = null
@@ -55,6 +58,7 @@ class navigation extends React.Component {
 				</li>)
 			]
 
+			/*
 			userDisplay = (
 				<li className={'nav-item'}  key='3'>	
 					<Link className="nav-link" to={this.props.reRouteSignIn}>
@@ -62,6 +66,7 @@ class navigation extends React.Component {
 					</Link>
 				</li>
 			)
+			*/
 		}
 		else {
 			iconButton = [

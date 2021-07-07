@@ -3,15 +3,16 @@ import React from "react";
 // Link,
 import { withRouter, Route, Switch } from "react-router-dom";
 //import { ButtonGroup, ToggleButton } from 'react-bootstrap';
-import { APISaveSuggestion, APIGetJournalData, APISaveJournal, APIGetJournalPrompts } from "../utils";
+//import { Alert } from 'react-bootstrap';
+import { APISaveSuggestion, APIGetJournalData, APIGetNonJournalData } from "../utils";
 import { EditorState, convertToRaw } from 'draft-js';
-//APIGetJournalDates
+//convertFromRaw
 
 //import { Justify } from 'react-bootstrap-icons';
 
 //SetCompany
 import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion} from "./userPages"
-//convertFromRaw
+
 
 const DefaultView = (props) => {
 
@@ -33,48 +34,67 @@ class ContentPages extends React.Component {
         this.state = {
 			selectedJournalDate: new Date(),
 			
-			//  should move this down...
-			journalCurrentPrompt: 0,
 			journalValidPrompts: [],
-			
-			// Journal Read Page State...
-			selectedJournalPrompt:"p1",
-			selectedJournalAspect:"emotion",
 			
 			journalMessage: "Choose a date to view the journal!",
 			journalContent: "Waiting for content...",
 			
-			// Where we storing the data from...
-			viewJournalPrompts: [],
-			viewJournalContents: [],
-			viewJournalBlock: [],
-			viewJournalAIData: [],
-			
-			// I need to put the content block stuff.......
-			journalEditorState: EditorState.createEmpty(),
-			journalErrors: [],
+			viewJournalData: [],
+			viewNonJournalData: [],
 			
 			suggestionEditorState: EditorState.createEmpty(),
 			suggestionErrors: [],
+
+			journalViewErrors: [],
+			nonJournalViewErrors: [],
+			journalPromptsErrors: [],
 			
-			currentSuggestionDivision: -1,
-			currentCompanyGovernedIndexes: [],
+			currentSuggestionDivision: this.initializeSuggestionDivision(),
+
+			postSuggestionStatus: 0,
+			pickJournalCalenderDateStatus: 0,
+			pickNonJournalCalenderDateStatus: 0,
+			
         };
 	}
 	
 	componentDidMount() {
 		this.props.activateUserMenu(1)
 		
-		this.getJournalPrompts()
 	};
 	componentWillUnmount() {
 		this.props.disableMenu()
 	}
 	
+	initializeSuggestionDivision = () => {
+		
+		let generatingList = []
+		for (let index in this.props.userLoadedCompanyList) {
+			
+			let permType = -1
+			for (let permIndex in this.props.userLoadedCompanyList[index]["perm"]) {
+				if (this.props.userLoadedCompanyList[index]["perm"][permIndex] === 3) {
+					//console.log("Is Admin")
+					// Set the thing to admin no matter what
+					permType = 3
+				}
+			}
+			
+			if (permType >= 0 && permType < 4) {
+				generatingList.push( this.props.userLoadedCompanyList[index] )
+			}
+		}
+		
+		if (generatingList.length === 1) {
+			return generatingList[0]["id"]
+		}
+		
+		return -1
+	}
+	
 	forceLogout = () => {
 		// Gonna do this like this, in case we got something else we wana do on logout...
 		this.props.forceLogout()
-		this.props.history.push(this.props.reRouteTarget);
 	}
 	
 	changeSuggestionContent = (incomingState) => {
@@ -83,64 +103,47 @@ class ContentPages extends React.Component {
 			suggestionEditorState:incomingState,
 		})	
 	}
-	changeJournalContent = (incomingState) => {
-		this.setState({
-			journalEditorState:incomingState,
-		})	
-	}
-	
-	journalPostCallback = (incomingStuff) => {
-		// Set something to notify user....
-		this.setState({
-			journalErrors: [[1,2], ["Success!",incomingStuff]]
-			// Special for overwrite?
-		})
-	}
-	journalPostFailure = (errorCodes, errorMessages) => {
-		for (let index in errorCodes) {
-			if (errorCodes[index] === 401) {
-				this.forceLogout()
-			}
-			
-			this.setState({
-				journalErrors: [errorCodes, errorMessages]
-			})
-		}
-	}
-	postJournal = () => {
-		// This may need to be overridden?
-		let inputDate = this.props.currentDate
-		let journalContent = this.state.journalEditorState.getCurrentContent().getPlainText()
-		let richContent = convertToRaw(this.state.journalEditorState.getCurrentContent())
-		
-		let promptValue = "none"
-		if (this.state.journalCurrentPrompt >= 0 && this.state.journalCurrentPrompt < this.state.journalValidPrompts.length && this.state.journalValidPrompts.length > 0) {		
-			let promptValue = this.state.journalValidPrompts[ this.state.journalCurrentPrompt ]['identifier']	
-			APISaveJournal(this.props.APIHost, this.props.authToken, inputDate, promptValue, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
-		}
-		else {
-			APISaveJournal(this.props.APIHost, this.props.authToken, inputDate, promptValue, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
-		}
-	}
 	
 	// Posting the Suggestion...
+	suggestionPostFailureCallback = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			suggestionErrors: returnData,
+			postSuggestionStatus:3,
+		})
+	}
 	suggestionPostCallback = (incomingStuff) => {
 		// Set something to notify user....
 		this.setState({
-			suggestionErrors: [[1,2], ["Success!", incomingStuff]]
+			suggestionErrors: [],
+			postSuggestionStatus:2,
 		})
-	}
-	suggestionPostFailureCallback = (errorCodes, errorMessages) => {
-		//console.log(errorCodes)
-		for (let index in errorCodes) {
-			if (errorCodes[index] === 401) {
-				this.forceLogout()
-			}
-			
-			this.setState({
-				suggestionErrors: [errorCodes, errorMessages]
-			})
-		}
 	}
 	postSuggestion = () => {
 		// This may need to be overridden?
@@ -152,26 +155,102 @@ class ContentPages extends React.Component {
 		//console.log(targetDivision)
 		
 		if (!(targetDivision === -1)) {
-			APISaveSuggestion(this.props.APIHost, this.props.authToken, inputDate, targetDivision, suggestionContent, richContent, this.suggestionPostCallback, this.suggestionPostFailureCallback)
+			APISaveSuggestion(this.props.authToken, inputDate, targetDivision, suggestionContent, richContent, this.suggestionPostCallback, this.suggestionPostFailureCallback)
+			this.setState({
+				postSuggestionStatus:1,
+			})
 		}
 		else {
 			console.log("Not allowed!")
 			// Just in case I should be able to get this from the server as well...
 			this.setState({
-				suggestionErrors: [ [4], ["You need to select a company!"] ]
+				suggestionErrors: [ "You need to select a company!" ]
 			})
 		}
 	}
 	
-	journalDataCallback = (incomingJournalPrompts , incomingJournalContent, incomingJournalBlock, incomingAIData) => {
+	journalDataFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			journalViewErrors: returnData,
+			pickJournalCalenderDateStatus:3,
+		})
+	}
+	journalDataCallback = (incomingFullData) => {
 
 		this.setState({
-			journalMessage: "Showing Journal Entry for: " + this.state.selectedJournalDate.toString(),
+			viewJournalData: incomingFullData,
 			
-			viewJournalPrompts: incomingJournalPrompts,
-			viewJournalContents: incomingJournalContent,
-			viewJournalBlock: incomingJournalBlock,
-			viewJournalAIData: incomingAIData,
+			pickJournalCalenderDateStatus:2,
+		})
+	}
+	nonJournalDataFailure = (responseData) => {
+		let returnData = []
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Unauthorized
+		else if (responseData["action"] === 1) {
+			this.forceLogout()
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		returnData = responseData['messages']
+		this.setState({
+			nonJournalViewErrors: returnData,
+			pickNonJournalCalenderDateStatus:3,
+		})
+	}
+	nonJournalDataCallback = (incomingNonJournalData) => {
+
+		this.setState({
+			//journalMessage: "Showing Journal Entry for: " + this.state.selectedJournalDate.toString(),
+			
+			viewNonJournalData: incomingNonJournalData,
+			
+			pickNonJournalCalenderDateStatus:2,
 		})
 	}
 	pickJournalCalenderDate = (selectedDate) => {
@@ -184,106 +263,24 @@ class ContentPages extends React.Component {
 		let checkData = undefined//Store.get(this.props.currentUser+"-Journal-"+selectedDate)
 		if (checkData === undefined) {
 			//console.log("Not in the cookies!")
-			APIGetJournalData(this.props.APIHost, this.props.authToken, selectedDate, this.journalDataCallback, this.forceLogout)
+			
+			// Perhaps I can find a good merge....
+			// Both solutions I have thought of do not seem good enough yet....
+			APIGetJournalData(this.props.authToken, selectedDate, this.journalDataCallback, this.journalDataFailure)
+			APIGetNonJournalData(this.props.authToken, selectedDate, this.nonJournalDataCallback, this.nonJournalDataFailure)
+			this.setState({
+				pickJournalCalenderDateStatus:1,
+				pickNonJournalCalenderDateStatus:1,
+			})
 		}
 		else {
 			//this.journalDataCallback(checkData.journalContent, checkData.AIData)
 		}
 	}
 	
-	journalPromptsCallback = (incomingPrompts) => {
-		
+	setSuggestionDivision = (targetDivision) => {
 		this.setState({
-			journalValidPrompts: incomingPrompts,
-		})
-	}
-	journalPromptsFailure = (errorCodes, errorData) => {
-		console.log(errorCodes)
-		console.log(errorData)
-		this.forceLogout()
-	}
-	getJournalPrompts = () => {
-		if (!(this.props.currentUser === undefined)) {	
-			let checkData = undefined
-			if (checkData === undefined) {
-				//console.log("Prompts are not in storage!")
-				APIGetJournalPrompts(this.props.APIHost, this.props.authToken, this.journalPromptsCallback, this.journalPromptsFailure)			
-			}
-			else {
-				console.log("Prompts ARE in storage!")
-				//this.journalPromptsCallback(checkData.???, checkData.???)
-			}
-		}
-	}
-	
-	// Viewing the Journal's Prompt and Data...
-	changeJournalPrompt = (event) => {
-		this.setState({
-			selectedJournalPrompt:event.currentTarget.value
-		})
-	}
-	changeJournalAspect = (event) => {
-		this.setState({
-			selectedJournalAspect:event.currentTarget.value
-		})
-	}
-	
-	prevPrompt = () => {
-		let newIndex = this.state.journalCurrentPrompt - 1
-
-		if ( newIndex < 0 ) {
-			newIndex = this.state.journalValidPrompts.length - 1
-		}
-		
-		if (this.state.journalValidPrompts.length === 0) {
-			newIndex = 0
-		}
-
-		this.setState({
-			journalCurrentPrompt: newIndex,
-			journalEditorState: EditorState.createEmpty(),
-			journalErrors: [],
-		})
-	}
-	nextPrompt = () => {
-
-		let newIndex = this.state.journalCurrentPrompt + 1
-		
-		if ( newIndex >= this.state.journalValidPrompts.length ) {
-			newIndex = 0
-		}
-
-		this.setState({
-			journalCurrentPrompt: newIndex,
-			journalEditorState: EditorState.createEmpty(),
-			journalErrors: [],
-		})
-	}
-	
-	// Meanwhile, over in the suggestion selector...
-	selectGovernedCompanyLayer = (event) => {
-		let values = this.state.currentCompanyGovernedIndexes
-		values.push(event.target.value)
-		
-		let newDivision = values[ values.length-1 ]
-		
-		this.setState({
-			currentSuggestionDivision: newDivision,
-			currentCompanyGovernedIndexes:values,
-			lastGovernedCompanyRequestStatus:undefined,
-		})
-	}
-	backGovernedCompanyLayer = (event) => {
-		let values = this.state.currentCompanyGovernedIndexes
-		values.splice(event.target.value)
-		
-		let newDivision = values[ values.length-1 ]
-		//console.log(newDivision)
-		
-		this.setState({
-			currentSuggestionDivision: newDivision,
-			currentCompanyGovernedIndexes:values,
-			lastGovernedCompanyRequestStatus:undefined,
+			currentSuggestionDivision:targetDivision,
 		})
 	}
 	
@@ -291,92 +288,69 @@ class ContentPages extends React.Component {
 	// So far it doesnt look all that different 
 	render() {
 		
+		let errorParse = []
+		for (let index in this.state.journalPromptsErrors) {
+			errorParse.push(
+				this.state.journalPromptsErrors[index]["text"]
+			)
+		}
+		if (errorParse.length === 0) {
+			errorParse.push(
+				"Unknown!"
+			)
+		}
+		
 		return (
 			<div className="contentPages">
 			
 				<div className="container">
 					{/*Entire thing...*/}
 					<div className="row m-1 my-5">
-						{/*
-						<div className="col- m-1">
-							<div className="row">
-								<div className="col">
-									<div className="card shadow">
-										<div className="card-header">
-											<h5>Today's Date</h5>
-										</div>
-										<div className="card-body">
-											{this.props.currentDate.toString().split("(")[0]}
-										</div>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className="card shadow">
-										<div className="card-header">
-											<Link className="list-group-item" to={this.props.reRouteUser}>Return To Dashboard</Link>
-										</div>
-										<div className="card-body">
-											<div className="list-group">
-												<Link className="list-group-item" to={this.props.match.url+"/journalWrite"}>Write Todays Journal</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/journalRead"}>Review Previous Journals</Link>
-												<Link className="list-group-item" to={this.props.match.url+"/writeSuggestion"}>Write Suggestion</Link>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						*/}
 						{/*Content for the everything....*/}
 						<div className="col m-1">
 							<Switch>
 								<Route path={this.props.match.url+"/journalWrite"} component={() => <WriteJournals
-										onChange={this.changeJournalContent}
 										
-										editorState={this.state.journalEditorState}
-										saveToServer={this.postJournal}
+										authToken={this.props.authToken}
+										forceLogout={this.forceLogout}
 										
-										journalErrors={this.state.journalErrors}
+										currentDate={this.props.currentDate}
+								
+										promptList={this.props.journalValidPrompts}
 										
-										promptList={this.state.journalValidPrompts}
-										promptIndex={this.state.journalCurrentPrompt}
+										nonJournalPromptsDone={this.props.validNonJournalDates}
+										journalPromptsDone={this.props.validJournalDates}
+										journalScanPromptsDone={this.props.validJournalScanDates}
 										
-										prevPrompt={this.prevPrompt}
-										nextPrompt={this.nextPrompt}
+										currentUser={this.props.currentUser}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/journalRead"} component={() => <ViewJournals
 										currentDate={this.state.selectedJournalDate}
 										
-										journalPromptSet={this.state.viewJournalPrompts}
-										journalAIDataSet={this.state.viewJournalAIData}
-										journalContentSet={this.state.viewJournalContents}
-										journalRichContentSet={this.state.viewJournalBlock}
+										viewJournalData={this.state.viewJournalData}
+										viewNonJournalData={this.state.viewNonJournalData}
 										
-										selectedPrompt={this.state.selectedJournalPrompt}
-										selectedAspect={this.state.selectedJournalAspect}
-										
+										validNonJournalDates={this.props.validNonJournalDates}
 										validJournalDates={this.props.validJournalDates}
 										validJournalScanDates={this.props.validJournalScanDates}
 										
 										pickDate={this.pickJournalCalenderDate}
+
+										journalViewErrors={this.state.journalViewErrors}
+										nonJournalViewErrors={this.state.nonJournalViewErrors}
 										
-										displayMessage={this.state.journalMessage}
-										
-										setPrompt={this.changeJournalPrompt}
-										setAI={this.changeJournalAspect}
+										pickJournalCalenderDateStatus={this.state.pickJournalCalenderDateStatus}
+										pickNonJournalCalenderDateStatus={this.state.pickNonJournalCalenderDateStatus}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/writeSuggestion"} component={() => <WriteSuggestion
-								
-										currentCompanySelections={this.state.currentCompanyGovernedIndexes}
-										companyDataTree={this.props.companyGovernedDataTree}
+
+										userLoadedCompanyList={this.props.userLoadedCompanyList}
 										lastRequestStatus={this.props.lastGovernedCompanyRequestStatus}
 										
-										selectLayer={this.selectGovernedCompanyLayer}
-										backLayer={this.backGovernedCompanyLayer}
+										setSuggestionDivision={this.setSuggestionDivision}
+										currentDivisionID={this.state.currentSuggestionDivision}
 										
 										onChange={this.changeSuggestionContent}
 										
@@ -384,39 +358,37 @@ class ContentPages extends React.Component {
 										saveToServer={this.postSuggestion}
 										
 										suggestionErrors={this.state.suggestionErrors}
+										postSuggestionStatus={this.state.postSuggestionStatus}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userPermissions"} component={() => <UserProfile
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
 										currentUser={this.props.currentUser}
 										
-										viewNameList={this.props.companyViewableDataRawList}
-										viewIDList={this.props.companyViewableDataRawIDs}
-										sendIDList={this.props.companySendDataRawIDList}
-										
-										governedNameList={this.props.companyGovernedDataRawList}
-										governedIDList={this.props.companyGovernedDataRawIDList}
+										userLoadedCompanyList={this.props.userLoadedCompanyList}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										triggerLogout={this.forceLogout}
+										forceLogout={this.forceLogout}
 										
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userSecurity"} component={() => <UserSecurity
 								
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 										
+										forceLogout={this.forceLogout}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userInvite"} component={() => <UserInvite
 								
-										APIHost={this.props.APIHost}
+										
 										authToken={this.props.authToken}
 								
 										triggerRefresh={this.props.loadCompanyData}
+										forceLogout={this.forceLogout}
 									/>} 
 								/>
 								

@@ -6,7 +6,7 @@ import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 import { Radar, Bar } from 'react-chartjs-2';
 
-import { ButtonGroup, ToggleButton } from 'react-bootstrap';
+import { ButtonGroup, ToggleButton, Alert, Accordion, Card, Table } from 'react-bootstrap';
 
 import { withRouter } from "react-router-dom";
 import { Editor, EditorState, convertFromRaw } from 'draft-js';
@@ -19,7 +19,6 @@ import { stacked3BarData1Data, stacked2BarData1Data, stacked1BarData1Data } from
 
 // This is very lean...
 const parseEmotion = (emotionData) => {
-	
 	let derp = [emotionData.joy, emotionData.anger, emotionData.sadness, emotionData.disgust, emotionData.fear]
 	return derp;
 }
@@ -35,11 +34,341 @@ const AIAspect = [
 
 const styles = {
   editor: {
-    border: '1px solid gray',
+    //border: '1px solid gray',
     minHeight: '6em',
 	textAlign: 'left',
   }
 };
+
+const MultiIteration = (props) => {
+	
+	let buttonSet = []
+	for (let key in props.promptQuestions) {
+		
+		let isActive = "outline-"
+		if ( Number(props.selected) === Number(key)) {
+			isActive = ""
+		}
+		
+		buttonSet.push(
+			<button type="button" key={key} value={key} className={"btn disabled btn-"+isActive+"primary"}>{props.promptQuestions[key]}</button>
+		)
+	}
+	
+	return (
+		<div className="MultiIteration">
+			{buttonSet}
+		</div>
+	)
+}
+
+const RatingIteration = (props) => {
+	
+	// Definetly a better way to do this
+	let isActive = ["outline-", "outline-", "outline-", "outline-", "outline-", "outline-"]
+	if (props.selected >= 0 && props.selected < isActive.length) {
+		isActive[props.selected] = ""
+	}
+	
+	let buttonSet = []
+	for (let index in isActive) {
+		buttonSet.push(
+			<button type="button" key={index} value={index} className={"btn disabled btn-"+isActive[index]+"primary"}>{index}</button>
+		)
+	}
+	
+	return (
+		<div className="RatingIteration">
+			{buttonSet}
+		</div>
+	)
+}
+
+const LikertIteration = (props) => {
+	
+	let isActive = ["outline-", "outline-", "outline-", "outline-", "outline-"]
+	if (props.selected >= 0 && props.selected < isActive.length) {
+		isActive[props.selected] = ""
+	}
+	
+	let buttonSet = []
+	for (let index in isActive) {
+		buttonSet.push(
+			<button type="button" key={index} value={index} className={"btn disabled btn-"+isActive[index]+"primary"}>{index-2}</button>
+		)
+	}
+	
+	return (
+		<div className="LikertIteration">
+			<span className="btn btn-link disabled" disabled>Highly Disagree</span>
+			{buttonSet}
+			<span className="btn btn-link disabled" disabled>Highly Agree</span>
+		</div>
+	)
+}
+
+class JournalIteration extends React.Component {
+	
+	constructor(props) {
+		super(props);
+		this.state = {
+			selectedAspect: "emotion",
+		}	
+	}
+	
+	setAspect = (event) => {
+		this.setState({
+			selectedAspect:event.currentTarget.value
+		})
+	}
+	
+	render() {
+		
+		// Making the Editor
+		let givenState = EditorState.createEmpty()
+		if (!(this.props.richText === undefined)) {
+			let richData = convertFromRaw( this.props.richText )
+			givenState = EditorState.createWithContent(richData)
+		}
+		
+		// GETTING WHICH DATA IS SELECTED!
+		let displayStats = []
+		let tableDisplay = []
+		let dayData = this.props.AIresults
+		if (!(dayData === null) && !(dayData === undefined)) {
+		
+			let sanityCheck = this.state.selectedAspect in dayData
+			if (sanityCheck) {
+				
+				let dataSet = dayData[this.state.selectedAspect]
+				
+				switch(this.state.selectedAspect) {
+					case 'emotion':
+						let emoValue = parseEmotion( dataSet.document.emotion )
+						
+						let dataDocEmo = getRadarEmotionData( emoValue )
+						let emoOptions = getRadarEmotionOptions()
+					
+						displayStats.push(
+							<Table bordered responsive key="1">
+								<thead>
+									<tr>
+										<th scope="col">Whole Journal Emotion Data</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr key={0}>
+										<td>
+											<Radar data={dataDocEmo} options={emoOptions} />
+										</td>
+									</tr>
+								</tbody>
+							</Table>
+						)
+					break;
+					case 'sentiment':
+						
+						const dataBarStack = stacked1BarData1Data( [dataSet.document.score] )
+						const barStackOptions = stackedBarOptions()
+					
+						displayStats.push(
+						
+							<Table bordered responsive key="1">
+								<thead>
+									<tr>
+										<th scope="col">Whole Journal Sentiment Data</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr key={0}>
+										<td>
+											<Bar data={dataBarStack} options={barStackOptions} />
+										</td>
+									</tr>
+								</tbody>
+							</Table>
+							
+						)
+					break;
+					case 'entities':
+						
+						//console.log(dataSet)
+						for (let index in dataSet) {
+							let entity = dataSet[index]
+							//console.log(entity)
+							
+							let emoVal = parseEmotion( entity.emotion )
+							
+							let emoData = getRadarEmotionData( emoVal)
+							let emoOptions = getRadarEmotionOptions()
+							
+							const dataEntSent = stacked3BarData1Data(
+								[entity.confidence, entity.relevance, entity.sentiment.score],
+							)
+							const dataEntOptions = stackedBarOptions()
+							
+							tableDisplay.push(
+								<tr key={index}>
+									<th scope="row">{entity.text}</th>
+									<td>{entity.type}</td>
+									<td>{entity.count}</td>
+									<td colSpan="3"><Bar data={dataEntSent} options={dataEntOptions} /></td>
+									<td><Radar data={emoData} options={emoOptions} /></td>
+								</tr>
+							)
+						}
+						
+						if (tableDisplay.length === 0) {
+							tableDisplay.push(
+								<tr key={0}>
+									<td colSpan="7">"Nothing!"</td>
+								</tr>
+							)
+						}
+						
+						displayStats.push(
+							<Table bordered responsive key="2">
+								<thead>
+									<tr>
+										<th scope="col">Name</th>
+										<th scope="col">Type</th>
+										<th scope="col">#Appearances</th>
+										<th scope="col">Confidence</th>
+										<th scope="col">Relevance</th>
+										<th scope="col">Sentiment</th>
+										<th scope="col">Emotion</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									{tableDisplay}
+								</tbody>
+							</Table>
+						)
+					break;
+					case 'keywords':
+					
+						for (let index in dataSet) {
+							let keyData = dataSet[index]
+							
+							let emoVal = parseEmotion( keyData.emotion )
+							
+							const dataRadar = getRadarEmotionData( emoVal )
+							const dataRadarOptions = getRadarEmotionOptions()
+							
+							//console.log(keyData)
+							
+							const dataKeySent = stacked2BarData1Data(
+								[keyData.relevance, keyData.sentiment.score], 
+							)
+							const dataKeyOptions = stackedBarOptions()
+							
+							tableDisplay.push(
+								<tr key={index}>
+									<th scope="row">{keyData.text}</th>
+									<td>{keyData.count}</td>
+									<td colSpan="2"><Bar data={dataKeySent} options={dataKeyOptions} /></td>
+									<td><Radar data={dataRadar} options={dataRadarOptions} /></td>
+								</tr>
+							)
+						}
+						
+						if (tableDisplay.length === 0) {
+							tableDisplay.push(
+								<tr key={0}>
+									<td colSpan="5">"Nothing!"</td>
+								</tr>
+							)
+						}
+					
+						displayStats.push(
+							<Table bordered responsive key="3">
+								<thead>
+									<tr>
+										<th scope="col">Name</th>
+										<th scope="col">#Appearances</th>
+										<th scope="col">Relevance Score</th>
+										<th scope="col">Sentiment</th>
+										<th scope="col">Emotion</th>
+									</tr>
+								</thead>
+								
+								<tbody>
+									{tableDisplay}
+								</tbody>
+							</Table>
+						)
+					break;
+					default:
+							console.log("Invalid AI selection somehow")
+				}
+			}
+		}
+		
+		if (displayStats.length === 0) {
+			displayStats.push(
+				"Nothing to display!"
+			)
+		}
+		
+		return (
+			<div className="JournalIteration">
+				{/*props.content*/}
+				
+				<Accordion>
+				
+					<Accordion.Toggle as={Card.Header} variant="link" eventKey="0">
+						<div style={styles.editor} >
+							<Editor
+								editorState={givenState}
+								placeholder={"Nothing Here!"}
+								readOnly={true}
+							/>
+						</div>
+					</Accordion.Toggle>
+				
+					<Accordion.Collapse eventKey="0">
+					
+						<Card>
+							<Card.Body>
+								<div className="row my-2">
+									<div className="col">
+										<ButtonGroup toggle>
+											{AIAspect.map((radio, idx) => (
+												<ToggleButton
+													key={idx}
+													type="radio"
+													variant="info"
+													name="radio"
+													value={radio.value}
+													checked={this.state.selectedAspect === radio.value}
+													onChange={this.setAspect}
+													>
+													{radio.name}
+												</ToggleButton>
+											))}
+										</ButtonGroup>
+									</div>
+								</div>
+								
+								<hr />
+								
+								<div className="row my-2">
+									<div className="col">
+										{displayStats}
+									</div>
+								</div>
+
+							</Card.Body>
+						</Card>
+						
+					</Accordion.Collapse>
+					
+				</Accordion>
+			</div>
+		)
+	}
+}
 
 // Main Function
 const JournalView = (props) => {
@@ -52,8 +381,31 @@ const JournalView = (props) => {
 			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
 
 			// Check if a date React-Calendar wants to check is on the list of dates to add class to
-			const hasJournal = props.validJournalDates.find( element => element === checkDate)
-			const hasAI = props.validJournalScanDates.find( element => element === checkDate)
+			let hasJournal = false
+			for (let index in props.validJournalDates) {
+				if (checkDate === index) {
+					hasJournal = true
+					break
+				}
+			}
+			
+			let hasAI = false
+			for (let index in props.validJournalScanDates) {
+				if (checkDate === index) {
+					hasAI = true
+					break
+				}
+			}
+			
+			// Backup Check...
+			if (!hasJournal) {
+				for (let index in props.validNonJournalDates) {
+					if (checkDate === index) {
+						hasJournal = true
+						break
+					}
+				}
+			}
 			
 			if (hasAI) {
 				return 'btn btn-success';
@@ -67,214 +419,131 @@ const JournalView = (props) => {
 		}
 	}
 	
-	let displayPromptSentance = "Displaying Data for Journal with prompt: " + props.journalPromptSet[props.selectedPrompt]
-	
-	let promptContent = "None"
-	let promptList = []
-	if (props.journalPromptSet.length > 0) {
+	let showResult = []
+	for (let index in props.viewNonJournalData) {
 		
-		for (let index in props.journalPromptSet) {
-			if (!(props.journalPromptSet[index] === null)) {
-				promptList.push(
-					{ name:props.journalPromptSet[index]["identifier"], value:index }
-				)
-			}
-			else {
-				promptList.push(
-					{ name:"Empty", value:index }
-				)
+		let promptTitle = "No Prompt Data!"
+		let promptBody = "Prompt Showing Error!"
+		if (props.viewNonJournalData[index]["usedPromptKey"] !== null) {
+			promptTitle = props.viewNonJournalData[index]["usedPromptKey"]["text"]
+			
+			switch ( props.viewNonJournalData[index]["usedPromptKey"]["promptType"] ) {
+				// Likert
+				case 1:
+					promptBody = <LikertIteration
+						selected={ props.viewNonJournalData[index]["chosenValue"]}
+					/>
+					break;
+				// Rating
+				case 2:
+					promptBody = <RatingIteration
+						selected={ props.viewNonJournalData[index]["chosenValue"]}
+					/>
+					break;
+				// Multi
+				case 3:
+					promptBody = <MultiIteration
+						promptQuestions={ props.viewNonJournalData[index]["usedPromptKey"]["promptChoices"] }
+						selected={ props.viewNonJournalData[index]["chosenValue"]}
+					/>
+					break;
+				default:
+					//promptBody = "Prompt Showing Error!"
+					break;
 			}
 		}
+		else {
+			// Well, if we have no prompt, then whatever data is in there we cant parse....
+			continue
+		}
+		
+		//if () {
+			//<RatingIteration />
+		//}
+		
+		showResult.push(
+			<div className="row" key={index}>
+				<div className="col">
+					<h5>{promptTitle}</h5>
+					<div>{promptBody}</div>
+					<hr />
+				</div>
+			</div>
+		)
+		//props.viewNonJournalData[index]["usedPromptKey"]["promptType"]
+		//props.viewNonJournalData[index]["usedPromptKey"]["promptChoices"]
+		//props.viewNonJournalData[index]["chosenValue"]
+	}
+	for (let index in props.viewJournalData) {
+		
+		let promptTitle = "No Prompt Data!"
+		let promptBody = "No Prompt!"
+		if (props.viewJournalData[index]["usedPromptKey"] !== null) {
+			promptTitle = props.viewJournalData[index]["usedPromptKey"]["text"]
+			
+			// It ISNT a journal!??!?!
+			if ( props.viewJournalData[index]["usedPromptKey"]["promptType"] !== 0 ) {
+				continue
+			}
+		}
+		else {
+			// Well, how I have structured this, if it appears in this for loop, then we can assume its a journal for now?
+			// I should have a specific NULL prompt I give these....
+		}
+		
 		try {
-			promptContent = props.journalPromptSet[props.selectedPrompt]["text"]
+			promptBody = <JournalIteration
+				content={ props.viewJournalData[index]["content"] }
+				richText={ props.viewJournalData[index]["richText"] }
+				
+				hasAI={props.viewJournalData[index]["hasAI"]}
+				AIresults={ props.viewJournalData[index]["AIresult"] }
+			/>
 		}
 		catch {
-			promptContent = "None"
+			console.log("MISSING A JOURNAL'S CONTENT!")
 		}
-	}
-	
-	// This is probobly wasting resources...
-	// But lets change out the format, see if that works....
-	let givenState = EditorState.createEmpty()
-	if (!(props.journalRichContentSet[props.selectedPrompt] === undefined)) {
-		let richData = convertFromRaw( props.journalRichContentSet[props.selectedPrompt] )
-		givenState = EditorState.createWithContent(richData)
-	}
-	
-	if (promptList.length === 0) {
-		promptList.push( {name:"No Prompts", value:-1} )
-	}
-	
-	let dayData = props.journalAIDataSet[props.selectedPrompt]
-	let journalContent = props.journalContentSet[props.selectedPrompt]
-	if (journalContent === undefined) {
-		journalContent = "No Content!"
-	}
-	
-	let tableDisplay = []
-	let displayStats = []
-	
-	if (!(dayData === null) && !(dayData === undefined)) {
 		
-		let sanityCheck = props.selectedAspect in dayData
-		if (sanityCheck) {
-			
-			//let dataSet = dayData[props.selectedPrompt]["data"][props.selectedAspect]
-			let dataSet = dayData[props.selectedAspect]
-			
-			switch(props.selectedAspect) {
-				case 'emotion':
-					let emoValue = parseEmotion( dataSet.document.emotion )
-					
-					let dataDocEmo = getRadarEmotionData( emoValue )
-					let emoOptions = getRadarEmotionOptions()
-				
-					displayStats.push(
-						<div className="row m-2" key="2">
-							<div className="col">
-							</div>
-							<div className="col">
-								<div className="card">
-									<div className="card-header">
-										Emotion Values
-									</div>
-									<div className="card-body">
-										<Radar data={dataDocEmo} options={emoOptions} />
-									</div>
-								</div>
-							</div>
-							<div className="col">
-							</div>
-						</div>
-					)
-				break;
-				case 'sentiment':
-					
-					const dataBarStack = stacked1BarData1Data( [dataSet.document.score] )
-					const barStackOptions = stackedBarOptions()
-				
-					displayStats.push(
-						<div className="row m-2" key="2">
-							<div className="col" />
-							<div className="col">
-								<div className="card">
-									<div className="card-header">
-										Sentiment Values
-									</div>
-									<div className="card-body">
-										<Bar data={dataBarStack} options={barStackOptions} />
-									</div>
-								</div>
-							</div>
-							<div className="col" />
-						</div>
-					)
-				break;
-				case 'entities':
-					
-					//console.log(dataSet)
-					for (let index in dataSet) {
-						let entity = dataSet[index]
-						//console.log(entity)
-						
-						let emoVal = parseEmotion( entity.emotion )
-						
-						let emoData = getRadarEmotionData( emoVal)
-						let emoOptions = getRadarEmotionOptions()
-						
-						const dataEntSent = stacked3BarData1Data(
-							[entity.confidence, entity.relevance, entity.sentiment.score],
-						)
-						const dataEntOptions = stackedBarOptions()
-						
-						tableDisplay.push(
-							<tr key={index}>
-								<th scope="row">{entity.text}</th>
-								<td>{entity.type}</td>
-								<td>{entity.count}</td>
-								<td colSpan="3"><Bar data={dataEntSent} options={dataEntOptions} /></td>
-								<td><Radar data={emoData} options={emoOptions} /></td>
-							</tr>
-						)
-					}
-					
-					displayStats.push(
-						<table className="table" key="2">
-							<thead>
-								<tr>
-									<th scope="col">Name</th>
-									<th scope="col">Type</th>
-									<th scope="col">#Appearances</th>
-									<th scope="col">Confidence</th>
-									<th scope="col">Relevance</th>
-									<th scope="col">Sentiment</th>
-									<th scope="col">Emotion</th>
-								</tr>
-							</thead>
-							
-							<tbody>
-								{tableDisplay}
-							</tbody>
-						</table>
-					)
-				break;
-				case 'keywords':
-				
-					for (let index in dataSet) {
-						let keyData = dataSet[index]
-						
-						let emoVal = parseEmotion( keyData.emotion )
-						
-						const dataRadar = getRadarEmotionData( emoVal )
-						const dataRadarOptions = getRadarEmotionOptions()
-						
-						//console.log(keyData)
-						
-						const dataKeySent = stacked2BarData1Data(
-							[keyData.relevance, keyData.sentiment.score], 
-						)
-						const dataKeyOptions = stackedBarOptions()
-						
-						tableDisplay.push(
-							<tr key={index}>
-								<th scope="row">{keyData.text}</th>
-								<td>{keyData.count}</td>
-								<td colSpan="2"><Bar data={dataKeySent} options={dataKeyOptions} /></td>
-								<td><Radar data={dataRadar} options={dataRadarOptions} /></td>
-							</tr>
-						)
-					}
-				
-					displayStats.push(
-						<table className="table" key="2">
-							<thead>
-								<tr>
-									<th scope="col">Name</th>
-									<th scope="col">#Appearances</th>
-									<th scope="col">Relevance Score</th>
-									<th scope="col">Sentiment</th>
-									<th scope="col">Emotion</th>
-								</tr>
-							</thead>
-							
-							<tbody>
-								{tableDisplay}
-							</tbody>
-						</table>
-					)
-				break;
-				default:
-						console.log("Invalid AI selection somehow")
-			}
-		}
+		let markLength = showResult.length
+		showResult.push(
+			<div className="row" key={index + markLength}>
+				<div className="col">
+					<h5>{promptTitle}</h5>
+					<div>{promptBody}</div>
+					<hr />
+				</div>
+			</div>
+		)
+	}
+	
+	//let showIdle = props.pickJournalCalenderDateStatus === 0 || props.pickNonJournalCalenderDateStatus === 0
+	let showSubmit = props.pickJournalCalenderDateStatus === 1 || props.pickNonJournalCalenderDateStatus === 1
+	let showSuccess = false//props.pickJournalCalenderDateStatus === 2 || props.pickNonJournalCalenderDateStatus === 2
+	let showError = props.pickJournalCalenderDateStatus === 3 || props.pickNonJournalCalenderDateStatus === 3
+	
+	let errorParse = []
+	for (let index in props.journalViewErrors) {
+		errorParse.push(
+			props.journalViewErrors[index]["text"]
+		)
+	}
+	for (let index in props.nonJournalViewErrors) {
+		errorParse.push(
+			props.nonJournalViewErrors[index]["text"]
+		)
+	}
+	if (errorParse.length === 0) {
+		errorParse.push(
+			"Unknown!"
+		)
 	}
 
 	return (
 		<div className="mainView">
 			<div className="container-fluid justify-content-center">
 
-				<div className="row m-2">
-					<div className="col- m-2">
+				<div className="row m-2 justify-content-center">
+					<div className="col- m-2 ">
 						<div>
 							<Calendar 
 								className="shadow"
@@ -287,102 +556,47 @@ const JournalView = (props) => {
 							/>
 						</div>
 					</div>
-					<div className="col my-2">
-						<div className="card shadow">
-							<div className="card-header">
-								<div>{props.displayMessage}</div>
-							</div>
-							<div className="card-body">
-							
-								<div className="row m-2">
-									<div className="col">
-										<ButtonGroup toggle>
-											{promptList.map((radio, idx) => (
-											<ToggleButton
-												key={idx}
-												type="radio"
-												variant="primary"
-												name="radio"
-												value={radio.value}
-												checked={props.selectedPrompt === radio.value}
-												onChange={props.setPrompt}
-												>
-												{radio.name}
-											</ToggleButton>
-											))}
-										</ButtonGroup>
-									</div>
-								</div>
-								
-								<div className="row m-2">
-									<div className="col">
-										<ButtonGroup toggle>
-											{AIAspect.map((radio, idx) => (
-											<ToggleButton
-												key={idx}
-												type="radio"
-												variant="info"
-												name="radio"
-												value={radio.value}
-												checked={props.selectedAspect === radio.value}
-												onChange={props.setAI}
-												>
-												{radio.name}
-											</ToggleButton>
-											))}
-										</ButtonGroup>
-									</div>
-								</div>
-							</div>
-						</div>
-						
-					</div>
 				</div>
-				
 				<div className="row m-2">
 					<div className="col">
 						<div className="card shadow">
 							<div className="card-header">
-								<div>Prompt and Journal Contents:</div>
+								Prompt Data for {props.currentDate.toString()}
 							</div>
 							<div className="card-body">
-								<p>Prompt Contents: {promptContent}</p>
-								<p>Bare Content: {journalContent}</p>
-
-								<div id="align-left">
-									Rich Content:
-									<div style={styles.editor} >
-										<Editor
-											editorState={givenState}
-											placeholder={"Nothing Here!"}
-											readOnly={true}
-										/>
-									</div>
-								</div>
-								
-							</div>
-						</div>
-					</div>
-				</div>
-				
-				<div className="row m-2">
-					<div className="col">
-						<div className="card shadow">
-							<div className="card-header">
-								<div>{displayPromptSentance}</div>
-							</div>
-							<div className="card-body">
-								{displayStats}
+								{showResult}
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<div className="row  my-2">
+				<Alert show={showSubmit} variant="warning">
+					<Alert.Heading>Waiting</Alert.Heading>
+					<hr />
 					<p>
-						
+					  Waiting for server response...
 					</p>
-				</div>
+					<hr />
+				</Alert>
+				
+				<Alert show={showSuccess} variant="success">
+					<Alert.Heading>Success!</Alert.Heading>
+					<hr />
+					<p>
+					  Successfully obtained data!
+					</p>
+					<hr />
+				</Alert>
+				
+				<Alert show={showError} variant="danger">
+					<Alert.Heading>Error!</Alert.Heading>
+					<hr />
+					<p>
+					  {errorParse}
+					</p>
+					<hr />
+				</Alert>
+					
 			</div>
 		</div>
 	);

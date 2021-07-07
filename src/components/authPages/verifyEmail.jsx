@@ -1,7 +1,7 @@
 import React from "react";
 
 import { withRouter} from "react-router-dom";
-
+import { Alert } from 'react-bootstrap';
 import { APIValidateAccount, APIResendValidator } from "../../utils";
 
 class verifyEmail extends React.Component {
@@ -21,6 +21,9 @@ class verifyEmail extends React.Component {
 			done:false,
 			
 			resend:"",
+			
+			validateStatus: 0,
+			sendEmailStatus: 0,
         };
 	}
 	
@@ -38,57 +41,111 @@ class verifyEmail extends React.Component {
 		this.props.history.push(this.props.reRouteSuccessTarget)
 	}
 	
+	// Data is mostly used for error displaying here honestly
+	handleVerifyFailure = (responseData) => {
+		
+		let tokenErrorFlag = false
+		let tokenErrorDetails = ""
+		
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+			for (let index in responseData['messages']) {
+				if (responseData['messages'][index]['mod'] === 1) {
+					tokenErrorFlag = true
+					tokenErrorDetails = responseData['messages'][index]['text']
+				}
+			}
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		this.setState({
+			tokenError:tokenErrorFlag,
+			tokenErrorDetail:tokenErrorDetails,
+			
+			validateStatus: 3,
+		})
+	}
 	handleVerifyCallback = (incomingStatus, incomingData) => {
 		if (incomingStatus === 200) {
 			// Successful verification!!
 			console.log("Successful Verification!")
 			this.setState({
 				done:true,
+				validateStatus: 2,
 			})
 			
 		}
 	}
-	// Data is mostly used for error displaying here honestly
-	handleVerifyFailure = (incomingStatus, incomingData) => {
-		if (incomingStatus === 400) {
-			for (let index in incomingData) {
-				if (index === "status") {
-					this.setState({
-						tokenError:true,
-						tokenErrorDetail:incomingData[index]
-					})
-				}
-			}
-		}
-	}
 	handleVerifySubmit = (event) => {
 		
-		APIValidateAccount(this.props.APIHost, this.props.authToken, this.state.token, this.handleVerifyCallback, this.handleVerifyFailure)
+		APIValidateAccount(this.props.authToken, this.state.token, this.handleVerifyCallback, this.handleVerifyFailure)
+		
+		this.setState({
+			validateStatus: 1,
+		})
 		
 		event.preventDefault();
 	}
 	
+	reSendEmailFailure = (responseData) => {
+		// Server is dead
+		if (responseData["action"] === 0) {
+			
+		}
+		// Invalid Permissions
+		else if (responseData["action"] === 2) {
+			this.props.forceLogout()
+		}
+		// Bad Request
+		else if (responseData["action"] === 3) {
+
+		}
+		// Server Exploded Error
+		else if (responseData["action"] === 4) {
+
+		}
+		// Unknown Error
+		else if (responseData["action"] === 5) {
+
+		}
+		
+		this.setState({
+			sendEmailStatus: 3,
+		})
+	}
 	reSendEmailCallback = () => {
 		// Change this to the validator view
 		this.setState({
 			resend:"A new code has been sent!",
+			sendEmailStatus: 2,
 		})
 		
 	}
-	reSendEmailFailure = (code, data) => {
-		// If we fail here, we are totally boned...
-		console.log("Oh no. We failed....")
-		// Is it because of a login failure?
-		if (code === 401) {
-			this.props.forceLogout()
-		}
-	}
 	reSendEmail = () => {
 		// Now sending the validator email...
-		APIResendValidator(this.props.APIHost, this.props.authToken, this.reSendEmailCallback, this.reSendEmailFailure)
+		APIResendValidator(this.props.authToken, this.reSendEmailCallback, this.reSendEmailFailure)
+		this.setState({
+			sendEmailStatus: 1,
+		})
 	}
 	
 	render() {
+		
 		let tokenClass = 'form-control'
 		if (this.state.tokenError) {
 			tokenClass += ' bg-warning'
@@ -157,11 +214,43 @@ class verifyEmail extends React.Component {
 			)
 		}
 		
+		//let showIdle = this.state.validateStatus === 0 || this.state.sendEmailStatus === 0
+		let showWaiting = this.state.validateStatus === 1 || this.state.sendEmailStatus === 1
+		let showSuccess = this.state.validateStatus === 2 || this.state.sendEmailStatus === 2
+		let showError = this.state.validateStatus === 3 || this.state.sendEmailStatus === 3
+		
 		return (
 			
 			<div className="signUp">
 				<div className="container">
 					{displayBody}
+					
+					<Alert show={showWaiting} variant="warning">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  Waiting for server response for submission...
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showSuccess} variant="success">
+						<Alert.Heading>Waiting</Alert.Heading>
+						<hr />
+						<p>
+						  This should display if we got a success
+						</p>
+						<hr />
+					</Alert>
+					
+					<Alert show={showError} variant="danger">
+						<Alert.Heading>Error!</Alert.Heading>
+						<hr />
+						<p>
+						  This should display if we got an error
+						</p>
+						<hr />
+					</Alert>
 				</div>
 			</div>
 		);
