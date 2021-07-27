@@ -10,8 +10,11 @@ import { LandingPages, ContentCommonPages} from "./components";
 
 import { Sidebar } from "./utils";
 import { APIRefreshToken } from "./utils";
+import { setAccessToken, setRefreshToken } from "./utils";
+//showTokens
 
-import { timedLoadStorage, timedSaveStorage, deleteStorageKey, checkStorageContents} from "./utils";
+//checkStorageContents
+import { timedLoadStorage, timedSaveStorage, deleteStorageKey} from "./utils";
 
 //import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
@@ -22,10 +25,11 @@ import './style.css'
 // Ill have to test this...
 const basePath = "/scenere"
 
-const hostName = "https://cmaster.pythonanywhere.com"
-//const hostName = "http://10.0.0.60:8000"
+// #Minutes -> seconds -> miliseconds
+const waitTimeMS = 12 * 60 * 1000
 
 //const DEBUGMODE = false
+let nonUpdateRefreshingToken = false
 
 class App extends React.Component {
 	
@@ -34,18 +38,24 @@ class App extends React.Component {
 		this.state = {
           
 			currentUser: undefined,
-			sessionToken: undefined,
-			remember: false,
+			rememberMe: false,
 			
-			refreshTokenStatus: 0,
+			refreshTimer: undefined,
         };
+		this.timerSet = undefined;
 	}
 	
 	componentDidMount() {
-		this.loadFromCookies();
-		
-		checkStorageContents()
+		this.loadFromLocalStorage();
 	};
+	
+	componentWillUnmount() {
+
+	}
+	
+	timedRefresh = () => {
+		console.log('Token Refreshed!');
+	}
 	
 	// Menu Controls...
 	disableMenu = () => {
@@ -99,79 +109,127 @@ class App extends React.Component {
 		}
 	}
 	
-	loadFromCookies = () => {
+	// I am still going to use the local and session storage until I have a grasp on cookies
+	loadFromLocalStorage = () => {
 		let lastUserSet = timedLoadStorage('lastUser');
+
 		if (lastUserSet === 0) {
-			console.log("No User In the Storage!")
+			//console.log("No User In the Storage!")
 		}
 		else if (lastUserSet === 1) {
-			console.log("Session was expired!")
+			//console.log("Session was expired!")
 		}
 		else if (lastUserSet === 2) {
-			console.log("Invalid Save!")
+			//console.log("Invalid Save!")
 		}
 		else {
 			this.changeMenuUserName(lastUserSet.user)
 			
-			this.setState({ 
-				currentUser: lastUserSet.user, 
-				sessionToken: lastUserSet.session,
-				remember: true,
-			}) 
+			this.login(lastUserSet.refresh, undefined, lastUserSet.user, true)
 		}
 	}
 	
-	setToken = ( token, username, remember ) => {
+	silentTokenUpdate = (refresh, token) => {
+		setAccessToken(token)
+		setRefreshToken(refresh)
+	}
+	
+	killAccessToken = () => {
+		setAccessToken("")
+	}
+	killRefreshToken = () => {
+		setRefreshToken("")
+	}
+	
+	login = ( refresh, token, username, remember ) => {
 		
 		this.changeMenuUserName(username)
 		
+		// I am having trouble with cookies, so lets do the rest of the refresh infrastructure while I cool off...
+		// I will just have to replace all references to the REFRSH token to a cookie, but right now we will use the local storage...
 		if (remember === true) {
-			timedSaveStorage( "lastUser", {user:username, session:token}, 0 )
+			timedSaveStorage( "lastUser", {user:username, refresh:refresh}, 2)
 		}
+		
+		this.silentTokenUpdate(refresh, token)
 		
 		// Verify this before we sent it in I guess?
 		this.setState({ 
-			sessionToken: token, 
 			currentUser: username, 
 			rememberMe: remember,
 		})
+		
+		this.timerSet = setInterval(this.timedRefreshToken, waitTimeMS)
 		
 		// Return if we succeeded or not
 		return true
 	}
 	
-	refreshFailure = () => {
+	refreshFailure = (incomingError, callbackSignal) => {
+		// Not sure why I would want a callback Signal here but...
+		//console.log(incomingError)
+		//console.log("Refresh Failure")
+		//console.log(callbackSignal)
+		
 		this.logout()
-		this.setState({
-			refreshTokenStatus: 3,
-		})
+		nonUpdateRefreshingToken = false
 	}
-	refreshCallback = (incomingToken) => {
-		this.setToken(incomingToken, this.state.currentUser, this.status.rememberMe)
-		this.setState({
-			refreshTokenStatus: 2,
-		})
+	refreshCallback = (incomingToken, callbackSignal) => {
+		
+		//console.log("Successful refresh")
+		//console.log(callbackSignal)
+		
+		this.silentTokenUpdate(incomingToken.refresh, incomingToken.access)
+		nonUpdateRefreshingToken = false
+
+		// Now, trigger this function as our redo... Hm
+		callbackSignal()
 	}
 	// Test out refreshing the token...
 	// Should do this every page reload...
-	refresh = () => {
-		APIRefreshToken(this.state.sessionToken, this.refreshCallback, this.refreshFailure)
-		
-		this.setState({
-			refreshTokenStatus: 1,
-		})
+	silentRefreshToken = ( callbackWhenDone ) => {
+		// Definetly going to have to change this crap up once the refresh token is in a cookie
+		APIRefreshToken(this.refreshCallback, this.refreshFailure, callbackWhenDone)
+	}
+	
+	timedRefreshToken = () => {
+		this.silentRefreshToken(this.timedRefresh)
 	}
 
 	// Should move this over to the UTIL...
 	logout = () => {
-		this.setState({ 
-			sessionToken: undefined, 
+
+		this.setState({
 			currentUser: undefined 
 		})
-
+		
+		clearInterval(this.timerSet)
 		this.changeMenuUserName("No User")
-
+		this.silentTokenUpdate(undefined, undefined)
 		deleteStorageKey('lastUser')
+	}
+	
+	triggerSilentRefreshToken = ( callbackRefresh ) => {
+		console.log("Triggered this thing")
+		//console.log( callbackRefresh )
+		
+		if (this.state.currentUser === undefined) {
+			//  Something is unauthorized, and we have no user! We need to logout!
+			//this.logout()
+		}
+		else {
+			if (!nonUpdateRefreshingToken) {
+				this.silentRefreshToken( callbackRefresh )
+				
+				console.log("TRIGGERD REFRESH OF TOKEN FROM A COMPONENT!")
+				nonUpdateRefreshingToken = true
+				
+				// Now, we have to trigger a redo of the stuff once its done...
+			}
+			else {
+				//console.log("Already refreshing token!")
+			}
+		}
 	}
 	
 	render() {
@@ -187,9 +245,19 @@ class App extends React.Component {
 						basePath={basePath}
 					/>
 					
-					<Navigation 
-						currentUser={this.state.currentUser}
+					{/*
+					<button onClick={this.killAccessToken}>
+						Kill Access Token
+					</button>
+					<button onClick={this.killRefreshToken}>
+						Kill Refresh Token
+					</button>
+					*/}
+					
+					<Navigation
 
+						currentUser={this.state.currentUser}
+	
 						logout={this.logout}
 						
 						reRouteSignIn={basePath+"/signin"}
@@ -214,7 +282,7 @@ class App extends React.Component {
 						
 						<Route path={basePath+"/signin"} exact component={() => <SignIn 
 								
-								loginSave={this.setToken}
+								loginSave={this.login}
 
 								reRouteTarget={basePath+"/dashboard"}
 								forgotPath={basePath+"/forgot"}
@@ -224,17 +292,17 @@ class App extends React.Component {
 								
 								reRouteTarget={basePath+"/verify"}
 								
-								loginSave={this.setToken}
+								loginSave={this.login}
 								
 								//currentUser={this.state.currentUser}
-								authToken={this.state.sessionToken}
+								authToken={this.state.accessToken}
 							/>} 
 						/>
 						<Route path={basePath+"/verify"} exact component={() => <VerifyEmail 
 								
-								authToken={this.state.sessionToken}
+								authToken={this.state.accessToken}
 								
-								forceLogout={this.logout}
+								refreshToken={this.triggerSilentRefreshToken}
 								reRouteTarget={basePath+"/signin"}
 								
 								reRouteSuccessTarget={basePath+"/dashboard"}
@@ -252,15 +320,15 @@ class App extends React.Component {
 						
 						<Route path={basePath+"/dashboard"} component={() => <ContentCommonPages 
 								
-								tokenRefresh={this.refresh}
-								reRouteTarget={basePath+"/signin"}
 								activateRedirect={basePath+"/verify"}
 								
+								refreshToken={this.triggerSilentRefreshToken}
 								logout={this.logout}
 								
 								currentUser={this.state.currentUser}
-								authToken={this.state.sessionToken}
+								authToken={this.state.accessToken}
 								
+								reRouteSignIn={basePath+"/signin"}
 								reRouteCompany={basePath+"/dashboard"}
 								reRouteUser={basePath+"/dashboard"}
 								
@@ -277,7 +345,7 @@ class App extends React.Component {
 					<div className="row m-5"/>
 
 					<Footer 
-					
+
 					/>
 				</div>
 			</Router>

@@ -1,43 +1,18 @@
 import React from "react";
 import { Link, withRouter } from "react-router-dom";
 
-//import {timedSaveStorage, timedLoadStorage, clearStorage, checkStorageContents} from "../utils";
-
 class navigation extends React.Component {
 	
 	constructor(props) {
 		super(props);
 		this.state = {
-
         };
 	}
-
-
+	
 	triggerLogout = () => {
 		this.props.logout()
+		this.props.history.push(this.props.reRouteSignIn)
 	}
-
-	/*	
-	checkTheStorage = () => {
-		checkStorageContents()
-	}
-	clearTheStorage = () => {
-		clearStorage()
-	}
-	saveToStorage = () => {
-		const keyTest = "asdf"
-		//const valueTest = ["derp","dorp","yaboi"]
-		const valueTest = {"SecondKey":"asdf","thirdKey":"boop"}
-		
-		timedSaveStorage(keyTest, valueTest, -1)
-	};
-	
-	getFromStorage = () => {
-		const keyTest = "asdf"
-		let dataTest = timedLoadStorage(keyTest)		
-		console.log(dataTest)
-	};
-	*/
 	
 	render() {
 		let iconButton = null

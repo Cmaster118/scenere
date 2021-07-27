@@ -521,16 +521,31 @@ const JournalView = (props) => {
 	let showSuccess = false//props.pickJournalCalenderDateStatus === 2 || props.pickNonJournalCalenderDateStatus === 2
 	let showError = props.pickJournalCalenderDateStatus === 3 || props.pickNonJournalCalenderDateStatus === 3
 	
+	let alreadyStacked = false
+	
 	let errorParse = []
 	for (let index in props.journalViewErrors) {
-		errorParse.push(
-			props.journalViewErrors[index]["text"]
-		)
+
+		// This means its a refresh, and the user just needs to do it again...
+		if (props.journalViewErrors[index]["mod"] === 1 && !alreadyStacked) {
+			alreadyStacked = true
+			
+			errorParse.push(
+				props.journalViewErrors[index]["text"]
+			)
+		}
+
 	}
 	for (let index in props.nonJournalViewErrors) {
-		errorParse.push(
-			props.nonJournalViewErrors[index]["text"]
-		)
+
+		// This means its a refresh, and the user just needs to do it again...
+		if (props.nonJournalViewErrors[index]["mod"] === 1 && !alreadyStacked) {
+			alreadyStacked = true
+			errorParse.push(
+				props.nonJournalViewErrors[index]["text"]
+			)
+		}
+
 	}
 	if (errorParse.length === 0) {
 		errorParse.push(

@@ -36,7 +36,8 @@ export const timedLoadStorage = (key) => {
 export const timedSaveStorage = (key, data, length) => {
 
 	// Now, How exactly do I determine when the expiry should be?
-
+	// So, this is local storage, which is still the single WORST PLACE TO PUT THIS
+	// However, I will wait for next version before I change that
 	try {
 		let storageTime = new Date()
 		
@@ -45,6 +46,9 @@ export const timedSaveStorage = (key, data, length) => {
 		}
 		else if (length === 1) {
 			storageTime.setDate(storageTime.getDate()+1)
+		}
+		else if (length === 2) {
+			storageTime.setDate(storageTime.getDate()+7)
 		}
 		else {
 			// BASIC!

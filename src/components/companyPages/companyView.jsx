@@ -3,7 +3,6 @@ import React from "react";
 import { withRouter } from "react-router-dom";
 import { ButtonGroup, ToggleButton, Table, Accordion, Card } from 'react-bootstrap';
 
-//import Store from "store"
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 
@@ -55,7 +54,7 @@ class  MultiIteration extends React.Component {
 	}
 	
 	render() {
-	
+		
 		let purity = this.props.dataSet["responsePurity"]
 		
 		let showPrompts = []
@@ -872,7 +871,7 @@ const companyViewSummary = (props) => {
 					<Alert.Heading>Error!</Alert.Heading>
 					<hr />
 					<p>
-					  Failure!
+						{errorParse}
 					</p>
 					<hr />
 				</Alert>

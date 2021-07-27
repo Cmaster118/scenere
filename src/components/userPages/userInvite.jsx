@@ -30,11 +30,6 @@ class UserInvitePage extends React.Component {
 		this.getUserInvites()
 	};
 	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana overwrite
-		this.props.logout()
-	}
-	
 	getUserInvitesFailure = ( responseData ) => {
 		let returnData = []
 		if (responseData["action"] === 0) {
@@ -42,7 +37,8 @@ class UserInvitePage extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getUserInvites)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -90,21 +86,22 @@ class UserInvitePage extends React.Component {
 		})
 	}
 	getUserInvites = () => {
-		APIUserInvitesGet( this.props.authToken, this.getUserInvitesSuccess, this.getUserInvitesFailure )
+		APIUserInvitesGet(  this.getUserInvitesSuccess, this.getUserInvitesFailure )
 		this.setState({
 			getUserInvitesStatus:1,
 		})
 	}
 	
 	inviteFailure = (responseData) => {
-		console.log(responseData)
+		//console.log(responseData)
 		let returnData = []
 		if (responseData["action"] === 0) {
 			
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.submitCode)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -153,7 +150,7 @@ class UserInvitePage extends React.Component {
 		//console.log(this.state.inviteCode)
 		//console.log("Submit")
 		
-		APIUserInviteCode( this.props.authToken, this.state.inviteCode, this.inviteSuccess, this.inviteFailure )
+		APIUserInviteCode(  this.state.inviteCode, this.inviteSuccess, this.inviteFailure )
 		this.setState({
 			submitCodeStatus:1,
 		})
@@ -166,7 +163,8 @@ class UserInvitePage extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.baseTryAgain)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -211,7 +209,7 @@ class UserInvitePage extends React.Component {
 		// 1 == Accept
 		let action = 1
 		let targetInvite = event.target.value
-		APIUserInvitesSet( this.props.authToken, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
+		APIUserInvitesSet(  targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
 		this.setState({
 			spendInviteStatus: 1,
 		})
@@ -224,7 +222,7 @@ class UserInvitePage extends React.Component {
 		let action = 0
 		let targetInvite = event.target.value
 		
-		APIUserInvitesSet( this.props.authToken, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
+		APIUserInvitesSet(  targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
 		this.setState({
 			spendInviteStatus: 1,
 		})
@@ -234,6 +232,10 @@ class UserInvitePage extends React.Component {
 		this.setState({
 			inviteCode: event.target.value,
 		})
+	}
+	
+	baseTryAgain = () => {
+		console.log("Put Some 'Uh Oh, try again' thing here")
 	}
 	
 	render() {

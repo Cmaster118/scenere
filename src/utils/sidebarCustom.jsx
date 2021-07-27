@@ -114,6 +114,9 @@ export class Sidebar extends React.Component {
 							<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
 								View Suggestion Box
 						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyWeb"} key="4">
+							View Web (Beta)
+						</Link>,
 					)
 				}
 				else if (this.state.showFullCompanyFlag === 2) {
@@ -128,23 +131,26 @@ export class Sidebar extends React.Component {
 						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySuggestions"} key="3">
 							View Suggestion Box
 						</Link>,
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyWeb"} key="4">
+							View Web (Beta)
+						</Link>,
 						
-						<div className="list-group-item list-group-item-secondary" key="3.5">
+						<div className="list-group-item list-group-item-secondary" key="4.5">
 							<h4>
 								Settings
 							</h4>
 						</div>,
-						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="4">
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="5">
 							Edit Prompt Events
 						</Link>,
 						/*Yo! Split these next!*/
-						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="5">
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="6">
 							User Invites
 						</Link>,
-						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPerms"} key="6">
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPerms"} key="7">
 							Permission Settings
 						</Link>,
-						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySettings"} key="7">
+						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companySettings"} key="8">
 							Misc. Settings
 						</Link>,
 					)

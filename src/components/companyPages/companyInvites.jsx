@@ -55,7 +55,8 @@ class CompanyInvites extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getDivisionData)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -96,7 +97,7 @@ class CompanyInvites extends React.Component {
 			let checkData = undefined//Store.get(props.currentDivisionID+"-Data")
 			if (checkData === undefined) {
 				//console.log("Requesting Division Data From Server...")
-				APIDivisionSettingsGet( this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				APIDivisionSettingsGet(  this.props.currentDivisionID, this.getSuccess, this.getFailure )
 
 				this.setState({
 					getDivisionDataStatus: 1,
@@ -118,7 +119,8 @@ class CompanyInvites extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getDivisionsInvites)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -169,7 +171,7 @@ class CompanyInvites extends React.Component {
 		if (this.props.currentDivisionID >= 0) {
 			let checkData = undefined//Store.get(props.currentDivisionID+"-Invites")
 			if (checkData === undefined) {
-				APIDivisionInvitesGet( this.props.authToken, this.props.currentDivisionID, this.getInvitesSuccess, this.getInvitesFailure )
+				APIDivisionInvitesGet(  this.props.currentDivisionID, this.getInvitesSuccess, this.getInvitesFailure )
 				this.setState({
 					getInvitesStatus: 1,
 				})
@@ -189,7 +191,8 @@ class CompanyInvites extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.tokenHasRefreshed)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -224,7 +227,7 @@ class CompanyInvites extends React.Component {
 	inviteUser = (event) => {
 		console.log("Send Invite")
 		
-		APIDivisionInvitesCreate( this.props.authToken, this.props.currentDivisionID, this.state.targetUser, this.state.targetRole, this.inviteSuccess, this.inviteFailure )
+		APIDivisionInvitesCreate(  this.props.currentDivisionID, this.state.targetUser, this.state.targetRole, this.inviteSuccess, this.inviteFailure )
 		this.setState({
 			createInvitesStatus: 1,
 		})
@@ -238,7 +241,8 @@ class CompanyInvites extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.tokenHasRefreshed)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -282,7 +286,7 @@ class CompanyInvites extends React.Component {
 		// 1 == Accept
 		let action = 1
 		let targetInvite = event.target.value
-		APIDivisionInvitesSet( this.props.authToken, this.props.currentDivisionID, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
+		APIDivisionInvitesSet(  this.props.currentDivisionID, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
 		this.setState({
 			useInvitesStatus: 1,
 		})
@@ -295,7 +299,7 @@ class CompanyInvites extends React.Component {
 		let action = 0
 		let targetInvite = event.target.value
 		
-		APIDivisionInvitesSet( this.props.authToken, this.props.currentDivisionID, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
+		APIDivisionInvitesSet(  this.props.currentDivisionID, targetInvite, action, this.spendInviteSuccess, this.spendInviteFailure )
 		this.setState({
 			useInvitesStatus: 1,
 		})
@@ -311,6 +315,10 @@ class CompanyInvites extends React.Component {
 		this.setState({
 			targetRole:event.target.value,
 		})
+	}
+	
+	tokenHasRefreshed = () => {
+		console.log("Show a 'try again' here")
 	}
 	
 	render() {

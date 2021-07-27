@@ -8,7 +8,7 @@ import { withRouter, Route, Switch } from "react-router-dom";
 //import Store from "store"
 
 //SetCompany
-import {CompanyInvites, CompanyPermissions, CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox, PromptEdit} from "./companyPages"
+import {CompanyInvites, CompanyPermissions, CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox, PromptEdit, CompanyWeb} from "./companyPages"
 //convertFromRaw
 
 const DefaultView = (props) => {
@@ -82,8 +82,7 @@ class ContentPages extends React.Component {
 									<div className="col"/>
 								</div>
 							}
-							*/}
-						
+							*/}						
 							<Switch>
 								<Route path={this.props.match.url+"/companySelect"} exact component={() => <SelectCompany
 							
@@ -110,32 +109,26 @@ class ContentPages extends React.Component {
 								
 								<Route path={this.props.match.url+"/companyInvites"} component={() => <CompanyInvites
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companyPerms"} component={() => <CompanyPermissions
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySettings"} component={() => <CompanySettings
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								
@@ -199,11 +192,17 @@ class ContentPages extends React.Component {
 								
 								<Route path={this.props.match.url+"/companyPrompts"} component={() => <PromptEdit
 										
-										authToken={this.props.authToken}
-										
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 										
 										currentDivisionID={this.props.currentDivisionID}										
+									/>} 
+								/>
+								
+								<Route path={this.props.match.url+"/companyWeb"} component={() => <CompanyWeb
+										refreshToken={this.props.refreshToken}
+										
+										currentDivisionID={this.props.currentDivisionID}	
+										reRouteTarget={this.props.match.url+"/companySelect"}
 									/>} 
 								/>
 								

@@ -453,11 +453,6 @@ class journalCreate extends React.Component {
 		}
 	}
 	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana do on logout...
-		this.props.forceLogout()
-	}
-	
 	journalPostFailure = (responseData) => {
 		let returnData = []
 		// Server is dead
@@ -466,7 +461,8 @@ class journalCreate extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.saveFullSet)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -505,12 +501,12 @@ class journalCreate extends React.Component {
 		let richContent = incomingEditor["block"]
 		
 		if (incomingID !== undefined) {		
-			APISaveJournal(this.props.authToken, inputDate, incomingID, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
+			APISaveJournal( inputDate, incomingID, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
 		}
 		else {
 			// Just in case!
 			let insertID = "none"
-			APISaveJournal(this.props.authToken, inputDate, insertID, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
+			APISaveJournal( inputDate, insertID, journalContent, richContent, this.journalPostCallback, this.journalPostFailure)
 		}
 		this.setState({
 			postJournalStatus:1,
@@ -525,7 +521,8 @@ class journalCreate extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.saveFullSet)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -562,7 +559,7 @@ class journalCreate extends React.Component {
 		let inputDate = this.props.currentDate
 		
 		if (incomingID !== undefined) {		
-			APISaveNonJournal(this.props.authToken, inputDate, incomingID, incomingValue, this.nonJournalPostCallback, this.nonJournalPostFailure)
+			APISaveNonJournal( inputDate, incomingID, incomingValue, this.nonJournalPostCallback, this.nonJournalPostFailure)
 			this.setState({
 				postNonJournalStatus:1,
 			})

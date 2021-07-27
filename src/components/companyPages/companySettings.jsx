@@ -36,10 +36,6 @@ class CompanySettings extends React.Component {
 		this.getDivisionData()
 	}
 	
-	forceLogout = () => {
-		this.props.forceLogout()
-	}
-	
 	getFailure = (responseData) => {
 		let returnData = []
 		// Server is dead
@@ -48,7 +44,8 @@ class CompanySettings extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getDivisionData)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -93,7 +90,7 @@ class CompanySettings extends React.Component {
 			let checkData = undefined//Store.get(props.currentDivisionID+"-Data")
 			if (checkData === undefined) {
 				//console.log("Requesting Division Data From Server...")
-				APIDivisionSettingsGet( this.props.authToken, this.props.currentDivisionID, this.getSuccess, this.getFailure )
+				APIDivisionSettingsGet(  this.props.currentDivisionID, this.getSuccess, this.getFailure )
 				this.setState({
 					getSettingsStatus: 1,
 				})
@@ -113,7 +110,8 @@ class CompanySettings extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.saveChanges)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -160,7 +158,7 @@ class CompanySettings extends React.Component {
 			"chName": chName,
 		}
 		
-		APIDivisionSettingsEdit( this.props.authToken, testData, this.setSuccess, this.setFailure )
+		APIDivisionSettingsEdit(  testData, this.setSuccess, this.setFailure )
 		this.setState({
 			saveChangesStatus: 1,
 		})
