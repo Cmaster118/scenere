@@ -1,3 +1,5 @@
+// I should use the way I redid this in the side app as a template to simplify this as much as possible
+
 // First version of a Line graph with Arbitrary everything...
 export const arbitraryLineData = (inputXAxis, inputDataList) => {
 	

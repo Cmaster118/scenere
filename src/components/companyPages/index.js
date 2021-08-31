@@ -9,3 +9,5 @@ export { default as SuggestionBox } from "./suggestionBox";
 export { default as ViewCompany } from "./companyView";
 
 export { default as PromptEdit } from "./companyPrompts";
+
+export { default as CompanyWeb } from "./companyWeb";

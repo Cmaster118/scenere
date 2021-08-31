@@ -33,11 +33,6 @@ class SecurityPages extends React.Component {
 		//this.getCurrentData()
 	}
 	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana overwrite
-		this.props.logout()
-	}
-	
 	oldPasswordChange = (event) => {
 		this.setState({
 			oldPassword: event.target.value,
@@ -76,7 +71,8 @@ class SecurityPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getCurrentData)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -110,7 +106,7 @@ class SecurityPages extends React.Component {
 		})
 	}
 	getCurrentData = () => {
-		APIGetUserDetails( this.props.authToken, this.getDataSuccess, this.getDataFailure )
+		APIGetUserDetails(  this.getDataSuccess, this.getDataFailure )
 		this.setState({
 			getCurrentDataStatus: 1,
 		})
@@ -123,7 +119,8 @@ class SecurityPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.changeEmail)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -150,8 +147,8 @@ class SecurityPages extends React.Component {
 		})
 	}
 	changeGeneralSuccess = (successData) => {
-		console.log("Update Success")
-		console.log(successData)
+		//console.log("Update Success")
+		//console.log(successData)
 		// Set some sort of success!?
 		this.setState({
 			changeGeneralStatus: 2,
@@ -159,7 +156,7 @@ class SecurityPages extends React.Component {
 	}
 	changeEmail = () => {
 		// Verify first...
-		APIChangeUserEmail( this.props.authToken, this.state.newEmail, this.changeGeneralSuccess, this.changeGeneralFailure )
+		APIChangeUserEmail(  this.state.newEmail, this.changeGeneralSuccess, this.changeGeneralFailure )
 		this.setState({
 			newEmail: "",
 			changeGeneralStatus: 1,
@@ -167,7 +164,7 @@ class SecurityPages extends React.Component {
 	}
 	
 	changeName = () => {
-		APIChangeUserName( this.props.authToken, this.state.newFirstName, this.state.newLastName, this.changeGeneralSuccess, this.changeGeneralFailure )
+		APIChangeUserName(  this.state.newFirstName, this.state.newLastName, this.changeGeneralSuccess, this.changeGeneralFailure )
 		this.setState({
 			newFirstName: "",
 			newLastName: "",
@@ -176,7 +173,7 @@ class SecurityPages extends React.Component {
 	}
 	
 	changePassword = () => {
-		APIChangeUserPassword( this.props.authToken, this.state.oldPassword, this.state.newPassword, this.state.newPassword2, this.changeGeneralSuccess, this.changeGeneralFailure )
+		APIChangeUserPassword(  this.state.oldPassword, this.state.newPassword, this.state.newPassword2, this.changeGeneralSuccess, this.changeGeneralFailure )
 		this.setState({
 			oldPassword: "",
 			setNewPassword: "",

@@ -134,10 +134,6 @@ class PromptDisplay extends React.Component {
 		this.getEvents()
 	};
 	
-	forceLogout = () => {
-		this.props.forceLogout()
-	}
-	
 	setLastClickedEvent = (event) => {
 		this.setState({
 			lastClickedEventIndex: Number(event.target.value)
@@ -152,7 +148,8 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.getEvents)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -214,7 +211,7 @@ class PromptDisplay extends React.Component {
 		if (!(this.props.currentDivisionID === -1)) {
 			let checkData = undefined
 			if (checkData === undefined) {
-				APIGetDivisionEvents( this.props.authToken, this.props.currentDivisionID, this.getEventsSuccess, this.getEventsFailure )
+				APIGetDivisionEvents(  this.props.currentDivisionID, this.getEventsSuccess, this.getEventsFailure )
 				this.setState({
 					getEventsStatus: 1,
 				})
@@ -236,7 +233,8 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.tokenHasRefreshedError)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -288,7 +286,7 @@ class PromptDisplay extends React.Component {
 			newPrompts.push( selectedEvent["promptPool"][index]["identifier"] )
 		}
 		
-		APISetDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, newEnabled, newTrigger, newPrompts, this.saveEventsSuccess, this.saveEventsFailure )
+		APISetDivisionEvents( Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, newEnabled, newTrigger, newPrompts, this.saveEventsSuccess, this.saveEventsFailure )
 		this.setState({
 			saveEventStatus: 0,
 		})
@@ -302,7 +300,8 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.tokenHasRefreshedError)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -338,7 +337,7 @@ class PromptDisplay extends React.Component {
 		let id = selectedEvent["id"]
 		let newEnabledDiv = selectedEvent["usedBy"]
 		
-		APISetNonDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
+		APISetNonDivisionEvents( Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
 		this.setState({
 			saveEventStatus: 0,
 		})
@@ -349,7 +348,7 @@ class PromptDisplay extends React.Component {
 		let id = selectedEvent["id"]
 		let newEnabledDiv = selectedEvent["usedBy"]
 		
-		APISetNonDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
+		APISetNonDivisionEvents( Number(event.target.value), id, this.props.currentDivisionID, newEnabledDiv, this.saveNonDivEventsSuccess, this.saveNonDivEventsFailure )
 		this.setState({
 			saveEventStatus: 0,
 		})
@@ -363,7 +362,8 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.searchForPrompts)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -401,7 +401,7 @@ class PromptDisplay extends React.Component {
 		let checkData = undefined
 		if (checkData === undefined) {
 			//console.log("Prompts are not in storage!")
-			APIGetSearchPrompts(this.props.authToken, this.state.searchText, this.state.searchType, this.searchForPromptsCallback, this.searchForPromptsFailure)			
+			APIGetSearchPrompts( this.state.searchText, this.state.searchType, this.searchForPromptsCallback, this.searchForPromptsFailure)			
 			this.setState({
 				searchForStatus: 1,
 			})
@@ -420,7 +420,8 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.tokenHasRefreshedError)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -466,7 +467,7 @@ class PromptDisplay extends React.Component {
 			this.deleteEventCallback( Number(event.target.value), "Not On The Server")
 		}
 		else{			
-			APIDeleteDivisionEvents(this.props.authToken, Number(event.target.value), id, this.props.currentDivisionID, this.deleteEventCallback, this.deleteEventFailure )
+			APIDeleteDivisionEvents( Number(event.target.value), id, this.props.currentDivisionID, this.deleteEventCallback, this.deleteEventFailure )
 			this.setState({
 				deleteEventStatus: 1,
 			})
@@ -610,6 +611,10 @@ class PromptDisplay extends React.Component {
 		this.setState({
 			pageNum: newPage
 		})
+	}
+	
+	tokenHasRefreshedError = () => {
+		console.log("Try again, the token needed to be refreshed...")
 	}
 	
 	render() {

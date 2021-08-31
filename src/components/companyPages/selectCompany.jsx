@@ -196,13 +196,15 @@ class selectCompany extends React.Component  {
 			)
 		}
 		
-		//let goodPermission = this.props.getCompanyDataStatus
-		
 		//let showIdle = this.props.getCompanyValidDatesStatus === 0 || this.props.getCompanyValidSuggestionDatesStatus === 0 || this.props.getCompanyEHIDataStatus === 0
 		let showWaiting = this.props.getCompanyValidDatesStatus === 1 || this.props.getCompanyValidSuggestionDatesStatus === 1 || this.props.getCompanyEHIDataStatus === 1
 		let showSuccess = this.props.getCompanyValidDatesStatus === 2 || this.props.getCompanyValidSuggestionDatesStatus === 2 || this.props.getCompanyEHIDataStatus === 2
 		let showError = this.props.getCompanyValidDatesStatus === 3 || this.props.getCompanyValidSuggestionDatesStatus === 3 || this.props.getCompanyEHIDataStatus === 3
 			
+		//console.log(this.props.getCompanyValidDatesStatus)
+		//console.log(this.props.getCompanyValidSuggestionDatesStatus)
+		//console.log(this.props.getCompanyEHIDataStatus)
+		
 		let errorParse = []
 		for (let index in this.props.getCompanyEHIDataError) {
 			errorParse.push(
@@ -280,7 +282,7 @@ class selectCompany extends React.Component  {
 						<Alert.Heading>Success!</Alert.Heading>
 						<hr />
 						<p>
-						  Successfully obtained data!
+						  Division Data for {this.props.currentDivisionName} is Ready!
 						</p>
 						<hr />
 					</Alert>
@@ -289,7 +291,7 @@ class selectCompany extends React.Component  {
 						<Alert.Heading>Error!</Alert.Heading>
 						<hr />
 						<p>
-						  Failure!
+						  Failure to get the data!
 						</p>
 						<hr />
 					</Alert>

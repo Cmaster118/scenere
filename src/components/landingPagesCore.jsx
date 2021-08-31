@@ -24,6 +24,7 @@ class FreePages extends React.Component {
 			<div className="freePages">
 			
 				<Header />
+				
 				<BetaContact 
 					
 				/>

@@ -24,11 +24,6 @@ class UserProfile extends React.Component {
         };
 	}
 	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana overwrite
-		this.props.logout()
-	}
-	
 	initViews = () => {
 		let viewSubList = []
 		for (let index in this.props.userLoadedCompanyList) {
@@ -106,7 +101,8 @@ class UserProfile extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.saveChanges())
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -150,7 +146,7 @@ class UserProfile extends React.Component {
 			"delGoverns":this.state.delGoverns,
 		}
 		
-		APIUserSettingsEdit( this.props.authToken, testData, this.setSuccess, this.setFailure )
+		APIUserSettingsEdit(  testData, this.setSuccess, this.setFailure )
 		
 		this.setState({
 			delGoverns: [],

@@ -11,7 +11,7 @@ import { EditorState, convertToRaw } from 'draft-js';
 //import { Justify } from 'react-bootstrap-icons';
 
 //SetCompany
-import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion} from "./userPages"
+import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion, UserWeb} from "./userPages"
 
 
 const DefaultView = (props) => {
@@ -33,6 +33,8 @@ class ContentPages extends React.Component {
         super(props);
         this.state = {
 			selectedJournalDate: new Date(),
+			
+			selectedJournalViewDiv: 0,
 			
 			journalValidPrompts: [],
 			
@@ -60,7 +62,6 @@ class ContentPages extends React.Component {
 	
 	componentDidMount() {
 		this.props.activateUserMenu(1)
-		
 	};
 	componentWillUnmount() {
 		this.props.disableMenu()
@@ -91,12 +92,7 @@ class ContentPages extends React.Component {
 		
 		return -1
 	}
-	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana do on logout...
-		this.props.forceLogout()
-	}
-	
+
 	changeSuggestionContent = (incomingState) => {
 		//console.log(incomingState)
 		this.setState({
@@ -113,7 +109,8 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.postSuggestion)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -155,7 +152,7 @@ class ContentPages extends React.Component {
 		//console.log(targetDivision)
 		
 		if (!(targetDivision === -1)) {
-			APISaveSuggestion(this.props.authToken, inputDate, targetDivision, suggestionContent, richContent, this.suggestionPostCallback, this.suggestionPostFailureCallback)
+			APISaveSuggestion( inputDate, targetDivision, suggestionContent, richContent, this.suggestionPostCallback, this.suggestionPostFailureCallback)
 			this.setState({
 				postSuggestionStatus:1,
 			})
@@ -169,6 +166,10 @@ class ContentPages extends React.Component {
 		}
 	}
 	
+	refreshCompleted = () => {
+		console.log("Put a Please Try again thing on the UI")
+	}
+	
 	journalDataFailure = (responseData) => {
 		let returnData = []
 		// Server is dead
@@ -177,7 +178,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.refreshCompleted)
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -211,14 +212,17 @@ class ContentPages extends React.Component {
 		})
 	}
 	nonJournalDataFailure = (responseData) => {
-		let returnData = []
+		let returnData = responseData['messages']
+		
 		// Server is dead
 		if (responseData["action"] === 0) {
-			
-		}
+		
+		}		
 		// Unauthorized
+		
+		// So, this is inefficient... Refactor this!
 		else if (responseData["action"] === 1) {
-			this.forceLogout()
+			this.props.refreshToken(this.refreshCompleted)
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -237,7 +241,6 @@ class ContentPages extends React.Component {
 
 		}
 		
-		returnData = responseData['messages']
 		this.setState({
 			nonJournalViewErrors: returnData,
 			pickNonJournalCalenderDateStatus:3,
@@ -266,11 +269,14 @@ class ContentPages extends React.Component {
 			
 			// Perhaps I can find a good merge....
 			// Both solutions I have thought of do not seem good enough yet....
-			APIGetJournalData(this.props.authToken, selectedDate, this.journalDataCallback, this.journalDataFailure)
-			APIGetNonJournalData(this.props.authToken, selectedDate, this.nonJournalDataCallback, this.nonJournalDataFailure)
+			APIGetJournalData( selectedDate, this.journalDataCallback, this.journalDataFailure)
+			APIGetNonJournalData( selectedDate, this.nonJournalDataCallback, this.nonJournalDataFailure)
 			this.setState({
 				pickJournalCalenderDateStatus:1,
 				pickNonJournalCalenderDateStatus:1,
+				
+				viewJournalData: [],
+				viewNonJournalData: [],
 			})
 		}
 		else {
@@ -281,6 +287,12 @@ class ContentPages extends React.Component {
 	setSuggestionDivision = (targetDivision) => {
 		this.setState({
 			currentSuggestionDivision:targetDivision,
+		})
+	}
+	
+	changeSelectedJournalViewDiv = (event) => {
+		this.setState({
+			selectedJournalViewDiv: event.target.value,
 		})
 	}
 	
@@ -311,8 +323,7 @@ class ContentPages extends React.Component {
 							<Switch>
 								<Route path={this.props.match.url+"/journalWrite"} component={() => <WriteJournals
 										
-										authToken={this.props.authToken}
-										forceLogout={this.forceLogout}
+										refreshToken={this.props.refreshToken}
 										
 										currentDate={this.props.currentDate}
 								
@@ -336,6 +347,9 @@ class ContentPages extends React.Component {
 										validJournalScanDates={this.props.validJournalScanDates}
 										
 										pickDate={this.pickJournalCalenderDate}
+										
+										selectedJournalViewDiv={this.state.selectedJournalViewDiv}
+										changeSelectedJournalViewDiv={this.changeSelectedJournalViewDiv}
 
 										journalViewErrors={this.state.journalViewErrors}
 										nonJournalViewErrors={this.state.nonJournalViewErrors}
@@ -363,32 +377,28 @@ class ContentPages extends React.Component {
 								/>
 								<Route path={this.props.match.url+"/userPermissions"} component={() => <UserProfile
 										
-										authToken={this.props.authToken}
-										
 										currentUser={this.props.currentUser}
 										
 										userLoadedCompanyList={this.props.userLoadedCompanyList}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.forceLogout}
+										refreshToken={this.props.refreshToken}
 										
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userSecurity"} component={() => <UserSecurity
-								
-										
-										authToken={this.props.authToken}
-										
-										forceLogout={this.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userInvite"} component={() => <UserInvite
-								
-										
-										authToken={this.props.authToken}
-								
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.forceLogout}
+										refreshToken={this.props.refreshToken}
+									/>} 
+								/>
+								<Route path={this.props.match.url+"/userWeb"} component={() => <UserWeb
+										triggerRefresh={this.props.loadCompanyData}
+										refreshToken={this.props.refreshToken}
+										validUserWebDates = {this.props.validUserWebDates}
 									/>} 
 								/>
 								

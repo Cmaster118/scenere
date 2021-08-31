@@ -8,7 +8,7 @@ import { withRouter, Route, Switch } from "react-router-dom";
 //import Store from "store"
 
 //SetCompany
-import {CompanyInvites, CompanyPermissions, CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox, PromptEdit} from "./companyPages"
+import {CompanyInvites, CompanyPermissions, CompanySettings, SelectCompany, ViewCompany, EHIDisplay, SuggestionBox, PromptEdit, CompanyWeb} from "./companyPages"
 //convertFromRaw
 
 const DefaultView = (props) => {
@@ -23,7 +23,7 @@ const DefaultView = (props) => {
 }
 
 // This needs to be changed out as this is now in 2 files....
-
+//const waitTimeMS = 100
 class ContentPages extends React.Component {
 
 	constructor(props) {
@@ -34,12 +34,38 @@ class ContentPages extends React.Component {
 			EHISelectedTimescale: "none",
 			
 			companySelectPage: 1,
+			
+			pageIsLoaded: false,
 		}
+		this.waitForParent = undefined;
 	}
 	
 	componentDidMount() {
 		this.props.activateCompanyMenu(1)
+		
+		/*
+		let isLoaded = this.checkParentIsLoaded()
+		if (!isLoaded) {	
+			// Wait until app.js has loaded....
+			this.waitForParent = setInterval(this.checkParentIsLoaded, waitTimeMS)
+		}
+		*/
 	};
+	
+	checkParentIsLoaded = () => {
+		if (this.props.parentHasLoaded) {
+			clearInterval(this.waitForParent)
+			console.log("Company page Finished Loading!")
+			this.setState({
+				pageIsLoaded: true,
+			})
+			
+			return true
+		}
+		else {
+			return false
+		}
+	}
 	
 	componentWillUnmount() {
 		this.props.disableMenu()
@@ -82,8 +108,7 @@ class ContentPages extends React.Component {
 									<div className="col"/>
 								</div>
 							}
-							*/}
-						
+							*/}						
 							<Switch>
 								<Route path={this.props.match.url+"/companySelect"} exact component={() => <SelectCompany
 							
@@ -105,42 +130,40 @@ class ContentPages extends React.Component {
 										
 										getCompanyEHIDataStatus={this.props.getCompanyEHIDataStatus}
 										getCompanyEHIDataError={this.props.getCompanyEHIDataError}
+										
+										getDatesWebStatus={this.props.getDatesWebStatus}
+										getDatesWebError={this.props.getDatesWebError}
 									/>} 
 								/>
 								
 								<Route path={this.props.match.url+"/companyInvites"} component={() => <CompanyInvites
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companyPerms"} component={() => <CompanyPermissions
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySettings"} component={() => <CompanySettings
 										
-										authToken={this.props.authToken}
-										
 										currentDivisionID={this.props.currentDivisionID}
 										
 										triggerRefresh={this.props.loadCompanyData}
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 									/>} 
 								/>
 								
 								<Route path={this.props.match.url+"/companySuggestions"} component={() => <SuggestionBox
 										currentDate={this.props.selectedSuggestDay}
+										parentHasLoaded={this.state.pageIsLoaded}
 										
 										validDays={this.props.validDivisionSuggestionDates}
 										
@@ -171,6 +194,7 @@ class ContentPages extends React.Component {
 								/>	
 								<Route path={this.props.match.url+"/companySummary"} component={() => <ViewCompany
 										currentDate={this.props.selectedCompanyDate}
+										parentHasLoaded={this.state.pageIsLoaded}
 										
 										currentCompany={this.props.currentCompanyDataName}
 										summaryType={this.props.currentCompanyDataType}
@@ -199,11 +223,21 @@ class ContentPages extends React.Component {
 								
 								<Route path={this.props.match.url+"/companyPrompts"} component={() => <PromptEdit
 										
-										authToken={this.props.authToken}
-										
-										forceLogout={this.props.forceLogout}
+										refreshToken={this.props.refreshToken}
 										
 										currentDivisionID={this.props.currentDivisionID}										
+									/>} 
+								/>
+								
+								<Route path={this.props.match.url+"/companyWeb"} component={() => <CompanyWeb
+										refreshToken={this.props.refreshToken}
+										parentHasLoaded={this.state.pageIsLoaded}
+
+										currentDivisionName={this.props.currentDivisionName}
+										currentDivisionID={this.props.currentDivisionID}	
+										
+										reRouteTarget={this.props.match.url+"/companySelect"}
+										validDivisionWebDates = {this.props.validDivisionWebDates}
 									/>} 
 								/>
 								

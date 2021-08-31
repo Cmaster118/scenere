@@ -126,7 +126,8 @@ class JournalIteration extends React.Component {
 		
 		// Making the Editor
 		let givenState = EditorState.createEmpty()
-		if (!(this.props.richText === undefined)) {
+		
+		if (!(this.props.richText === null)) {
 			let richData = convertFromRaw( this.props.richText )
 			givenState = EditorState.createWithContent(richData)
 		}
@@ -419,8 +420,111 @@ const JournalView = (props) => {
 		}
 	}
 	
+	// Scanning for divisions...
+	let foundData = []
+	for (let index in props.viewJournalData) {
+		if (props.viewJournalData[index]["onlyDivision"]) {
+			let checkThing = false
+			for (let deepIndex in foundData) {
+				if (foundData[deepIndex]["id"] === props.viewJournalData[index]["targetDivision"]["id"] ) {
+					checkThing = true
+					break
+				}
+			}
+			
+			if (!checkThing) {
+				foundData.push( props.viewJournalData[index]["targetDivision"] )
+			}	
+		}
+		else {
+			let checkThing = false
+			for (let deepIndex in foundData) {
+				if (foundData[deepIndex]["id"] === -1 ) {
+					checkThing = true
+					break
+				}
+			}
+			let newSet = {
+				"divisionName":"None",
+				"id":-1,
+			}
+			if (!checkThing) {
+				foundData.push( newSet )
+			}
+		}
+	}
+	for (let index in props.viewNonJournalData) {
+		if (props.viewNonJournalData[index]["onlyDivision"]) {
+			let checkThing = false
+			for (let deepIndex in foundData) {
+				if (foundData[deepIndex]["id"] === props.viewNonJournalData[index]["targetDivision"]["id"] ) {
+					checkThing = true
+					break
+				}
+			}
+			if (!checkThing) {
+				foundData.push( props.viewNonJournalData[index]["targetDivision"] )
+			}
+		}
+		else {
+			let checkThing = false
+			for (let deepIndex in foundData) {
+				if (foundData[deepIndex]["id"] === -1 ) {
+					checkThing = true
+					break
+				}
+			}
+			let newSet = {
+				"divisionName":"None",
+				"id":-1,
+			}
+			if (!checkThing) {
+				foundData.push( newSet )
+			}
+		}
+	}
+	
+	let displayButtonSet = []
+	for (let index in foundData) {
+		let dispClass = "btn btn-outline-secondary"
+		if (String(props.selectedJournalViewDiv) === index) {
+			dispClass = "btn btn-secondary"
+		}
+		
+		displayButtonSet.push(
+			<button key={index} className={dispClass} value={index} onClick={props.changeSelectedJournalViewDiv}>
+				{foundData[index]["divisionName"]}
+			</button>
+		)
+	}
+	
+	if (displayButtonSet.length === 0) {
+		displayButtonSet.push(
+			<div key={0} className="btn btn-outline-secondary">
+				Nothing!
+			</div>
+		)
+	}
+	
+	let selectedDivID = -1
+	if (props.selectedJournalViewDiv >= 0 && props.selectedJournalViewDiv < foundData.length) {
+		selectedDivID = foundData[props.selectedJournalViewDiv]["id"]
+	}
+	
 	let showResult = []
 	for (let index in props.viewNonJournalData) {
+		
+		try{
+			if (!(props.viewNonJournalData[index]["targetDivision"]["id"] === selectedDivID)) {
+				continue
+			}
+		}
+		catch{
+			// if it ISNT a "No seleted set"... then skip it
+			if (!(selectedDivID === -1)) {
+				continue
+			}
+		}
 		
 		let promptTitle = "No Prompt Data!"
 		let promptBody = "Prompt Showing Error!"
@@ -476,8 +580,21 @@ const JournalView = (props) => {
 	}
 	for (let index in props.viewJournalData) {
 		
+		try {
+			if (!(props.viewJournalData[index]["targetDivision"]["id"] === selectedDivID)) {
+				continue
+			}
+		}
+		catch{
+			// Well, this doesnt even have a selected Div ID so....
+			if (!(selectedDivID === -1)) {
+				continue
+			}
+		}
+		
 		let promptTitle = "No Prompt Data!"
 		let promptBody = "No Prompt!"
+		
 		if (props.viewJournalData[index]["usedPromptKey"] !== null) {
 			promptTitle = props.viewJournalData[index]["usedPromptKey"]["text"]
 			
@@ -521,16 +638,31 @@ const JournalView = (props) => {
 	let showSuccess = false//props.pickJournalCalenderDateStatus === 2 || props.pickNonJournalCalenderDateStatus === 2
 	let showError = props.pickJournalCalenderDateStatus === 3 || props.pickNonJournalCalenderDateStatus === 3
 	
+	let alreadyStacked = false
+	
 	let errorParse = []
 	for (let index in props.journalViewErrors) {
-		errorParse.push(
-			props.journalViewErrors[index]["text"]
-		)
+
+		// This means its a refresh, and the user just needs to do it again...
+		if (props.journalViewErrors[index]["mod"] === 1 && !alreadyStacked) {
+			alreadyStacked = true
+			
+			errorParse.push(
+				props.journalViewErrors[index]["text"]
+			)
+		}
+
 	}
 	for (let index in props.nonJournalViewErrors) {
-		errorParse.push(
-			props.nonJournalViewErrors[index]["text"]
-		)
+
+		// This means its a refresh, and the user just needs to do it again...
+		if (props.nonJournalViewErrors[index]["mod"] === 1 && !alreadyStacked) {
+			alreadyStacked = true
+			errorParse.push(
+				props.nonJournalViewErrors[index]["text"]
+			)
+		}
+
 	}
 	if (errorParse.length === 0) {
 		errorParse.push(
@@ -564,6 +696,17 @@ const JournalView = (props) => {
 								Prompt Data for {props.currentDate.toString()}
 							</div>
 							<div className="card-body">
+								<div className="row">
+									<div className="col">
+										Select a Division:
+									</div>
+								</div>
+								<div className="row">
+									<div className="col">
+										{displayButtonSet}
+									</div>
+								</div>
+								<hr />
 								{showResult}
 							</div>
 						</div>

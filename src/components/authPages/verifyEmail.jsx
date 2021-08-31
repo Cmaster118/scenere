@@ -27,12 +27,6 @@ class verifyEmail extends React.Component {
         };
 	}
 	
-	forceLogout = () => {
-		// Gonna do this like this, in case we got something else we wana do on logout...
-		this.props.forceLogout()
-		this.props.history.push(this.props.reRouteTarget);
-	}
-	
 	// Wait, are Usernames a good thing for what we are doing? Hmmmm
 	tokenFieldChange = (event) => {
 		this.setState( {token: event.target.value} )
@@ -93,7 +87,7 @@ class verifyEmail extends React.Component {
 	}
 	handleVerifySubmit = (event) => {
 		
-		APIValidateAccount(this.props.authToken, this.state.token, this.handleVerifyCallback, this.handleVerifyFailure)
+		APIValidateAccount( this.state.token, this.handleVerifyCallback, this.handleVerifyFailure)
 		
 		this.setState({
 			validateStatus: 1,
@@ -109,7 +103,7 @@ class verifyEmail extends React.Component {
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
-			this.props.forceLogout()
+			this.props.refreshToken( this.reSendEmail )
 		}
 		// Bad Request
 		else if (responseData["action"] === 3) {
@@ -138,7 +132,7 @@ class verifyEmail extends React.Component {
 	}
 	reSendEmail = () => {
 		// Now sending the validator email...
-		APIResendValidator(this.props.authToken, this.reSendEmailCallback, this.reSendEmailFailure)
+		APIResendValidator( this.reSendEmailCallback, this.reSendEmailFailure)
 		this.setState({
 			sendEmailStatus: 1,
 		})

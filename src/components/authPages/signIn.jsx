@@ -22,12 +22,16 @@ class signIn extends React.Component {
 			// Switches to display errors on the front page
 			// Hm, this seems a little bad.... Can I mesh these together while still being readable?
 			usernameError: false,
+			emailError: false,
 			passwordError: false,
 			isWrongError: false,
 			
 			networkError: false,			
 			miscError: false,
 		  
+			signInEmailMode: false,
+		  
+			email: '',
 			username: '',
 			
 			// This needs to be hashed as fast as possible...
@@ -57,6 +61,13 @@ class signIn extends React.Component {
 	userFieldChange = (event) => {
 		this.setState({
 			username: event.target.value,
+		})
+		this.resetErrors()
+	}
+	
+	emailFieldChange = (event) => {
+		this.setState({
+			email: event.target.value,
 		})
 		this.resetErrors()
 	}
@@ -133,7 +144,15 @@ class signIn extends React.Component {
 	}
 	handleSubmitSuccess = (incomingToken) => {
 
-		let sanityCheck = this.props.loginSave( incomingToken, this.state.username, this.state.remember )
+		let accessToken = incomingToken.access
+		
+		// Uh Oh, the displayname will be wrong here...
+		let displayName = this.state.username
+		if (this.state.signInEmailMode) {
+			displayName = this.state.email
+		}
+
+		let sanityCheck = this.props.loginSave( accessToken, displayName, this.state.remember )
 		if (sanityCheck) {
 			//console.log("Token registered")
 			
@@ -143,15 +162,23 @@ class signIn extends React.Component {
 			})
 			*/
 
-			this.props.history.push(this.props.reRouteTarget)			
+			this.props.history.push(this.props.reRouteTarget)
 		}
 		else {
 			console.log("Token Set on OUR END Failed..?")
+			this.setState({
+				signInState:3,
+			})
 		}
 	}
 	handleSubmit = event => {
 		
-		APISignIn(this.state.username, this.state.password, this.handleSubmitSuccess, this.handleSubmitFailure)
+		let usedName = this.state.username
+		if (this.state.signInEmailMode) {
+			usedName = this.state.email
+		}
+		
+		APISignIn(this.state.signInEmailMode, usedName, this.state.password, this.handleSubmitSuccess, this.handleSubmitFailure)
 		
 		this.setState({
 			signInState:1,
@@ -161,6 +188,11 @@ class signIn extends React.Component {
 	}
 	
 	render() {
+	
+		let emailClass = ''
+		if (this.state.emailError || this.state.isWrongError) {
+			emailClass = 'bg-warning'
+		}
 	
 		let usernameClass = ''
 		if (this.state.usernameError || this.state.isWrongError) {
@@ -183,13 +215,21 @@ class signIn extends React.Component {
 				<form onSubmit={this.handleSubmit} >
 					<h3>Sign In</h3>
 					
-					<p className="text-danger">{this.state.isWrongError ? "Username and/or Password are incorrect":""}</p>
+					<p className="text-danger">{this.state.isWrongError ? "Email and/or Password are incorrect":""}</p>
 					
-					<div className='form-group'>
-						<label>Username</label>
-						<input type='text' className={'form-control '+usernameClass} value={this.state.username} onChange={this.userFieldChange} placeholder='Enter Username' />
-						<p className="text-danger">{this.state.usernameError ? "Username cant be blank":""}</p>
-					</div>
+					{this.state.signInEmailMode ?
+						<div className='form-group'>
+							<label>Email</label>
+							<input type='text' className={'form-control '+emailClass} value={this.state.email} onChange={this.emailFieldChange} placeholder='Enter Email' />
+							<p className="text-danger">{this.state.emailError ? "Email cant be blank":""}</p>
+						</div>
+						:
+						<div className='form-group'>
+							<label>Username</label>
+							<input type='text' className={'form-control '+usernameClass} value={this.state.username} onChange={this.userFieldChange} placeholder='Enter Username' />
+							<p className="text-danger">{this.state.usernameError ? "Username cant be blank":""}</p>
+						</div>
+					}
 					
 					<div className='form-group'>
 						<label>Password</label>
@@ -198,7 +238,7 @@ class signIn extends React.Component {
 					</div>
 
 					<div className='form-group'>
-						<label className='form-control-label' htmlFor='customCheck1' >Remember Me</label>
+						<label className='form-control-label' htmlFor='customCheck1' >Keep Me Logged In</label>
 						<input type='checkbox' className='form-control-input' id='customCheck1' value={this.state.remember} onChange={this.remFieldChange} />
 					</div>
 					

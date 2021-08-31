@@ -63,7 +63,7 @@ const suggesstionBox = (props) => {
 		]
 	}
 	
-	let currentSelectedDayFilter = props.currentDate
+	let currentSelectedDayFilter = undefined
 	if ( props.currentDate === false ) {
 		currentSelectedDayFilter = new Date()
 	}
@@ -72,18 +72,19 @@ const suggesstionBox = (props) => {
 	let showWaiting = props.getCompanySuggestionDataStatus === 1
 	let showSuccess = false//props.getCompanySuggestionDataStatus === 2
 	let showError = props.getCompanySuggestionDataStatus === 3
-	
+
 	let errorParse = []
-		for (let index in props.getSettingsError) {
-			errorParse.push(
-				props.getSettingsError[index]["text"]
-			)
-		}
-		if (errorParse.length === 0) {
-			errorParse.push(
-				"Unknown!"
-			)
-		}
+	//console.log( props.getCompanySuggestionDataError)
+	for (let index in props.getCompanySuggestionDataError) {
+		errorParse.push(
+			props.getCompanySuggestionDataError[index]["text"]
+		)
+	}
+	if (errorParse.length === 0) {
+		errorParse.push(
+			"Unknown!"
+		)
+	}
 	
 	return (
 		<div className="testPages">
