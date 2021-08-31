@@ -4,6 +4,8 @@ import Store from "store"
 export * from "./axiosAPI"
 export * from "./graphs"
 export * from "./sidebarCustom"
+export * from "./networkGraph"
+export * from "./infoDisplayMulti"
 
 export const timedLoadStorage = (key) => {
 	

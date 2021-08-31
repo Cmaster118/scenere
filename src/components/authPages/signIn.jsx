@@ -143,9 +143,8 @@ class signIn extends React.Component {
 		})
 	}
 	handleSubmitSuccess = (incomingToken) => {
-		
+
 		let accessToken = incomingToken.access
-		let refreshToken = incomingToken.refresh
 		
 		// Uh Oh, the displayname will be wrong here...
 		let displayName = this.state.username
@@ -153,7 +152,7 @@ class signIn extends React.Component {
 			displayName = this.state.email
 		}
 
-		let sanityCheck = this.props.loginSave( refreshToken, accessToken, displayName, this.state.remember )
+		let sanityCheck = this.props.loginSave( accessToken, displayName, this.state.remember )
 		if (sanityCheck) {
 			//console.log("Token registered")
 			

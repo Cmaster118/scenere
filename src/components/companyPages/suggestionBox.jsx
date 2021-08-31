@@ -63,7 +63,7 @@ const suggesstionBox = (props) => {
 		]
 	}
 	
-	let currentSelectedDayFilter = props.currentDate
+	let currentSelectedDayFilter = undefined
 	if ( props.currentDate === false ) {
 		currentSelectedDayFilter = new Date()
 	}
@@ -74,7 +74,7 @@ const suggesstionBox = (props) => {
 	let showError = props.getCompanySuggestionDataStatus === 3
 
 	let errorParse = []
-	console.log( props.getCompanySuggestionDataError)
+	//console.log( props.getCompanySuggestionDataError)
 	for (let index in props.getCompanySuggestionDataError) {
 		errorParse.push(
 			props.getCompanySuggestionDataError[index]["text"]

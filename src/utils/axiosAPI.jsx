@@ -4,24 +4,22 @@ import axios from "axios"
 const hostName = "https://cmaster.pythonanywhere.com"
 //const hostName = "http://10.0.0.60:8000"
 
+// CSRF TOKEN IS NOT WORKING CORRECTLY!!!
 const axiosInstance = axios.create({
 	baseURL: hostName,
 	//headers: {'CSRF-TOKEN': getCookie('csrftoken')}
+	withCredentials: true,
 });
 
 let accessToken = ""
-let refreshToken = ""
 
 export const setAccessToken = (token) => {
 	accessToken = token
 }
-export const setRefreshToken = (token) => {
-	refreshToken = token
-}
 
 /*
-export const showTokens = () => {
-	return [accessToken, refreshToken]
+export const checkAccessToken = () => {
+	console.log(accessToken)
 }
 */
 
@@ -125,13 +123,39 @@ const checkError = (err) => {
 	}
 }
 
+export const APITestSecurity = () => {
+	
+	/*
+	const data = {
+		//username: "dummyUser",
+		//password: "dummyPasswor",
+	};
+	*/
+	
+	const config = {
+		//headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	axiosInstance.get("/link/action", config)
+	.then( 	res => {
+		console.log(res)
+	})
+	.catch( err => {
+		console.log(err)
+	});
+}
+
 // Refresh!
 export const APIRefreshToken = (callbackFunction, callbackFailure, callbackRetrySignal) => {
 	const data = {
-		refresh: refreshToken,
+		//token: refreshToken,
 	};
 	
-	axiosInstance.post("/api/refreshToken/", data)
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	axiosInstance.post("/api/customRefreshToken/", data, config)
 	.then( 	res => {
 		//console.log(res)
 		
@@ -141,12 +165,14 @@ export const APIRefreshToken = (callbackFunction, callbackFailure, callbackRetry
 	})
 	.catch( err => {
 		// Check for a specific error?
+		//console.log(err)
+		
 		let result = checkError(err, callbackRetrySignal)
 		//console.log(result)
 		
 		callbackFailure(result)
 	});
-}	
+}
 
 // Sign In!
 export const APISignIn = (isUserOrEmail, requestUsername, requestPassword, callbackFunction, callbackFailure) => {
@@ -161,10 +187,10 @@ export const APISignIn = (isUserOrEmail, requestUsername, requestPassword, callb
 		data["username"] = requestUsername
 	}
 	
-	//apiTokenAuth
-	axiosInstance.post("/api/getToken/", data )
+	//{withCredentials: false}
+	axiosInstance.post("/api/customGetToken/", data)
 	.then( res => {
-		//console.log(res.data)
+		//console.log(res)
 		//let outData = res.data.access
 		callbackFunction(res.data)
 	})
@@ -172,7 +198,32 @@ export const APISignIn = (isUserOrEmail, requestUsername, requestPassword, callb
 		// Find out what error it was, then change the sign in page accordingly by the by...
 		let result = checkError(err)
 		//console.log(result)
+		
+		callbackFailure(result)
+	})
+}
 
+// Sign Out1!
+export const APISignOut = (callbackFunction, callbackFailure) => {
+	const data = {
+		//token: refreshToken,
+	};
+	
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	axiosInstance.post("/api/customDeleteToken/", data, config)
+	.then( res => {
+		//console.log(res)
+		//let outData = res.data.access
+		callbackFunction(res.data)
+	})
+	.catch( err => {
+		// Find out what error it was, then change the sign in page accordingly by the by...
+		let result = checkError(err)
+		//console.log(result)
+		
 		callbackFailure(result)
 	})
 }
@@ -190,7 +241,7 @@ export const APISignUp = (requestUsername, requestPassword1, requestPassword2, e
 	
 	// Output of this boi is the error messages and stuff...
 	// Because the only data we really need is that it succeeded before we continue...
-	axiosInstance.post("/registerUser/", data )
+	axiosInstance.post("/api/registerUser/", data )
 	.then( res => { 
 		//res.data
 		let outData = res.status
@@ -209,7 +260,7 @@ export const APIValidateAccount = (activateToken, callbackFunction, callbackFail
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/emailActivate/?token="+activateToken, config)
+	axiosInstance.get("/api/emailActivate/?token="+activateToken, config)
 	.then(res => {
 			callbackFunction(res.status, res.data)
 	})
@@ -226,7 +277,7 @@ export const APIResendValidator = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/emailVerifyResend", config)
+	axiosInstance.get("/api/emailVerifyResend", config)
 	.then(res => {
 			//console.log("Got Data!")
 			//console.log(res.data)
@@ -249,7 +300,7 @@ export const APICheckActive = (callbackFunction, callbackFailure) => {
 		}
 	};
 	
-	axiosInstance.get("/userIsActive", config)
+	axiosInstance.get("/api/userIsActive", config)
 	.then(res => {
 		callbackFunction(res.data[0].isActive)
 	})
@@ -274,7 +325,7 @@ export const APIContactUsEmail = (firstName, lastName, email, company, content, 
 		content: content,		
 	};
 
-	axiosInstance.post("/sendContactEmail/", data )
+	axiosInstance.post("/api/sendContactEmail/", data )
 	.then( res => { 
 	
 		// Successfully Sent the email, can trigger something on this side
@@ -295,7 +346,7 @@ export const APIBetaSignEmail = (email, callbackFunction, callbackFailure) => {
 		email: email,
 	};
 
-	axiosInstance.post("/sendBetaEmail/", data )
+	axiosInstance.post("/api/sendBetaEmail/", data )
 	.then( res => { 
 	
 		// Successfully Sent the email, can trigger something on this side
@@ -319,7 +370,7 @@ export const APIForgotEmailSend = (sendEmail, callbackFunction, callbackFailure)
 		targetEmail: sendEmail,
 	};
 	
-	axiosInstance.post("/nonAuthPassword/sendEmail/", data)
+	axiosInstance.post("/api/nonAuthPassword/sendEmail/", data)
 	.then(res => {
 			//console.log(res)
 			callbackFunction(res.status)
@@ -339,7 +390,7 @@ export const APIForgotEmailValidate = (passToken, callbackFunction, callbackFail
 		
 	};
 	
-	axiosInstance.get("/nonAuthPassword/validate/?token="+passToken, config)
+	axiosInstance.get("/api/nonAuthPassword/validate/?token="+passToken, config)
 	.then(res => {
 			callbackFunction(res.status)
 		}
@@ -360,7 +411,7 @@ export const APIForgotEmailChangePassword = (passToken, password1, password2, ca
 		passToken:passToken,
 	};
 	
-	axiosInstance.put("/nonAuthPassword/Change/", data)
+	axiosInstance.put("/api/nonAuthPassword/Change/", data)
 	.then(res => {
 			// If this triggers, we should be completly fine...
 			callbackFunction(res.status)
@@ -389,14 +440,13 @@ export const APISaveSuggestion = (postingDate, targetDivision, content, editorBl
 	const data = {
 		reqDiv: targetDivision,
 		
-		targetDivision: targetDivision,
 		createdDate: convertDate( postingDate ),
 		content: content,
 		
 		richText: editorBlock,
 	};
 	
-	axiosInstance.post("/saveNewSuggestion/", data, config )
+	axiosInstance.post("/api/saveNewSuggestion/", data, config )
 	.then( res => { 
 		callbackFunction(res.data)
 	})
@@ -408,8 +458,10 @@ export const APISaveSuggestion = (postingDate, targetDivision, content, editorBl
 }
 
 // Save the journal data...
-export const APISaveJournal = (postingDate, promptValue, content, editorBlock, callbackFunction, callbackFailure) => {
-		
+export const APISaveJournal = (postingDate, promptValue, targetDiv, content, editorBlock, callbackFunction, callbackFailure) => {
+	
+	console.log()
+	
 	const randomID = Math.random().toString(16).substr(2, 8);
 	
 	const config = {
@@ -417,7 +469,9 @@ export const APISaveJournal = (postingDate, promptValue, content, editorBlock, c
 	};
 	
 	const data = {
-		shorthand: 'made from the website: '+randomID,
+		shorthand: "WEB"+randomID,
+		
+		targetDivision: targetDiv,
 		
 		// Author is filled in based on your Token on the server side...
 		// The timezone on the server is different.....
@@ -431,7 +485,7 @@ export const APISaveJournal = (postingDate, promptValue, content, editorBlock, c
 	
 	//console.log(data)
 	
-	axiosInstance.post("/saveUserJournal/", data, config )
+	axiosInstance.post("/api/saveUserJournal/", data, config )
 	.then( res => { 
 		callbackFunction(res.data)
 	})
@@ -444,7 +498,7 @@ export const APISaveJournal = (postingDate, promptValue, content, editorBlock, c
 }
 
 // Save the Non-journal data...
-export const APISaveNonJournal = (postingDate, promptValue, incomingData, callbackFunction, callbackFailure) => {
+export const APISaveNonJournal = (postingDate, promptValue, targetDiv, incomingData, callbackFunction, callbackFailure) => {
 		
 	const randomID = Math.random().toString(16).substr(2, 8);
 	
@@ -455,6 +509,8 @@ export const APISaveNonJournal = (postingDate, promptValue, incomingData, callba
 	const data = {
 		shorthand: 'made from the website: '+randomID,
 		
+		targetDivision: targetDiv,
+		
 		// Author is filled in based on your Token on the server side...
 		// The timezone on the server is different.....
 		forDate: convertDate( postingDate ),
@@ -464,7 +520,7 @@ export const APISaveNonJournal = (postingDate, promptValue, incomingData, callba
 		chosenValue: incomingData,
 	};
 	//console.log(data)
-	axiosInstance.post("/saveUserNonJournal/", data, config )
+	axiosInstance.post("/api/saveUserNonJournal/", data, config )
 	.then( res => { 
 		callbackFunction(res.data)
 	})
@@ -480,7 +536,7 @@ export const APIGetJournalPrompts = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/getValidPrompts", config)
+	axiosInstance.get("/api/getValidPrompts", config)
 	.then( 
 		res => {
 			// This should be ok for now?
@@ -500,7 +556,7 @@ export const APIGetJournalDates = (callbackFunction, callbackFailure) => {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getJournalDates", config)
+	axiosInstance.get("/api/getJournalDates", config)
 	.then( 
 		res => {
 			//console.log("Got Data!")
@@ -563,7 +619,7 @@ export const APIGetNonJournalDates = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/getNonJournalDates", config)
+	axiosInstance.get("/api/getNonJournalDates", config)
 	.then( 
 		res => {
 			//console.log("Got Data!")
@@ -610,7 +666,7 @@ export const APIGetJournalData = (selectedDate, callbackFunction, callbackFailur
 	//console.log("Requesting Date from Server")
 	const dateReq = selectedDate.toJSON().split("T")[0]
 	
-	axiosInstance.get("/getUserJournal/?reqDate="+dateReq, config)
+	axiosInstance.get("/api/getUserJournal/?reqDate="+dateReq, config)
 	.then( 
 		res => {
 			//console.log(res.data)
@@ -653,7 +709,7 @@ export const APIGetNonJournalData = (selectedDate, callbackFunction, callbackFai
 	//console.log("Requesting Date from Server")
 	const dateReq = selectedDate.toJSON().split("T")[0]
 	
-	axiosInstance.get("/getUserNonJournal/?reqDate="+dateReq, config)
+	axiosInstance.get("/api/getUserNonJournal/?reqDate="+dateReq, config)
 	.then( 
 		res => {
 			//console.log(res.data)
@@ -675,7 +731,7 @@ export const APIGetUsersPermTree = (reqPerms, callbackFunction, callbackFailure)
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 
-	axiosInstance.get("/getUsersPermissionTree?reqPerms="+reqPerms, config)
+	axiosInstance.get("/api/getUsersPermissionTree?reqPerms="+reqPerms, config)
 	.then( 	res => {
 			
 			// Normal behaviour
@@ -701,7 +757,7 @@ export const APIGetCompanyValidDates = (divisionID, callbackFunction, callbackFa
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getCompanyDates/?reqDiv="+divisionID, config)
+	axiosInstance.get("/api/getCompanyDates/?reqDiv="+divisionID, config)
 	.then( 	res => {
 			// This is highly likely to be unneeded
 			let tempObjectSorter = {}
@@ -742,7 +798,7 @@ export const APIGetCompanySummary = (divisionID, summaryType, selectedDate, call
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getCompanySummary/?reqDate="+dateReq+"&reqDiv="+divisionID+"&type="+summaryType, config)
+	axiosInstance.get("/api/getCompanySummary/?reqDate="+dateReq+"&reqDiv="+divisionID+"&type="+summaryType, config)
 	.then( 
 		res => {
 			//console.log(res.data)
@@ -767,7 +823,7 @@ export const APIGetServerEHIData = (targetCompany, callbackFunction, callbackFai
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getCompanyEHI/?reqDiv="+targetCompany, config)
+	axiosInstance.get("/api/getCompanyEHI/?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
 		//console.log(res.data)
@@ -796,7 +852,7 @@ export const APIGetSuggestionDates = (targetCompany, callbackFunction, callbackF
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getCompanySuggestionDates/?reqDiv="+targetCompany, config)
+	axiosInstance.get("/api/getCompanySuggestionDates/?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		
 		let datesData = []
@@ -831,7 +887,7 @@ export const APIGetSuggestionData = (targetCompany, targetDate, callbackFunction
 	
 	const dateReq = targetDate.toJSON().split("T")[0]
 	
-	axiosInstance.get("/getCompanySuggestionData?reqDiv="+targetCompany+"&reqDate="+dateReq, config)
+	axiosInstance.get("/api/getCompanySuggestionData?reqDiv="+targetCompany+"&reqDate="+dateReq, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
 		//console.log(res.data)
@@ -859,7 +915,7 @@ export const APIDivisionInvitesCreate = (targetDivision, targetInvite, targetAct
 		targetAction:targetAction,
 	}
 	
-	axiosInstance.post("/createDivisionInvite/", data, config)
+	axiosInstance.post("/api/createDivisionInvite/", data, config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -889,7 +945,7 @@ export const APIDivisionInvitesSet = (targetDivision, targetInvite, targetAction
 		targetAction:targetAction,
 	}
 	
-	axiosInstance.put("/setDivisionInvite/", data, config)
+	axiosInstance.put("/api/setDivisionInvite/", data, config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -913,7 +969,7 @@ export const APIDivisionInvitesGet = (targetCompany, callbackFunction, callbackF
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getDivisionInvites?reqDiv="+targetCompany, config)
+	axiosInstance.get("/api/getDivisionInvites?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -937,7 +993,7 @@ export const APIDivisionSettingsGet = (targetCompany, callbackFunction, callback
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getDivisionData?reqDiv="+targetCompany, config)
+	axiosInstance.get("/api/getDivisionData?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -967,7 +1023,7 @@ export const APIDivisionSettingsEdit = (dataSet, callbackFunction, callbackFailu
 	
 	const data = dataSet
 	
-	axiosInstance.put("/setDivisionData/", data, config)
+	axiosInstance.put("/api/setDivisionData/", data, config)
 	.then( 	res => {
 		
 		// I am clearly not thinking these through correctly...
@@ -997,7 +1053,7 @@ export const APIUserSettingsEdit = (dataSet, callbackFunction, callbackFailure) 
 	
 	const data = dataSet
 	
-	axiosInstance.put("/setUserProfileData/", data, config)
+	axiosInstance.put("/api/setUserProfileData/", data, config)
 	.then( 	res => {
 		
 		// I am clearly not thinking these through correctly...
@@ -1026,7 +1082,7 @@ export const APIUserInviteCode = (inviteCode, callbackFunction, callbackFailure)
 	//	
 	//}
 
-	axiosInstance.get("/useDivisionInvite?joinCode="+inviteCode, config)
+	axiosInstance.get("/api/useDivisionInvite?joinCode="+inviteCode, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
 		//let succCode = res.response.status
@@ -1050,7 +1106,7 @@ export const APIUserInvitesGet = (callbackFunction, callbackFailure) => {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 
-	axiosInstance.get("/getUsersInvites", config)
+	axiosInstance.get("/api/getUsersInvites", config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -1079,7 +1135,7 @@ export const APIUserInvitesSet = (targetInvite, targetAction, callbackFunction, 
 		targetAction:targetAction,
 	}
 	
-	axiosInstance.put("/setUserInvite/", data, config)
+	axiosInstance.put("/api/setUserInvite/", data, config)
 	.then( 	res => {
 		// I am clearly not thinking these through correctly...
 		//let succCode = res.status
@@ -1100,7 +1156,7 @@ export const APIGetUserDetails = (callbackFunction, callbackFailure) => {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getUserDetails/", config)
+	axiosInstance.get("/api/getUserDetails/", config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1126,7 +1182,7 @@ export const APIChangeUserEmail = (newEmail, callbackFunction, callbackFailure) 
 		email:newEmail,
 	}
 	
-	axiosInstance.put("/updateUserEmail/", data, config)
+	axiosInstance.put("/api/updateUserEmail/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1153,7 +1209,7 @@ export const APIChangeUserName = (newFirst, newLast, callbackFunction, callbackF
 		last_name:newLast,
 	}
 	
-	axiosInstance.put("/updateUserName/", data, config)
+	axiosInstance.put("/api/updateUserName/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1181,7 +1237,7 @@ export const APIChangeUserPassword = (newPass, oldPass, oldPass2, callbackFuncti
 		password2:oldPass2,
 	}
 	
-	axiosInstance.put("/updateUserPassword/", data, config)
+	axiosInstance.put("/api/updateUserPassword/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1203,7 +1259,7 @@ export const APIGetSearchPrompts = (searchTerm, searchType, callbackFunction, ca
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/searchPrompts/?queryText=" + searchTerm + "&queryType=" + searchType, config)
+	axiosInstance.get("/api/searchPrompts/?queryText=" + searchTerm + "&queryType=" + searchType, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1224,7 +1280,7 @@ export const APIGetDivisionEvents = (divisionID, callbackFunction, callbackFailu
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getDivisionEvents/?reqDiv="+divisionID, config)
+	axiosInstance.get("/api/getDivisionEvents/?reqDiv="+divisionID, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1264,7 +1320,7 @@ export const APISetNonDivisionEvents = (savedID, incomingId, incomingDivision, i
 		enabledDiv: incomingEnabledDiv,
 	}
 	
-	axiosInstance.post("/setNonDivisionEvents/", data, config)
+	axiosInstance.post("/api/setNonDivisionEvents/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1299,7 +1355,7 @@ export const APISetDivisionEvents = (savedID, incomingId, incomingDivision, inco
 		promptSet: incomingPrompts,
 	}
 	
-	axiosInstance.post("/setDivisionEvents/", data, config)
+	axiosInstance.post("/api/setDivisionEvents/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1329,7 +1385,7 @@ export const APIDeleteDivisionEvents = (savedID, incomingId, incomingDivision, c
 		reqDiv: incomingDivision,
 	}
 	
-	axiosInstance.post("/deleteDivisionEvents/", data, config)
+	axiosInstance.post("/api/deleteDivisionEvents/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1352,16 +1408,10 @@ export const APIGetDivisionWebDates = (divisionID, callbackFunction, callbackFai
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/getWebDates/?reqDiv="+divisionID, config)
+	axiosInstance.get("/api/getDivisionWebDates/?reqDiv="+divisionID, config)
 	.then( 
 		res => {
-			if (res.data.length > 0) {
-				callbackFunction(res.data)
-			}
-			else {
-				callbackFailure({'mod':37, 'text':"No Data to read!"})
-			}
-
+			callbackFunction(res.data)
 	})
 	.catch( err => {
 		
@@ -1382,17 +1432,53 @@ export const APIGetDivisionWeb = (divisionID, targetDate, callbackFunction, call
 		dateReq = targetDate.toJSON().split("T")[0]
 	}
 	
-	axiosInstance.get("/getWebData/?reqDiv="+divisionID+"&reqDate="+dateReq, config)
+	axiosInstance.get("/api/getDivisionWebData/?reqDiv="+divisionID+"&reqDate="+dateReq, config)
 	.then( 
 		res => {
-			//console.log(res.data)
-			if (res.data.length > 0) {
-				callbackFunction(res.data[0])
-			}
-			else {
-				callbackFailure({'mod':37, 'text':"No Data to read!"})
-			}
+			callbackFunction(res.data)
+	})
+	.catch( err => {
+		
+		let result = checkError(err)
+		//console.log(result)
+		callbackFailure(result)
+	});
+};
 
+// Gatting the Web Dates from the server!
+export const APIGetUserWebDates = (callbackFunction, callbackFailure) => {
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	axiosInstance.get("/api/getUserWebDates/", config)
+	.then( 
+		res => {
+			callbackFunction(res.data)
+	})
+	.catch( err => {
+		
+		let result = checkError(err)
+		//console.log(result)
+		callbackFailure(result)
+	});
+};
+
+// Gatting the Web from the server!
+export const APIGetUserWeb = (targetDate, callbackFunction, callbackFailure) => {
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	let dateReq = "recent"
+	if (!(targetDate === undefined)) {
+		dateReq = targetDate.toJSON().split("T")[0]
+	}
+	
+	axiosInstance.get("/api/getUserWebData/?reqDate="+dateReq, config)
+	.then( 
+		res => {
+				callbackFunction(res.data)
 	})
 	.catch( err => {
 		
@@ -1411,7 +1497,7 @@ export const APIGetEmailAIData = (requestID, callbackFunction, callbackFailure) 
 	//!! IS THE EMAIL ID ACTUALLY SECRET? !!
 	//!! CHANGE THIS TO A POST IF SO!!
 	
-	axiosInstance.get("/getEmailScan/?emailID="+requestID, config)
+	axiosInstance.get("/api/getEmailScan/?emailID="+requestID, config)
 	.then( 
 		res => {
 			//console.log(res.data)

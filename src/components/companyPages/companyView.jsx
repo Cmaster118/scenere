@@ -667,74 +667,80 @@ class JournalIteration extends React.Component {
 }
 
 const companyViewSummary = (props) => {
-
-	const currentSummaryDate = props.dataSet["forDate"]
+	
 	let showResult = []
-	let i = 0
-	for (let index in props.dataSet.summaryResult) {
-		let promptType = -1
+	let currentSummaryDate = props.currentDate
+	
+	if (!(props.dataSet === undefined) ) { 
+
+		currentSummaryDate = props.dataSet["forDate"]
 		
-		let promptSet = {"text":"No Text!"}
-		try {
-			promptSet = props.dataSet["promptList"].find( element => element.identifier === index )
-			promptType = promptSet["promptType"]
-		}
-		catch (error) {}
-		
-		//console.log(props.dataSet.summaryResult[index])
-		// What about the order of things?
-		// It will normally be in the order on the site...
-		// I may have to prioritise reordering this
-		
-		let promptBody = "No Prompt!"
-		switch ( promptType ) {
-			// Journal!
-			case 0:
-				promptBody = <JournalIteration
-					givenPrompt={promptSet}
-					dataSet={props.dataSet.summaryResult[index]}
-				/>
-				break;
-			// Likert
-			case 1:
-				promptBody = <LikertIteration
-					givenPrompt={promptSet}
-					dataSet={props.dataSet.summaryResult[index]}
-				/>
-				break;
-			// Rating
-			case 2:
-				promptBody = <RatingIteration
-					givenPrompt={promptSet}
-					dataSet={props.dataSet.summaryResult[index]}
-				/>
-				break;
-			// Multi
-			case 3:
-				promptBody = <MultiIteration
-					givenPrompt={promptSet}
-					dataSet={props.dataSet.summaryResult[index]}
-				/>
-				break;
-			default:
-				promptBody = promptBody = <JournalIteration
-					givenPrompt={ {"text":"No Prompt!"} }
-					dataSet={props.dataSet.summaryResult[index]}
-				/>
-				break;
-		}
-		
-		//console.log(props.dataSet.summaryResult[index])
-		
-		showResult.push(
-			<div className="row" key={i}>
-				<div className="col">
-					<div>{promptBody}</div>
-					<hr />
+		let i = 0
+		for (let index in props.dataSet.summaryResult) {
+			let promptType = -1
+			
+			let promptSet = {"text":"No Text!"}
+			try {
+				promptSet = props.dataSet["promptList"].find( element => element.identifier === index )
+				promptType = promptSet["promptType"]
+			}
+			catch (error) {}
+			
+			//console.log(props.dataSet.summaryResult[index])
+			// What about the order of things?
+			// It will normally be in the order on the site...
+			// I may have to prioritise reordering this
+			
+			let promptBody = "No Prompt!"
+			switch ( promptType ) {
+				// Journal!
+				case 0:
+					promptBody = <JournalIteration
+						givenPrompt={promptSet}
+						dataSet={props.dataSet.summaryResult[index]}
+					/>
+					break;
+				// Likert
+				case 1:
+					promptBody = <LikertIteration
+						givenPrompt={promptSet}
+						dataSet={props.dataSet.summaryResult[index]}
+					/>
+					break;
+				// Rating
+				case 2:
+					promptBody = <RatingIteration
+						givenPrompt={promptSet}
+						dataSet={props.dataSet.summaryResult[index]}
+					/>
+					break;
+				// Multi
+				case 3:
+					promptBody = <MultiIteration
+						givenPrompt={promptSet}
+						dataSet={props.dataSet.summaryResult[index]}
+					/>
+					break;
+				default:
+					promptBody = promptBody = <JournalIteration
+						givenPrompt={ {"text":"No Prompt!"} }
+						dataSet={props.dataSet.summaryResult[index]}
+					/>
+					break;
+			}
+			
+			//console.log(props.dataSet.summaryResult[index])
+			
+			showResult.push(
+				<div className="row" key={i}>
+					<div className="col">
+						<div>{promptBody}</div>
+						<hr />
+					</div>
 				</div>
-			</div>
-		)
-		i += 1
+			)
+			i += 1
+		}
 	}
 	
 	if (showResult.length === 0) {
@@ -801,6 +807,12 @@ const companyViewSummary = (props) => {
 	let showWaiting = props.getCompanyWeeklySummaryStatus === 1
 	let showSuccess = false//props.getCompanyWeeklySummaryStatus === 2
 	let showError = props.getCompanyWeeklySummaryStatus === 3
+	
+	if (showWaiting) {
+		messageLine1 = "Please Wait..."
+		messageLine2 = "Loading"
+		messageLine3 = "..."
+	}
 	
 	let errorParse = []
 		for (let index in props.getCompanyWeeklySummaryError) {

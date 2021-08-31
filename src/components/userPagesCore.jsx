@@ -11,7 +11,7 @@ import { EditorState, convertToRaw } from 'draft-js';
 //import { Justify } from 'react-bootstrap-icons';
 
 //SetCompany
-import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion} from "./userPages"
+import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion, UserWeb} from "./userPages"
 
 
 const DefaultView = (props) => {
@@ -33,6 +33,8 @@ class ContentPages extends React.Component {
         super(props);
         this.state = {
 			selectedJournalDate: new Date(),
+			
+			selectedJournalViewDiv: 0,
 			
 			journalValidPrompts: [],
 			
@@ -60,7 +62,6 @@ class ContentPages extends React.Component {
 	
 	componentDidMount() {
 		this.props.activateUserMenu(1)
-		
 	};
 	componentWillUnmount() {
 		this.props.disableMenu()
@@ -289,6 +290,12 @@ class ContentPages extends React.Component {
 		})
 	}
 	
+	changeSelectedJournalViewDiv = (event) => {
+		this.setState({
+			selectedJournalViewDiv: event.target.value,
+		})
+	}
+	
 	// Rendering this with Bootstrap React.... To see if there is anything really interesting I can do with it
 	// So far it doesnt look all that different 
 	render() {
@@ -340,6 +347,9 @@ class ContentPages extends React.Component {
 										validJournalScanDates={this.props.validJournalScanDates}
 										
 										pickDate={this.pickJournalCalenderDate}
+										
+										selectedJournalViewDiv={this.state.selectedJournalViewDiv}
+										changeSelectedJournalViewDiv={this.changeSelectedJournalViewDiv}
 
 										journalViewErrors={this.state.journalViewErrors}
 										nonJournalViewErrors={this.state.nonJournalViewErrors}
@@ -383,6 +393,12 @@ class ContentPages extends React.Component {
 								<Route path={this.props.match.url+"/userInvite"} component={() => <UserInvite
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
+									/>} 
+								/>
+								<Route path={this.props.match.url+"/userWeb"} component={() => <UserWeb
+										triggerRefresh={this.props.loadCompanyData}
+										refreshToken={this.props.refreshToken}
+										validUserWebDates = {this.props.validUserWebDates}
 									/>} 
 								/>
 								
