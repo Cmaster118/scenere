@@ -2,6 +2,8 @@ import React from "react";
 
 import { Accordion, Card } from 'react-bootstrap';
 
+import { ChevronDown } from 'react-bootstrap-icons';
+
 export class ShowWebInfoComponent extends React.Component {
 	
 	constructor(props) {
@@ -17,8 +19,18 @@ export class ShowWebInfoComponent extends React.Component {
 				<div className="row">
 					<div className="col">
 						<Accordion>
-							<Accordion.Toggle as={Card.Header} className="border" variant="link" eventKey="open">
-								What am I looking at here?
+							<Accordion.Toggle as={Card.Header} className="border btn btn-outline-dark btn-block" variant="link" eventKey="open">
+								<div className="row">
+									<div className="col-1">
+
+									</div>
+									<div className="col">
+										What am I looking at here?
+									</div>
+									<div className="col-1">
+										<ChevronDown />
+									</div>
+								</div>
 							</Accordion.Toggle>
 							
 							<Accordion.Collapse eventKey="open" className="border">

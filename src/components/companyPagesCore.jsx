@@ -142,6 +142,8 @@ class ContentPages extends React.Component {
 										
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companyPerms"} component={() => <CompanyPermissions
@@ -150,6 +152,8 @@ class ContentPages extends React.Component {
 										
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/companySettings"} component={() => <CompanySettings
@@ -158,6 +162,8 @@ class ContentPages extends React.Component {
 										
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								
@@ -226,18 +232,26 @@ class ContentPages extends React.Component {
 										refreshToken={this.props.refreshToken}
 										
 										currentDivisionID={this.props.currentDivisionID}										
+										
+										redirectErrorPath={this.props.match.url+"/companySelect"}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								
 								<Route path={this.props.match.url+"/companyWeb"} component={() => <CompanyWeb
 										refreshToken={this.props.refreshToken}
 										parentHasLoaded={this.state.pageIsLoaded}
+										
+										currentUser={this.props.currentUser}
 
 										currentDivisionName={this.props.currentDivisionName}
 										currentDivisionID={this.props.currentDivisionID}	
 										
 										reRouteTarget={this.props.match.url+"/companySelect"}
 										validDivisionWebDates = {this.props.validDivisionWebDates}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, withRouter } from "react-router-dom";
+const debugPageName = "NavBar"
 
 class navigation extends React.Component {
 	
@@ -10,6 +11,7 @@ class navigation extends React.Component {
 	}
 	
 	triggerLogout = () => {
+		this.props.debugSet(debugPageName, "Manual Logout", "Triggered")
 		this.props.logout()
 		this.props.history.push(this.props.reRouteSignIn)
 	}

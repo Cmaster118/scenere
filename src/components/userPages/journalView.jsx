@@ -382,16 +382,19 @@ const JournalView = (props) => {
 			const checkDate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()
 
 			// Check if a date React-Calendar wants to check is on the list of dates to add class to
+			let hasAI = false
 			let hasJournal = false
+			
 			for (let index in props.validJournalDates) {
+
 				if (checkDate === index) {
 					hasJournal = true
 					break
 				}
 			}
 			
-			let hasAI = false
 			for (let index in props.validJournalScanDates) {
+
 				if (checkDate === index) {
 					hasAI = true
 					break
@@ -423,20 +426,43 @@ const JournalView = (props) => {
 	// Scanning for divisions...
 	let foundData = []
 	for (let index in props.viewJournalData) {
+		// Only Division is TRUE, so it is NOT SHARED
 		if (props.viewJournalData[index]["onlyDivision"]) {
-			let checkThing = false
-			for (let deepIndex in foundData) {
-				if (foundData[deepIndex]["id"] === props.viewJournalData[index]["targetDivision"]["id"] ) {
-					checkThing = true
-					break
+			// Is there a DIVISION set?
+			if (props.viewJournalData[index]["targetDivision"] === null) {
+				// No, is a USER TYPE
+				let checkThing = false
+				for (let deepIndex in foundData) {
+					if (foundData[deepIndex]["id"] === -1 ) {
+						checkThing = true
+						break
+					}
+				}
+				let newSet = {
+					"divisionName":"User",
+					"id":-1,
+				}
+				if (!checkThing) {
+					foundData.push( newSet )
 				}
 			}
-			
-			if (!checkThing) {
-				foundData.push( props.viewJournalData[index]["targetDivision"] )
-			}	
+			else {
+				// YES, is a DIVISION TYPE
+				let checkThing = false
+				for (let deepIndex in foundData) {
+					if (foundData[deepIndex]["id"] === props.viewJournalData[index]["targetDivision"]["id"] ) {
+						checkThing = true
+						break
+					}
+				}
+				if (!checkThing) {
+					foundData.push( props.viewJournalData[index]["targetDivision"] )
+				}
+			}
 		}
 		else {
+			// Alright, so Only division will show up in its own thing....
+			// NOT only division will... Do what? Think about that...
 			let checkThing = false
 			for (let deepIndex in foundData) {
 				if (foundData[deepIndex]["id"] === -1 ) {
@@ -445,7 +471,7 @@ const JournalView = (props) => {
 				}
 			}
 			let newSet = {
-				"divisionName":"None",
+				"divisionName":"Uncategorized",
 				"id":-1,
 			}
 			if (!checkThing) {
@@ -454,18 +480,41 @@ const JournalView = (props) => {
 		}
 	}
 	for (let index in props.viewNonJournalData) {
+		// Only division is TRUE, so this belongs only to the division specified...
+		// What if the section is null though?
 		if (props.viewNonJournalData[index]["onlyDivision"]) {
-			let checkThing = false
-			for (let deepIndex in foundData) {
-				if (foundData[deepIndex]["id"] === props.viewNonJournalData[index]["targetDivision"]["id"] ) {
-					checkThing = true
-					break
+			
+			if (props.viewNonJournalData[index]["targetDivision"] === null) {
+				let checkThing = false
+				for (let deepIndex in foundData) {
+					if (foundData[deepIndex]["id"] === -1 ) {
+						checkThing = true
+						break
+					}
+				}
+				let newSet = {
+					"divisionName":"User",
+					"id":-1,
+				}
+				if (!checkThing) {
+					foundData.push( newSet )
 				}
 			}
-			if (!checkThing) {
-				foundData.push( props.viewNonJournalData[index]["targetDivision"] )
+			else {
+				let checkThing = false
+				for (let deepIndex in foundData) {
+					if (foundData[deepIndex]["id"] === props.viewNonJournalData[index]["targetDivision"]["id"] ) {
+						checkThing = true
+						break
+					}
+				}
+				if (!checkThing) {
+					foundData.push( props.viewNonJournalData[index]["targetDivision"] )
+				}
 			}
 		}
+		// Only Division is false, but the division section HAS something in it
+		// So put those together?
 		else {
 			let checkThing = false
 			for (let deepIndex in foundData) {
@@ -475,7 +524,7 @@ const JournalView = (props) => {
 				}
 			}
 			let newSet = {
-				"divisionName":"None",
+				"divisionName":"Uncategorized",
 				"id":-1,
 			}
 			if (!checkThing) {
@@ -578,6 +627,8 @@ const JournalView = (props) => {
 		//props.viewNonJournalData[index]["usedPromptKey"]["promptChoices"]
 		//props.viewNonJournalData[index]["chosenValue"]
 	}
+	
+	//console.log( props.viewJournalData )
 	for (let index in props.viewJournalData) {
 		
 		try {

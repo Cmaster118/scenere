@@ -11,8 +11,9 @@ import { EditorState, convertToRaw } from 'draft-js';
 //import { Justify } from 'react-bootstrap-icons';
 
 //SetCompany
-import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion, UserWeb} from "./userPages"
+import {UserProfile, UserSecurity, UserInvite, ViewJournals, WriteJournals, WriteSuggestion, UserPrompts, UserWeb, UserSync} from "./userPages"
 
+const debugPageName = "User Core"
 
 const DefaultView = (props) => {
 
@@ -110,6 +111,7 @@ class ContentPages extends React.Component {
 		// Unauthorized
 		else if (responseData["action"] === 1) {
 			this.props.refreshToken(this.postSuggestion)
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Post Suggestion")
 			return
 		}
 		// Invalid Permissions
@@ -129,6 +131,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Post Suggestion", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			suggestionErrors: returnData,
@@ -137,6 +140,7 @@ class ContentPages extends React.Component {
 	}
 	suggestionPostCallback = (incomingStuff) => {
 		// Set something to notify user....
+		this.props.debugSet(debugPageName, "Post Suggestion", "Success")
 		this.setState({
 			suggestionErrors: [],
 			postSuggestionStatus:2,
@@ -179,6 +183,7 @@ class ContentPages extends React.Component {
 		// Unauthorized
 		else if (responseData["action"] === 1) {
 			this.props.refreshToken(this.refreshCompleted)
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Journal Data")
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -197,6 +202,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Journal Data", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			journalViewErrors: returnData,
@@ -205,6 +211,7 @@ class ContentPages extends React.Component {
 	}
 	journalDataCallback = (incomingFullData) => {
 
+		this.props.debugSet(debugPageName, "Get Journal Data", "Success")
 		this.setState({
 			viewJournalData: incomingFullData,
 			
@@ -223,6 +230,7 @@ class ContentPages extends React.Component {
 		// So, this is inefficient... Refactor this!
 		else if (responseData["action"] === 1) {
 			this.props.refreshToken(this.refreshCompleted)
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Multi Choice Data")
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -241,6 +249,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Multi Choice Data", "Failure")
 		this.setState({
 			nonJournalViewErrors: returnData,
 			pickNonJournalCalenderDateStatus:3,
@@ -248,6 +257,7 @@ class ContentPages extends React.Component {
 	}
 	nonJournalDataCallback = (incomingNonJournalData) => {
 
+		this.props.debugSet(debugPageName, "Get Multi Choice Data", "Success")
 		this.setState({
 			//journalMessage: "Showing Journal Entry for: " + this.state.selectedJournalDate.toString(),
 			
@@ -326,6 +336,7 @@ class ContentPages extends React.Component {
 										refreshToken={this.props.refreshToken}
 										
 										currentDate={this.props.currentDate}
+										getValidDates={this.props.getValidDates}
 								
 										promptList={this.props.journalValidPrompts}
 										
@@ -334,6 +345,8 @@ class ContentPages extends React.Component {
 										journalScanPromptsDone={this.props.validJournalScanDates}
 										
 										currentUser={this.props.currentUser}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/journalRead"} component={() => <ViewJournals
@@ -373,6 +386,8 @@ class ContentPages extends React.Component {
 										
 										suggestionErrors={this.state.suggestionErrors}
 										postSuggestionStatus={this.state.postSuggestionStatus}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userPermissions"} component={() => <UserProfile
@@ -384,24 +399,42 @@ class ContentPages extends React.Component {
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
 										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userSecurity"} component={() => <UserSecurity
 										refreshToken={this.props.refreshToken}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userInvite"} component={() => <UserInvite
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
 								<Route path={this.props.match.url+"/userWeb"} component={() => <UserWeb
 										triggerRefresh={this.props.loadCompanyData}
 										refreshToken={this.props.refreshToken}
 										validUserWebDates = {this.props.validUserWebDates}
+										
+										debugSet={this.props.debugSet}
 									/>} 
 								/>
+								<Route path={this.props.match.url+"/userSyncSettings"} component={() => <UserSync
+										refreshToken={this.props.refreshToken}
+									/>} 
+								/>
+								<Route path={this.props.match.url+"/userPrompts"} component={() => <UserPrompts
 								
+										currentUser={this.props.currentUser}
+								
+										refreshToken={this.props.refreshToken}	
+										debugSet={this.props.debugSet}
+									/>} 
+								/>
 								<Route path={this.props.match.url+"/"} component={() => <DefaultView
 									/>} 
 								/>
@@ -409,7 +442,6 @@ class ContentPages extends React.Component {
 							</Switch>
 						</div>
 					</div>
-					
 				</div>
 			</div>
 		);

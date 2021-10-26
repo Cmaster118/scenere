@@ -9,12 +9,12 @@ import { LandingPages, ContentCommonPages} from "./components";
 //AuthPages
 
 import { Sidebar } from "./utils";
-import { APIRefreshToken, APISignOut, APITestSecurity } from "./utils";
+import { APIRefreshToken, APISignOut } from "./utils";
 import { setAccessToken } from "./utils";
 //showTokens
 
 //checkStorageContents
-import { timedLoadStorage, timedSaveStorage, deleteStorageKey} from "./utils";
+import { timedLoadStorage, timedSaveStorage, deleteStorageKey, cleanStorageKeys} from "./utils";
 
 //import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
@@ -26,9 +26,9 @@ import './style.css'
 const basePath = "/scenere"
 
 // #Minutes -> seconds -> miliseconds
-const waitTimeMS = 12 * 60 * 1000
+const waitTimeMS = 13 * 60 * 1000
+const debugPagename = "AppLevel"
 
-//const DEBUGMODE = false
 let nonUpdateRefreshingToken = false
 
 class App extends React.Component {
@@ -36,7 +36,7 @@ class App extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-          
+		  
 			currentUser: undefined,
 			rememberMe: false,
 			
@@ -46,15 +46,35 @@ class App extends React.Component {
 	}
 	
 	componentDidMount() {
+		cleanStorageKeys();
 		this.loadFromLocalStorage();
 	};
 	
 	componentWillUnmount() {
-
+		clearInterval(this.timerSet)
 	}
 	
 	timedRefresh = () => {
 		//console.log('Token Refreshed!');
+	}
+	
+	checkDebugFlag = () => {
+		try {
+			this.refs.debug.checkDebugFlag()
+		}
+		catch {}
+	}
+	clearDebugPage = (pageName) => {
+		try {
+			this.refs.debug.clearPage(pageName)
+		}
+		catch {}
+	}
+	changeDebugKey = (pageName, itemKey, itemValue) => {
+		try {
+			this.refs.debug.changeKey(pageName, itemKey, itemValue)
+		}
+		catch {}
 	}
 	
 	// Menu Controls...
@@ -62,60 +82,43 @@ class App extends React.Component {
 		try {
 			this.refs.sidebar.disableMenu()
 		}
-		catch {
-			
-		}
+		catch {}
 	}
 	activateUserMenu = () => {
 		try {
 			this.refs.sidebar.activateMenu(0)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
 	activateCompanyMenu = () => {
 		try {
 			this.refs.sidebar.activateMenu(1)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
-	
 	changeUserMenuItems = (nextState) => {
 		try {
 			this.refs.sidebar.setUserFlag(nextState)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
-	
 	changeCompanyMenuItems = (nextState) => {
 		try {
 			this.refs.sidebar.setCompanyFlag(nextState)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
-	
 	changeMenuUserName = (newName) => {
 		try {
 			this.refs.sidebar.setUserName(newName)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
 	changeMenuCompanyName = (newCompany) => {
 		try {
 			this.refs.sidebar.setCompanyName(newCompany)
 		}
-		catch {
-			
-		}
+		catch {}
 	}
 	
 	// I am still going to use the local and session storage until I have a grasp on cookies
@@ -124,12 +127,24 @@ class App extends React.Component {
 		
 		if (lastUserSet === 0) {
 			//console.log("No User In the Storage!")
+			
+			this.setState({ 
+				pageIsLoaded: true,
+			})
 		}
 		else if (lastUserSet === 1) {
 			//console.log("Session was expired!")
+			
+			this.setState({ 
+				pageIsLoaded: true,
+			})
 		}
 		else if (lastUserSet === 2) {
 			//console.log("Invalid Save!")
+			
+			this.setState({ 
+				pageIsLoaded: true,
+			})
 		}
 		else {
 			this.changeMenuUserName(lastUserSet.user)
@@ -140,7 +155,7 @@ class App extends React.Component {
 	}
 	
 	silentTokenUpdate = (token) => {
-		setAccessToken(token)
+		return setAccessToken(token)
 	}
 	
 	killAccessToken = () => {
@@ -158,19 +173,22 @@ class App extends React.Component {
 			timedSaveStorage( "lastUser", {user:username, lastAccess:token}, 2)
 		}
 		
-		this.silentTokenUpdate(token)
+		let sanityCheck = this.silentTokenUpdate(token)
 		
-		// Verify this before we sent it in I guess?
-		this.setState({ 
-			currentUser: username, 
-			rememberMe: remember,
+		if (sanityCheck) {		
+			// Verify this before we sent it in I guess?
+			this.setState({ 
+				currentUser: username, 
+				rememberMe: remember,
+				
+				pageIsLoaded: true,
+			})
 			
-			pageIsLoaded: true,
-		})
-		
-		//console.log("App Has Finished Loading!")
-		
-		this.timerSet = setInterval(this.timedRefreshToken, waitTimeMS)
+			this.timerSet = setInterval(this.timedRefreshToken, waitTimeMS)
+		}
+		else {
+			return false
+		}
 		
 		// Return if we succeeded or not
 		return true
@@ -179,11 +197,14 @@ class App extends React.Component {
 	refreshFailure = (incomingError, callbackSignal) => {
 		// Not sure why I would want a callback Signal here but...
 		//console.log(incomingError)
+		this.changeDebugKey(debugPagename, "Refresh Status", "Failed!")
 		
 		this.logout()
 		nonUpdateRefreshingToken = false
 	}
 	refreshCallback = (incomingToken, callbackSignal) => {
+		
+		this.changeDebugKey(debugPagename, "Refresh Status", "Success!")
 		
 		this.silentTokenUpdate(incomingToken.access)
 		nonUpdateRefreshingToken = false
@@ -194,12 +215,13 @@ class App extends React.Component {
 	// Test out refreshing the token...
 	// Should do this every page reload...
 	silentRefreshToken = ( callbackWhenDone ) => {
+		
 		// Definetly going to have to change this crap up once the refresh token is in a cookie
 		APIRefreshToken(this.refreshCallback, this.refreshFailure, callbackWhenDone)
 	}
 	
 	timedRefreshToken = () => {
-		
+		this.changeDebugKey(debugPagename, "Refresh Triggered", "Time Based")
 		this.silentRefreshToken(this.timedRefresh)
 	}
 	
@@ -239,24 +261,22 @@ class App extends React.Component {
 	
 	// Should move this over to the UTIL...
 	logout = () => {
-		console.log("Triggering A Logout")
-		//this.deleteServerCookies()
-		
-		this.setState({
-			currentUser: undefined 
-		})
+		//console.log("LOGOUT TIRGGERED")
+		this.changeDebugKey(debugPagename, "Logout function", "Triggered")
+		//console.log("Triggering A Logout")	
+		this.deleteServerCookies()
 		
 		clearInterval(this.timerSet)
 		this.changeMenuUserName("No User")
 		this.silentTokenUpdate(undefined)
 		deleteStorageKey('lastUser')
 		
-		deleteStorageKey('lastGotCompany')
-		deleteStorageKey('lastUser')
-	}
-	
-	booper = () => {
-		APITestSecurity()
+		deleteStorageKey(this.state.currentUser+'/lastGotCompany')
+		deleteStorageKey(this.state.currentUser+'/lastUser')
+		
+		this.setState({
+			currentUser: undefined 
+		})
 	}
 	
 	render() {
@@ -293,6 +313,8 @@ class App extends React.Component {
 						reRouteUserInvites={basePath+"/dashboard/userMode/userInvite"}
 						reRouteUserSecurity={basePath+"/dashboard/userMode/userSecurity"}
 						reRouteUserPermissions={basePath+"/dashboard/userMode/userPermissions"}
+						
+						debugSet={this.changeDebugKey}
 					/>
 					
 					<Switch>
@@ -310,6 +332,8 @@ class App extends React.Component {
 
 								reRouteTarget={basePath+"/dashboard"}
 								forgotPath={basePath+"/forgot"}
+								
+								debugSet={this.changeDebugKey}
 							/>}
 						/>	
 						<Route path={basePath+"/signup"} exact component={() => <SignUp 
@@ -364,6 +388,8 @@ class App extends React.Component {
 								activateCompanyMenu={this.activateCompanyMenu}
 								changeMenuCompanyName={this.changeMenuCompanyName}
 								changeCompanyMenuItems={this.changeCompanyMenuItems}
+								
+								debugSet={this.changeDebugKey}
 							/>}
 						/>
 
@@ -372,7 +398,9 @@ class App extends React.Component {
 					<div className="row m-5"/>
 
 					<Footer 
-
+						ref="debug"
+						debugFlag={this.state.debugMode}
+						debugDisplay={this.state.debugDisplay}
 					/>
 				</div>
 			</Router>

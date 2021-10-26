@@ -4,6 +4,8 @@ import Graph from "react-graph-vis";
 import { Alert } from 'react-bootstrap';
 import { Accordion, Card } from 'react-bootstrap';
 
+import { ChevronDown } from 'react-bootstrap-icons';
+
 //APIGetDivisionWebDates
 import { APIGetDivisionWeb } from "../../utils";
 import { convertScanToWidth, convertScanToColor, graphOptions } from "../../utils";
@@ -21,62 +23,7 @@ import { withRouter } from "react-router-dom";
 // need to import the vis network css in order to show tooltip
 //import "./network.css";
 
-const GenerateTestInfo = () => {
-	
-	let testInfo = [
-
-		// These will be assembled One at a time in a storage facility...
-		// Each probobly assigned their ID number in the database... That would work
-		// Or a temporay one (Probobly in the negatives?) if for some reason we need to show that...
-		
-		// Use the sentiment as a weight....
-		{
-			'id':0,
-			"name": "Premade 1",
-			'isTracked': true,
-			
-			'toSet':[ {to:1, sentiment:0.8, freq:2}, {to:2, sentiment:-0.87, freq: 4} ],
-		},
-		{
-			'id':1,
-			'name': "Premade 2",
-			'isTracked': true,
-			
-			'toSet':[ {to:0, sentiment:0.25, freq: 5} ],
-		}
-	]
-	
-	const maxRels = 5
-	const MaxWeight = 7
-	const numIDs = 20
-	
-	for (let i = 2; i < numIDs; i++) {
-		
-		let toStuff = []
-		for (let j = 0; j < Math.floor(Math.random()*(maxRels+1)); j++ ) {
-			
-			toStuff.push({
-				to:Math.floor(Math.random()*(numIDs)), 
-				sentiment:2*Math.random()-1,
-				freq:Math.floor(Math.random()*MaxWeight),
-			})
-		}
-		
-		let trackStuff = Math.random() > 0.5
-		
-		testInfo.push(
-			{
-				'id':i,
-				"name": "Random "+i,
-				'isTracked': trackStuff,
-				
-				'toSet':toStuff,
-			}
-		)
-	}
-	
-	return testInfo
-}
+const debugPageName = "Division Webs"
 
 //const waitTimeMS = 100
 class ViewCompanyWeb extends React.Component {
@@ -84,6 +31,18 @@ class ViewCompanyWeb extends React.Component {
 	constructor(props) {
         super(props);
         this.state = {
+			
+			maxNodes: 20,
+			minNodes: 5,
+			
+			maxRels: 5,
+			minRels: 0,
+			
+			maxSenti: 1,
+			minSenti: -1,
+			
+			maxFreq: 7,
+			minFreq: 0,
 			
 			loadedDataDate: "None",
 			loadedData: [],
@@ -156,6 +115,63 @@ class ViewCompanyWeb extends React.Component {
 			pageIsLoaded: true,
 		})
 	}
+	
+	GenerateTestInfo = () => {
+	
+	let testInfo = []
+	/*[
+
+		// These will be assembled One at a time in a storage facility...
+		// Each probobly assigned their ID number in the database... That would work
+		// Or a temporay one (Probobly in the negatives?) if for some reason we need to show that...
+		
+		// Use the sentiment as a weight....
+		{
+			'id':0,
+			"name": "Premade 1",
+			'isTracked': true,
+			
+			'toSet':[ {to:1, sentiment:0.8, freq:2}, {to:2, sentiment:-0.87, freq: 4} ],
+		},
+		{
+			'id':1,
+			'name': "Premade 2",
+			'isTracked': true,
+			
+			'toSet':[ {to:0, sentiment:0.25, freq: 5} ],
+		}
+	]*/
+	
+	const numIDs = Math.random()*(this.state.maxNodes-this.state.minNodes)+this.state.maxNodes	
+	for (let i = 0; i < numIDs; i++) {
+		
+		let toStuff = []
+		let maxRelations = Math.floor(Math.random()*(1+this.state.maxRels-this.state.minRels)+this.state.minRels)
+		
+		for (let j = 0; j < maxRelations; j++ ) {
+			
+			toStuff.push({
+				to:Math.floor(Math.random()*(numIDs)),
+				sentiment:Math.random()*(this.state.maxSenti-this.state.minSenti)+this.state.minSenti,
+				freq:Math.floor(Math.random()*(1+this.state.maxFreq-this.state.minFreq)+this.state.minFreq),
+			})
+		}
+		
+		let trackStuff = Math.random() > 0.5
+		
+		testInfo.push(
+			{
+				'id':i,
+				"name": "Random name "+i,
+				'isTracked': trackStuff,
+				
+				'toSet':toStuff,
+			}
+		)
+	}
+	
+	return testInfo
+}
 	
 	GenerateGraph = (incomingData) => {
 		let trunMulti = 100
@@ -311,6 +327,7 @@ class ViewCompanyWeb extends React.Component {
 		}
 		else if (incomingError['action'] === 1) {
 			//Unauthorized
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Web")
 			this.props.refreshToken(this.getCompanyWebRecent)
 			return
 		}
@@ -318,6 +335,7 @@ class ViewCompanyWeb extends React.Component {
 			// Obtain error!
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Web", "Failure")
 		this.setState({
 			getWebStatus: 3,
 			getDatesWebError: incomingError["messages"],
@@ -329,6 +347,8 @@ class ViewCompanyWeb extends React.Component {
 			// There should ONLY BE 1
 			webThing = incomingWeb[0]["webStructure"]
 		}
+		
+		this.props.debugSet(debugPageName, "Get Division Web", "Success")
 		this.setState({
 			loadedData: webThing,
 			graphDataPrimary: this.GenerateGraph( webThing ),	
@@ -337,7 +357,7 @@ class ViewCompanyWeb extends React.Component {
 		})
 		
 		// We will have to check for remember here....
-		//timedSaveStorage( "lastGotWeb", {loadedDate:"recent"}, 0)
+		//timedSaveStorage( this.props.currentUser+"/lastGotWeb", {loadedDate:"recent"}, 0)
 	}
 	getCompanyWebRecent = () => {
 		if (!(this.props.currentDivisionID === -1)) {
@@ -366,6 +386,7 @@ class ViewCompanyWeb extends React.Component {
 		}
 		else if (incomingError['action'] === 1) {
 			//Unauthorized
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Web")
 			this.props.refreshToken(this.timedRefresh)
 			return
 		}
@@ -373,6 +394,7 @@ class ViewCompanyWeb extends React.Component {
 			// Obtain error!
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Web", "Failure")
 		this.setState({
 			getWebStatus: 3,
 			getDatesWebError: incomingError["messages"],
@@ -387,6 +409,7 @@ class ViewCompanyWeb extends React.Component {
 			webDate = incomingWeb[0]['forDate']
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Web", "Success")
 		this.setState({
 			loadedData: webThing,
 			graphDataPrimary: this.GenerateGraph( webThing ),	
@@ -426,7 +449,7 @@ class ViewCompanyWeb extends React.Component {
 	}
 	
 	loadData = () => {
-		const dert = GenerateTestInfo()
+		const dert = this.GenerateTestInfo()
 		
 		// If something, set to current, if not, set to the date?
 		let whenPicked = "Current"
@@ -436,6 +459,34 @@ class ViewCompanyWeb extends React.Component {
 			loadedData: dert,
 			graphDataPrimary: this.GenerateGraph( dert ),
 		})
+	}
+	
+	maxNodeFieldChange = (event) => {
+		this.setState( {maxNodes: Number(event.target.value)} )
+	}
+	minNodeFieldChange = (event) => {
+		this.setState( {minNodes: Number(event.target.value)} )
+	}
+	
+	maxRelsFieldChange = (event) => {
+		this.setState( {maxRels: Number(event.target.value)} )
+	}
+	minRelsFieldChange = (event) => {
+		this.setState( {minRels: Number(event.target.value)} )
+	}
+	
+	maxSentiFieldChange = (event) => {
+		this.setState( {maxSenti: Number(event.target.value)} )
+	}
+	minSentiFieldChange = (event) => {
+		this.setState( {minSenti: Number(event.target.value)} )
+	}
+	
+	maxFreqFieldChange = (event) => {
+		this.setState( {maxFreq: Number(event.target.value)} )
+	}
+	minFreqFieldChange = (event) => {
+		this.setState( {minFreq: Number(event.target.value)} )
 	}
 	
 	render() {
@@ -516,12 +567,9 @@ class ViewCompanyWeb extends React.Component {
 		return (
 			<div className="companyWebPage bg-secondary">
 			
-				<div className="container bg-light border">
-					<div className="row">
+				<div className="container bg-light border shadow">
+					<div className="row my-3">
 						<div className="col">
-							<button className="btn btn-secondary" onClick={this.loadData}>
-								Load Example Data
-							</button>
 							<button className="btn btn-dark" onClick={this.getCompanyWebRecent}>
 								Load Most Recent Web From Server
 							</button>
@@ -529,9 +577,20 @@ class ViewCompanyWeb extends React.Component {
 					</div>
 					<div className="row">
 						<div className="col">
+							
 							<Accordion>
-								<Accordion.Toggle as={Card.Header} className="border" variant="link" eventKey="open">
-									Get a Previous Web
+								<Accordion.Toggle as={Card.Header} className="border btn btn-outline-dark btn-block" variant="link" eventKey="open">
+									<div className="row">
+										<div className="col-1">
+
+										</div>
+										<div className="col">
+											Get a Previous Web
+										</div>
+										<div className="col-1">
+											<ChevronDown />
+										</div>
+									</div>
 								</Accordion.Toggle>
 								
 								<Accordion.Collapse eventKey="open">
@@ -549,6 +608,91 @@ class ViewCompanyWeb extends React.Component {
 											/>
 										</div>
 										<div className="col"/>
+									</div>
+								</Accordion.Collapse>
+								
+							</Accordion>
+						</div>
+					</div>
+					
+					<div className="row my-3">
+						<div className="col">
+							
+							<Accordion>
+								<Accordion.Toggle as={Card.Header} className="border btn btn-outline-dark btn-block" variant="link" eventKey="open">
+									<div className="row">
+										<div className="col-1">
+
+										</div>
+										<div className="col">
+											Create a Test Web
+										</div>
+										<div className="col-1">
+											<ChevronDown />
+										</div>
+									</div>
+								</Accordion.Toggle>
+								
+								<Accordion.Collapse eventKey="open">
+								
+									<div>
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Nodes</label>
+													<input type='number' className="form-control" value={this.state.maxNodes} onChange={this.maxNodeFieldChange} placeholder='Enter Max Node Number' />
+													
+													<label id="label-left">Min Nodes</label>
+													<input type='number' className="form-control" value={this.state.minNodes} onChange={this.minNodeFieldChange} placeholder='Enter Min Node Number' />
+												</div>
+											</div>
+										</div>
+										
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Relations</label>
+													<input type='number' className="form-control" value={this.state.maxRels} onChange={this.maxRelsFieldChange} placeholder='Enter Max Relations Number' />
+													
+													<label id="label-left">Min Relations</label>
+													<input type='number' className="form-control" value={this.state.minRels} onChange={this.minRelsFieldChange} placeholder='Enter Min Relations Number' />
+												</div>
+											</div>
+										</div>
+										
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Sentiment</label>
+													<input type='number' className="form-control" value={this.state.maxSenti} onChange={this.maxSentiFieldChange} placeholder='Enter Max Sentiment' />
+													
+													<label id="label-left">Min Seniment</label>
+													<input type='number' className="form-control" value={this.state.minSenti} onChange={this.minSentiFieldChange} placeholder='Enter Min Sentiment' />
+												</div>
+											</div>
+										</div>
+										
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Email Amount</label>
+													<input type='number' className="form-control" value={this.state.maxFreq} onChange={this.maxFreqFieldChange} placeholder='Enter Max Email Amount' />
+													
+													<label id="label-left">Min Email Amount</label>
+													<input type='number' className="form-control" value={this.state.minFreq} onChange={this.minFreqFieldChange} placeholder='Enter Min Email Amount' />
+												</div>
+											</div>
+										</div>
+									
+										<div className="row">
+											<div className="col"/>
+											<div className="col-">
+												<button className="btn btn-secondary" onClick={this.loadData}>
+													Create Data!
+												</button>
+											</div>
+											<div className="col"/>
+										</div>
 									</div>
 								</Accordion.Collapse>
 								
@@ -620,6 +764,7 @@ class ViewCompanyWeb extends React.Component {
 						}
 					</div>
 					<ShowWebInfoComponent/>
+					<div className="row my-2"/>
 					
 				</div>
 				

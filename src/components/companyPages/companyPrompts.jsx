@@ -5,6 +5,7 @@ import { withRouter, } from "react-router-dom";
 import { Alert } from 'react-bootstrap';
 
 import { APIGetSearchPrompts, APIGetDivisionEvents, APISetDivisionEvents, APIDeleteDivisionEvents, APISetNonDivisionEvents } from "../../utils";
+const debugPageName = "Division Prompts"
 
 const triggerType = [
 	"Never",
@@ -16,6 +17,11 @@ const triggerType = [
 	"On Friday",
 	"On Saturday",
 	"On Sunday",
+]
+
+const searchFilter = [
+	"Personal",
+	"Corperate",
 ]
 
 const promptType = [
@@ -91,7 +97,6 @@ class Paginator extends React.Component {
 	}
 }
 
-// I prefer class form honestly...
 class PromptDisplay extends React.Component {
 	
 	constructor(props) {
@@ -103,6 +108,9 @@ class PromptDisplay extends React.Component {
 			eventsDivBin: [],
 			
 			promptsBin: [],
+			
+			filterTypeFlags: this.initTypeFlags(),
+			filterNameFlags: this.initNameFlags(),
 			
 			pageNum: 0,
 			numPerPage: 5,
@@ -134,6 +142,44 @@ class PromptDisplay extends React.Component {
 		this.getEvents()
 	};
 	
+	initTypeFlags = () => {
+		let createdList = []
+		for (let i = 0; i < promptType.length; i++) {
+			createdList.push(true)
+		}
+		
+		return createdList
+	}
+	
+	initNameFlags = () => {
+		let createdList = []
+		for (let i = 0; i < searchFilter.length; i++) {
+			createdList.push(false)
+		}
+		
+		return createdList
+	}
+	
+	changeFilterType1 = (event) => {
+		let alteredFlags = this.state.filterTypeFlags.slice()
+		
+		alteredFlags[Number(event.target.value)] = !alteredFlags[Number(event.target.value)]
+		
+		this.setState({
+			filterTypeFlags: alteredFlags,
+		})
+	}
+	changeFilterType2 = (event) => {
+		
+		let alteredFlags = this.state.filterNameFlags.slice()
+		
+		alteredFlags[Number(event.target.value)] = !alteredFlags[Number(event.target.value)]
+		
+		this.setState({
+			filterNameFlags: alteredFlags,
+		})
+	}
+	
 	setLastClickedEvent = (event) => {
 		this.setState({
 			lastClickedEventIndex: Number(event.target.value)
@@ -148,6 +194,7 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Events")
 			this.props.refreshToken(this.getEvents)
 			return
 		}
@@ -168,6 +215,7 @@ class PromptDisplay extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Events", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getEventsStatus: 3,
@@ -185,20 +233,26 @@ class PromptDisplay extends React.Component {
 		let sortedDivision = []
 		
 		for (let index in incomingEvents) {
-			//console.log(incomingEvents[index])
+			
+			// This should be global...
 			if (incomingEvents[index]["creatorCompany"] === null) {
 				sortedGlobal.push(incomingEvents[index])
 			}
+			// This should be This Division...
 			else if (incomingEvents[index]["creatorDivision"] === this.props.currentDivisionID) {
 				sortedDivision.push(incomingEvents[index])
 			}
-			// This should only trigger if the company made this, as that is what is sent here...
-			// However, that may not be the case in the future, so this needs to be better!
+			// This should be this Company shared stuff...
 			else {
-				sortedCompany.push(incomingEvents[index])
+				// Ignore the non-Shared Events!
+				if (incomingEvents[index]["sharingEnabled"] || incomingEvents[index]["usedBy"]) {
+					sortedCompany.push(incomingEvents[index])
+				}
+				
 			}
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Events", "Success")
 		this.setState({
 			eventsGlobBin: sortedGlobal,
 			eventsCompBin: sortedCompany,
@@ -221,7 +275,8 @@ class PromptDisplay extends React.Component {
 			}
 		}
 		else {
-			console.log("MOVE IT BACK TO THE SELECT COMPANY HERE!")
+			//console.log("MOVE IT BACK TO THE SELECT COMPANY HERE!")
+			this.props.history.push(this.props.redirectErrorPath)
 		}
 	}
 	
@@ -233,6 +288,7 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Events")
 			this.props.refreshToken(this.tokenHasRefreshedError)
 			return
 		}
@@ -253,6 +309,7 @@ class PromptDisplay extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Save Division Events", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			saveEventStatus: 3,
@@ -260,15 +317,17 @@ class PromptDisplay extends React.Component {
 		})
 	}
 	saveEventsSuccess = (savedIndex, incomingMessage) => {
-		if ( !this.state.eventsDivBin[savedIndex]["fromServer"] ) {
+		if ( !this.state.eventsDivBin[savedIndex]["isSaved"] ) {
 			let temp = this.state.eventsDivBin.slice()
 			temp[savedIndex]["id"] = Number(incomingMessage.split(":")[1])
-			temp[savedIndex]["fromServer"] = true
+			temp[savedIndex]["isSaved"] = true
 
 			this.setState({
 				eventsDivBin: temp,
 			})
 		}
+		
+		this.props.debugSet(debugPageName, "Save Division Events", "Success")
 		this.setState({
 			saveEventStatus: 2,
 		})
@@ -279,7 +338,7 @@ class PromptDisplay extends React.Component {
 		let id = selectedEvent["id"]
 		let newTrigger = selectedEvent["triggerType"]
 		let newEnabledDiv = selectedEvent["usedBy"]
-		let newEnabled = selectedEvent["enabled"]
+		let newEnabled = selectedEvent["sharingEnabled"]
 		
 		let newPrompts = []
 		for (let index in selectedEvent["promptPool"]) {
@@ -300,6 +359,7 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Save Non-Division Data")
 			this.props.refreshToken(this.tokenHasRefreshedError)
 			return
 		}
@@ -320,6 +380,7 @@ class PromptDisplay extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Save Non-Division Events", "Success")
 		returnData = responseData['messages']
 		this.setState({
 			saveEventStatus: 3,
@@ -327,6 +388,7 @@ class PromptDisplay extends React.Component {
 		})
 	}
 	saveNonDivEventsSuccess = (savedIndex, incomingMessage) => {
+		this.props.debugSet(debugPageName, "Save Non-Division Events", "Success")
 		this.setState({
 			saveEventStatus: 2,
 		})
@@ -362,6 +424,7 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Search Prompts")
 			this.props.refreshToken(this.searchForPrompts)
 			return
 		}
@@ -382,6 +445,7 @@ class PromptDisplay extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Search Prompts", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			searchForStatus: 3,
@@ -390,6 +454,7 @@ class PromptDisplay extends React.Component {
 	}
 	searchForPromptsCallback = (incomingPrompts) => {
 
+		this.props.debugSet(debugPageName, "Search Prompts", "Success")
 		this.setState({
 			promptsBin: incomingPrompts,
 			hasSent: true,
@@ -398,10 +463,25 @@ class PromptDisplay extends React.Component {
 		})
 	}
 	searchForPrompts = () => {
+		
+		let filterTypeSet = []
+		for (let index in this.state.filterTypeFlags) {
+			if (this.state.filterTypeFlags[index]) {
+				filterTypeSet.push(index)
+			}
+		}
+		
+		let filterNameSet = []
+		for (let index in this.state.filterNameFlags) {
+			if (this.state.filterNameFlags[index]) {
+				filterNameSet.push(searchFilter[index])
+			}
+		}
+		
 		let checkData = undefined
 		if (checkData === undefined) {
 			//console.log("Prompts are not in storage!")
-			APIGetSearchPrompts( this.state.searchText, this.state.searchType, this.searchForPromptsCallback, this.searchForPromptsFailure)			
+			APIGetSearchPrompts( this.state.searchText, filterTypeSet, filterNameSet, this.searchForPromptsCallback, this.searchForPromptsFailure)			
 			this.setState({
 				searchForStatus: 1,
 			})
@@ -420,6 +500,7 @@ class PromptDisplay extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Delete Events")
 			this.props.refreshToken(this.tokenHasRefreshedError)
 			return
 		}
@@ -440,6 +521,7 @@ class PromptDisplay extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Delete Events", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			deleteEventStatus: 3,
@@ -452,6 +534,7 @@ class PromptDisplay extends React.Component {
 		let temp = this.state.eventsDivBin.slice()
 		temp.splice(valueInt,1)
 		
+		this.props.debugSet(debugPageName, "Delete Events", "Success")
 		this.setState({
 			eventsDivBin: temp,
 			deleteEventStatus: 2,
@@ -463,7 +546,7 @@ class PromptDisplay extends React.Component {
 
 		let id = selectedEvent["id"]
 		
-		if (!selectedEvent["fromServer"]) {
+		if (!selectedEvent["isSaved"]) {
 			this.deleteEventCallback( Number(event.target.value), "Not On The Server")
 		}
 		else{			
@@ -477,9 +560,9 @@ class PromptDisplay extends React.Component {
 	createEvent = () => {
 		let newEvents = this.state.eventsDivBin.slice()
 		
-		// I can proboly replace the "Fromserver" with an id of -1?
+		// I can proboly replace the "isSaved" with an id of -1?
 		newEvents.push(
-			{"id":-1, "triggerType":0, "promptPool":[], "enabled":true, "usedBy":false, "fromServer":false}
+			{"id":-1, "triggerType":0, "promptPool":[], "sharingEnabled":true, "usedBy":false, "isSaved":false}
 		)
 		
 		this.setState({
@@ -500,6 +583,7 @@ class PromptDisplay extends React.Component {
 
 		let temp = this.state.eventsDivBin.slice()
 		temp[eventIndex]["promptPool"].splice( promptIndex,1 )
+		temp[eventIndex]["isSaved"] = false
 		
 		//console.log(eventIndex)
 		//console.log(promptIndex)
@@ -522,6 +606,7 @@ class PromptDisplay extends React.Component {
 			
 			let promptReport = 0
 			if (sanity === undefined) {
+				temp[targetIndex]["isSaved"] = false
 				temp[targetIndex]["promptPool"].push(this.state.promptsBin[ promptIndex ])
 				promptReport = 1
 			}
@@ -540,7 +625,8 @@ class PromptDisplay extends React.Component {
 		let idNumberName = event.target.name.split(",")
 	
 		let alteredEvents = this.state.eventsDivBin.slice()
-		alteredEvents[ idNumberName[0] ]["triggerType"] = Number(idNumberName[1])
+		alteredEvents[idNumberName[0]]["triggerType"] = Number(idNumberName[1])
+		alteredEvents[idNumberName[0]]["isSaved"] = false
 		
 		this.setState({
 			eventsDivBin: alteredEvents,
@@ -550,6 +636,7 @@ class PromptDisplay extends React.Component {
 	enabledGlobalFieldChange = (event) => {
 		let alteredEvents = this.state.eventsGlobBin.slice()
 		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
+		alteredEvents[event.target.name]["isSaved"] = false
 		
 		this.setState({
 			eventsGlobBin: alteredEvents,
@@ -558,6 +645,7 @@ class PromptDisplay extends React.Component {
 	enabledCompanyFieldChange = (event) => {
 		let alteredEvents = this.state.eventsCompBin.slice()
 		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
+		alteredEvents[event.target.name]["isSaved"] = false
 		
 		this.setState({
 			eventsCompBin: alteredEvents,
@@ -566,6 +654,7 @@ class PromptDisplay extends React.Component {
 	enabledDivisionFieldChange = (event) => {
 		let alteredEvents = this.state.eventsDivBin.slice()
 		alteredEvents[event.target.name]["usedBy"] = !alteredEvents[event.target.name]["usedBy"]
+		alteredEvents[event.target.name]["isSaved"] = false
 		
 		this.setState({
 			eventsDivBin: alteredEvents,
@@ -573,7 +662,8 @@ class PromptDisplay extends React.Component {
 	}
 	enabledDivisionFieldChangeSuper = (event) => {
 		let alteredEvents = this.state.eventsDivBin.slice()
-		alteredEvents[event.target.name]["enabled"] = !alteredEvents[event.target.name]["enabled"]
+		alteredEvents[event.target.name]["sharingEnabled"] = !alteredEvents[event.target.name]["sharingEnabled"]
+		alteredEvents[event.target.name]["isSaved"] = false
 		
 		this.setState({
 			eventsDivBin: alteredEvents,
@@ -651,61 +741,9 @@ class PromptDisplay extends React.Component {
 			)
 		}
 		
-		let globModals = []
 		let showGlobalEvents = []
 		for (let index in this.state.eventsGlobBin) {
 			let thisEvent = this.state.eventsGlobBin[index]
-			
-			showGlobalEvents.push(
-				<div className="col" key={index}>
-					<div className="card">
-						<div className="card-header">
-
-						</div>
-						<div className="card-body">
-							<div className="row">
-								<div className="col">
-									Trigger Type: { triggerType[ thisEvent["triggerType"] ] }
-								</div>
-							</div>
-							<div className="row m-1">
-								<div className="col">
-									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
-									<button className="btn btn-secondary mx-2" data-toggle="modal" data-target={"#globPrompts"+index}>
-										Show
-									</button>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckGlob'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledGlobalFieldChange} checked={thisEvent["usedBy"]} />
-										<label className='custom-control-label' htmlFor={'customCheckGlob'+index} >Enabled For This Division</label>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckGlob2'+index} name={index} value={thisEvent["enabled"]} checked={thisEvent["enabled"]} disabled />
-										<label className='custom-control-label' htmlFor={'customCheckGlob2'+index} >Is Enabled</label>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<button className="btn btn-primary" value={index} onClick={this.saveGlobEvent}>
-										Save Changes
-									</button>
-								</div>
-							</div>
-							
-						</div>
-					</div>
-				</div>
-			)
-			
-			//console.log(thisEvent)
 			
 			let displayCurrentPrompts = []
 			for (let indexSub in thisEvent["promptPool"]) {
@@ -741,66 +779,17 @@ class PromptDisplay extends React.Component {
 				)
 			}
 			
-			globModals.push(
-				<div key={index} className="modal fade" id={"globPrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="globPromptsDisplayer" aria-hidden="true">
-					<div className="modal-dialog modal-dialog-centered" role="document">
-						<div className="modal-content">
-							<div className="modal-header">
-
-								<h5 className="modal-title">Altering Prompts</h5>
-								<button type="btn btn-danger" className="close" data-dismiss="modal" aria-label="Close">
-								  <span aria-hidden="true">&times;</span>
-								</button>
-
-							</div>
-							<div className="modal-body">
-									
-								<table className="table" key="1">
-									<thead>
-										<tr>
-											<th scope="col">Text</th>
-											<th scope="col">IID?</th>
-											<th scope="col">Type</th>
-										</tr>
-									</thead>
-									
-									<tbody>
-										{displayCurrentPrompts}
-									</tbody>
-								</table>
-							</div>
-							<div className="modal-footer">
-
-								{/*
-								<button type="button" className="btn btn-danger" data-dismiss="modal">Yes</button>
-								<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
-								*/}
-
-							</div>
-						</div>
-					</div>
-				</div>
-			)
-		}
-		
-		if (showGlobalEvents.length === 0) {
-			showGlobalEvents.push(
-				<div className="col" key={0}>
-					Nothing Here!
-				</div>
-			)
-		}
-
-		let compModals = []
-		let showCompEvents = []
-		for (let index in this.state.eventsCompBin) {
-			let thisEvent = this.state.eventsCompBin[index]
+			let unsavedCheck = !thisEvent["isSaved"]
 			
-			showCompEvents.push(
-				<div className="col" key={index}>
+			showGlobalEvents.push(
+				<div className="col-sm-12 col-md-12 col-lg-6 col-xl" key={index}>
 					<div className="card">
 						<div className="card-header">
-
+							{ unsavedCheck &&
+								<div className="text-danger">
+									Unsaved Changes!
+								</div>
+							}
 						</div>
 						<div className="card-body">
 							<div className="row">
@@ -811,7 +800,7 @@ class PromptDisplay extends React.Component {
 							<div className="row m-1">
 								<div className="col">
 									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
-									<button className="btn btn-secondary mx-2" data-toggle="modal" data-target={"#compPrompts"+index}>
+									<button className="btn btn-secondary" data-toggle="collapse" data-target={"#globCollapse"+index} aria-expanded="false" aria-controls={"globCollapse"+index}>
 										Show
 									</button>
 								</div>
@@ -819,24 +808,46 @@ class PromptDisplay extends React.Component {
 							<div className="row">
 								<div className="col">
 									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckComp'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledCompanyFieldChange} checked={thisEvent["usedBy"]} />
-										<label className='custom-control-label' htmlFor={'customCheckComp'+index} >Enabled For This Division</label>
+										<input type='checkbox' className='custom-control-input' id={'customCheckGlob'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledGlobalFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckGlob'+index} >Enabled For This Division</label>
 									</div>
 								</div>
 							</div>
 							<div className="row">
 								<div className="col">
 									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckComp2'+index} name={index} value={thisEvent["enabled"]} checked={thisEvent["enabled"]} disabled />
-										<label className='custom-control-label' htmlFor={'customCheckComp2'+index} >Is Enabled</label>
+										<input type='checkbox' className='custom-control-input' id={'customCheckGlob2'+index} name={index} value={thisEvent["sharingEnabled"]} checked={thisEvent["sharingEnabled"]} disabled />
+										<label className='custom-control-label' htmlFor={'customCheckGlob2'+index} >Is Shared</label>
 									</div>
 								</div>
 							</div>
 							<div className="row">
 								<div className="col">
-									<button className="btn btn-primary" value={index} onClick={this.saveCompEvent}>
+									<button className="btn btn-primary" value={index} onClick={this.saveGlobEvent}>
 										Save Changes
 									</button>
+								</div>
+							</div>
+							
+							<div className="collapse" id={"globCollapse"+index}>
+								<div className="card card-body">
+											
+									<table className="table" key="1">
+										<thead>
+											<tr>
+												<th scope="col">Text</th>
+												{/* <th scope="col">IID</th> */}
+												<th scope="col">Type</th>
+												{/* <th scope="col">Filter(s)</th> */}
+												<th scope="col">Delete</th>
+											</tr>
+										</thead>
+										
+										<tbody>
+											{displayCurrentPrompts}
+										</tbody>
+									</table>
+
 								</div>
 							</div>
 							
@@ -844,6 +855,20 @@ class PromptDisplay extends React.Component {
 					</div>
 				</div>
 			)
+		}
+		/*
+		if (showGlobalEvents.length === 0) {
+			showGlobalEvents.push(
+				<div className="col" key={0}>
+					Nothing Here!
+				</div>
+			)
+		}
+		*/
+
+		let showCompEvents = []
+		for (let index in this.state.eventsCompBin) {
+			let thisEvent = this.state.eventsCompBin[index]
 			
 			let displayCurrentPrompts = []
 			for (let indexSub in thisEvent["promptPool"]) {
@@ -881,42 +906,78 @@ class PromptDisplay extends React.Component {
 				)
 			}
 			
-			compModals.push(
-				<div key={index} className="modal fade" id={"compPrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="compPromptsDisplayer" aria-hidden="true">
-					<div className="modal-dialog modal-dialog-centered" role="document">
-						<div className="modal-content">
-							<div className="modal-header">
-
-								<h5 className="modal-title">Altering Prompts</h5>
-								<button type="btn btn-danger" className="close" data-dismiss="modal" aria-label="Close">
-								  <span aria-hidden="true">&times;</span>
-								</button>
-
+			let unsavedCheck = !thisEvent["isSaved"]
+			
+			showCompEvents.push(
+				<div className="col-sm-12 col-md-12 col-lg-6 col-xl" key={index}>
+					<div className="card">
+						<div className="card-header">
+							{ unsavedCheck &&
+								<div className="text-danger">
+									Unsaved Changes!
+								</div>
+							}
+						</div>
+						<div className="card-body">
+							<div className="row">
+								<div className="col">
+									Trigger Type: { triggerType[ thisEvent["triggerType"] ] }
+								</div>
 							</div>
-							<div className="modal-body">
-									
-								<table className="table" key="1">
-									<thead>
-										<tr>
-											<th scope="col">Text</th>
-											<th scope="col">IID?</th>
-											<th scope="col">Type</th>
-										</tr>
-									</thead>
-									
-									<tbody>
-										{displayCurrentPrompts}
-									</tbody>
-								</table>
+							<div className="row m-1">
+								<div className="col">
+									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
+									<button className="btn btn-secondary" type="button" data-toggle="collapse" data-target={"#compCollapse"+index} aria-expanded="false" aria-controls={"compCollapse"+index}>
+										Show
+									</button>
+								</div>
 							</div>
-							<div className="modal-footer">
-
-								{/*
-								<button type="button" className="btn btn-danger" data-dismiss="modal">Yes</button>
-								<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
-								*/}
-
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckComp'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledCompanyFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckComp'+index} >Enabled For This Division</label>
+									</div>
+								</div>
 							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckComp2'+index} name={index} value={thisEvent["sharingEnabled"]} checked={thisEvent["sharingEnabled"]} disabled />
+										<label className='custom-control-label' htmlFor={'customCheckComp2'+index} >Is Shared</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-primary" value={index} onClick={this.saveCompEvent}>
+										Save Changes
+									</button>
+								</div>
+							</div>
+							
+							<div className="collapse" id={"compCollapse"+index}>
+								<div className="card card-body">
+											
+									<table className="table" key="1">
+										<thead>
+											<tr>
+												<th scope="col">Text</th>
+												{/* <th scope="col">IID</th> */}
+												<th scope="col">Type</th>
+												{/* <th scope="col">Filter(s)</th> */}
+												<th scope="col">Delete</th>
+											</tr>
+										</thead>
+										
+										<tbody>
+											{displayCurrentPrompts}
+										</tbody>
+									</table>
+
+								</div>
+							</div>
+							
 						</div>
 					</div>
 				</div>
@@ -924,7 +985,7 @@ class PromptDisplay extends React.Component {
 		}
 		if (showCompEvents.length === 0) {
 			showCompEvents.push(
-				<div className="col" key={0}>
+				<div className="col" key={1}>
 					Nothing Here!
 				</div>
 			)
@@ -932,85 +993,9 @@ class PromptDisplay extends React.Component {
 		
 		//console.log(this.state.eventsDivBin)
 		
-		// Lets try doing MODALS like this....
-		let divModals = []
 		let showDivisionEvents = []
 		for (let index in this.state.eventsDivBin) {
 			let thisEvent = this.state.eventsDivBin[index]
-
-			showDivisionEvents.push(
-				
-				<div className="col" key={index}>
-					<div className="card">
-						<div className="card-header">
-							{ !thisEvent["fromServer"] &&
-								<div className="text-danger">
-									Not Saved!
-								</div>
-							}
-							Delete
-							<button className="badge badge-danger badge-pill" name="test" value={index} onClick={this.deleteEvent}>
-								X
-							</button>
-						</div>
-						<div className="card-body">
-							<div className="row">
-								<div className="col">
-									<div className='dropdown'>
-										Trigger Type:
-										<div className="btn btn-secondary mx-2" type="button" id={"EventButton"+index} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-											{ triggerType[ thisEvent["triggerType"] ] }
-										</div>
-										<div className="dropdown-menu" aria-labelledby={"EventButton"+index}>
-											{triggerType.map((radio, idx) => (
-												<div key={idx}>
-													<button className="dropdown-item" name={ [index, idx] } onClick={this.changeTrigger}>
-														{radio}
-													</button>
-												</div>
-											))}
-										</div>
-									</div>
-									
-								</div>
-							</div>
-							<div className="row m-1">
-								<div className="col">
-									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
-									<button className="btn btn-secondary mx-2" data-toggle="modal" data-target={"#changePrompts"+index}>
-										Change
-									</button>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckDiv'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledDivisionFieldChange} checked={thisEvent["usedBy"]} />
-										<label className='custom-control-label' htmlFor={'customCheckDiv'+index} >Enabled For This Division</label>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<div className='custom-control custom-checkbox'>
-										<input type='checkbox' className='custom-control-input' id={'customCheckDiv2'+index} name={index} value={thisEvent["enabled"]} onChange={this.enabledDivisionFieldChangeSuper} checked={thisEvent["enabled"]} disabled />
-										<label className='custom-control-label' htmlFor={'customCheckDiv2'+index} >Enabled For ALL Divisions</label>
-									</div>
-								</div>
-							</div>
-							<div className="row">
-								<div className="col">
-									<button className="btn btn-primary" value={index} onClick={this.saveDivEvent}>
-										Save
-									</button>
-								</div>
-							</div>
-							
-						</div>
-					</div>
-				</div>
-				
-			)
 			
 			let displayCurrentPrompts = []
 			for (let indexSub in thisEvent["promptPool"]) {
@@ -1050,57 +1035,119 @@ class PromptDisplay extends React.Component {
 					</tr>
 				)
 			}
-			
-			divModals.push(
-				<div key={index} className="modal fade" id={"changePrompts"+index} tabIndex="-1" role="dialog" aria-labelledby="promptChanger" aria-hidden="true">
-					<div className="modal-dialog modal-dialog-centered" role="document">
-						<div className="modal-content">
-							<div className="modal-header">
 
-								<h5 className="modal-title">Altering Prompts</h5>
-								<button type="btn btn-danger" className="close" data-dismiss="modal" aria-label="Close">
-								  <span aria-hidden="true">&times;</span>
-								</button>
+			let unsavedCheck = !thisEvent["isSaved"]
 
+			showDivisionEvents.push(
+				
+				<div className="col-sm-12 col-md-12 col-lg-6 col-xl-6" key={index}>
+					<div className="card">
+						<div className="card-header">
+							{ unsavedCheck &&
+								<div className="text-danger">
+									Unsaved Changes!
+								</div>
+							}
+							Delete
+							<button className="badge badge-danger badge-pill" name="test" value={index} onClick={this.deleteEvent}>
+								X
+							</button>
+						</div>
+						<div className="card-body">
+							<div className="row">
+								<div className="col"/>
+								<div className="col-">
+									Trigger Type:
+								</div>
+								<div className="col">
+									<div className='dropdown'>
+										<div className="btn btn-secondary mx-2" type="button" id={"EventButton"+index} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+											{ triggerType[ thisEvent["triggerType"] ] }
+										</div>
+										<div className="dropdown-menu" aria-labelledby={"EventButton"+index}>
+											{triggerType.map((radio, idx) => (
+												<div key={idx}>
+													<button className="dropdown-item" name={ [index, idx] } onClick={this.changeTrigger}>
+														{radio}
+													</button>
+												</div>
+											))}
+										</div>
+									</div>
+								</div>
+								<div className="col"/>
 							</div>
-							<div className="modal-body">
+							<div className="row m-1">
+								<div className="col"/>
+								<div className="col-">
+									<b><u><i>{thisEvent["promptPool"].length}</i></u></b> Prompts
+								</div>
+								<div className="col- mx-2">
+									<button className="btn btn-secondary" type="button" data-toggle="collapse" data-target={"#divCollapse"+index} aria-expanded="false" aria-controls={"divCollapse"+index}>
+										Edit
+									</button>
+								</div>
+								<div className="col"/>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckDiv'+index} name={index} value={thisEvent["usedBy"]} onChange={this.enabledDivisionFieldChange} checked={thisEvent["usedBy"]} />
+										<label className='custom-control-label' htmlFor={'customCheckDiv'+index} >Enabled For This Division</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<div className='custom-control custom-checkbox'>
+										<input type='checkbox' className='custom-control-input' id={'customCheckDiv2'+index} name={index} value={thisEvent["sharingEnabled"]} onChange={this.enabledDivisionFieldChangeSuper} checked={thisEvent["sharingEnabled"]} />
+										<label className='custom-control-label' htmlFor={'customCheckDiv2'+index} >Allow Other Divisions To Use</label>
+									</div>
+								</div>
+							</div>
+							<div className="row">
+								<div className="col">
+									<button className="btn btn-primary" value={index} onClick={this.saveDivEvent}>
+										Save
+									</button>
+								</div>
+							</div>
+							
+							<div className="collapse" id={"divCollapse"+index}>
+								<div className="card card-body">
+											
+									<table className="table" key="1">
+										<thead>
+											<tr>
+												<th scope="col">Text</th>
+												{/* <th scope="col">IID</th> */}
+												<th scope="col">Type</th>
+												{/* <th scope="col">Filter(s)</th> */}
+												<th scope="col">Delete</th>
+											</tr>
+										</thead>
+										
+										<tbody>
+											{displayCurrentPrompts}
+										</tbody>
+									</table>
 									
-								<table className="table" key="1">
-									<thead>
-										<tr>
-											<th scope="col">Text</th>
-											<th scope="col">IID?</th>
-											<th scope="col">Type</th>
-											<th scope="col">Delete</th>
-										</tr>
-									</thead>
-									
-									<tbody>
-										{displayCurrentPrompts}
-									</tbody>
-								</table>
-								
-								<button className="btn btn-primary" value={index} onClick={this.setLastClickedEvent} data-toggle="modal" data-target="#addPrompts">
-									Add New Prompt
-								</button>
+									<button className="btn btn-primary" value={index} onClick={this.setLastClickedEvent} data-toggle="modal" data-target="#addPrompts">
+										Add New Prompt
+									</button>
 
+								</div>
 							</div>
-							<div className="modal-footer">
-
-								{/*
-								<button type="button" className="btn btn-danger" data-dismiss="modal">Yes</button>
-								<button type="button" className="btn btn-primary" data-dismiss="modal">No</button>
-								*/}
-
-							</div>
+							
 						</div>
 					</div>
 				</div>
+				
 			)
 		}
 		
-		if (showCompEvents.length === 0) {
-			showCompEvents.push(
+		if (showDivisionEvents.length === 0) {
+			showDivisionEvents.push(
 				<div className="col" key={0}>
 					Nothing Here!
 				</div>
@@ -1123,16 +1170,40 @@ class PromptDisplay extends React.Component {
 				
 				let subset = this.state.promptsBin[alteredIndex]["text"].substring(0, 12) + "...";
 				
+				let displayIndFilters = []
+				for (let tagIndex in this.state.promptsBin[alteredIndex]["promptFilterTags"]) {
+					displayIndFilters.push(
+						<div className="col border">
+							<div className="my-1">
+								{this.state.promptsBin[alteredIndex]["promptFilterTags"][tagIndex]["name"]}
+							</div>
+						</div>
+					)
+				}
+				if (displayIndFilters.length === 0) {
+					displayIndFilters.push(
+						<div className="col- list-group-item">
+							No Filters!
+						</div>
+					)
+				}
+
+				// No comments in here due to jsx
 				showSearchPrompts.push(
 
 					<tr key={alteredIndex}>
 						<th scope="row">
-							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#collapseExample"+alteredIndex}>
+							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#collapseFullText"+alteredIndex}>
 								{subset}
 							</button>
 						</th>
-						<td>{ this.state.promptsBin[alteredIndex]["identifier"] }</td>
-						<td>{ this.state.promptsBin[alteredIndex]["property1"] }</td>
+						{/* <td>{ this.state.promptsBin[alteredIndex]["identifier"] }</td> */}
+						<td>{ promptType[this.state.promptsBin[alteredIndex]["promptType"]] }</td>
+						<td>
+							<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#collapseFilters"+alteredIndex}>
+								{ this.state.promptsBin[alteredIndex]["promptFilterTags"].length }
+							</button>
+						</td>
 						<th>
 							<button className="btn btn-outline-secondary" value={alteredIndex} onClick={this.addingEventPrompt}>
 								+
@@ -1140,11 +1211,19 @@ class PromptDisplay extends React.Component {
 						</th>
 					</tr>,
 					<tr key={1 + alteredIndex + this.state.promptsBin.length}>
-						<th scope="row" colSpan="4" className="collapse" id={"collapseExample"+alteredIndex}>
+						<th scope="row" colSpan="4" className="collapse" id={"collapseFullText"+alteredIndex}>
 							{ this.state.promptsBin[alteredIndex]["text"] }
 						</th>
-					</tr>
-					
+					</tr>,
+					<tr key={2 + alteredIndex + 2*this.state.promptsBin.length}>
+						<th scope="row" colSpan="4" className="collapse" id={"collapseFilters"+alteredIndex}>
+							<div className="row">
+								<div className="col"/>
+									{displayIndFilters}
+								<div className="col"/>
+							</div>
+						</th>
+					</tr>,
 				)
 			}
 		}
@@ -1169,8 +1248,42 @@ class PromptDisplay extends React.Component {
 			}
 		}
 		
+		let filterTypeSet = []
+		for (let index in promptType) {
+			
+			let displayClass = "btn-outline-success"
+			if (this.state.filterTypeFlags[index]) {
+				displayClass = "btn-success"
+			}
+			
+			filterTypeSet.push(
+				<div className="col-" key={index}>
+					<button className={"btn " + displayClass} value={index} key={index} onClick={this.changeFilterType1}>
+						{promptType[index]}
+					</button>
+				</div>
+			)
+		}
+		
+		let filterNameSet = []
+		for (let index in searchFilter) {
+			
+			let displayClass = "btn-outline-success"
+			if (this.state.filterNameFlags[index]) {
+				displayClass = "btn-success"
+			}
+			
+			filterNameSet.push(
+				<div className="col-" key={index}>
+					<button className={"btn " + displayClass} value={index} key={index} onClick={this.changeFilterType2}>
+						{searchFilter[index]}
+					</button>
+				</div>
+			)
+		}
+		
 		return (
-			<div className="EHIDisplay">
+			<div className="PromptDisplay">
 				<div className="container-fluid">
 				
 					<div className="row">
@@ -1209,7 +1322,8 @@ class PromptDisplay extends React.Component {
 							</div>
 						</div>
 					</div>
-					
+				
+					{/*
 					<div className="row">
 						<div className="col">
 							<div className="card shadow">
@@ -1224,6 +1338,7 @@ class PromptDisplay extends React.Component {
 							</div>
 						</div>
 					</div>
+					*/}
 					
 					<Alert show={showWaiting} variant="warning">
 						<Alert.Heading>Waiting</Alert.Heading>
@@ -1239,6 +1354,8 @@ class PromptDisplay extends React.Component {
 						<hr />
 						<p>
 						  Successfully obtained data or saved!
+						  <br />
+						  Your prompts will be updated on next refresh
 						</p>
 						<hr />
 					</Alert>
@@ -1251,27 +1368,6 @@ class PromptDisplay extends React.Component {
 						</p>
 						<hr />
 					</Alert>
-					
-					{/*
-					<div className="row">
-						<div className="col">
-							<div className="card shadow">
-								<div className="card-header">
-									<h5>This Division Only</h5>
-								</div>
-								<div className="card-body">
-									<div className="row">
-										{showGlobalEvents}
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					*/}
-					
-					{globModals}
-					{compModals}
-					{divModals}
 					
 					<div className="modal fade" id="addPrompts" tabIndex="-1" role="dialog" aria-labelledby="promptAdder" aria-hidden="true">
 						<div className="modal-dialog modal-dialog-centered" role="document">
@@ -1286,19 +1382,52 @@ class PromptDisplay extends React.Component {
 								</div>
 								<div className="modal-body">
 								
-									<div className="input-group rounded">
-										<input type="search" className="form-control rounded" placeholder="Search Text" aria-label="Search" aria-describedby="search-addon" onChange={this.changeInput} />
-										<button className="input-group-text border-0" id="search-addon" onClick={this.searchForPrompts}>
-											<Search className="iconBG" color="black" size={16} />
-										</button>
+									<div className="row">
+										<div className="col">
+											<div className="input-group rounded">
+												<input type="search" className="form-control rounded" placeholder="Search Text" aria-label="Search" aria-describedby="search-addon" onChange={this.changeInput} />
+												<button className="input-group-text border-0" id="search-addon" onClick={this.searchForPrompts}>
+													<Search className="iconBG" color="black" size={16} />
+												</button>
+											</div>
+										</div>
 									</div>
+									
+									<div className="row">
+										<div className="col">
 										
+											<button className="btn btn-outline-secondary" data-toggle="collapse" data-target={"#displaySearchCollapse"}>
+												Advanced Search
+											</button>
+											<hr/>
+											<div className="collapse" id={"displaySearchCollapse"}>
+												<div className="row">
+													<div className="col">
+														<u>Filters:</u>
+													</div>
+												</div>
+												<div className="row">
+													<div className="col"/>
+													{filterTypeSet}
+													<div className="col"/>
+												</div>
+												<div className="row">
+													<div className="col"/>
+													{filterNameSet}
+													<div className="col"/>
+												</div>
+												<hr/>
+											</div>
+										</div>
+									</div>
+									
 									<table className="table" key="1">
 										<thead>
 											<tr>
 												<th scope="col">Text</th>
-												<th scope="col">IID?</th>
-												<th scope="col">Prop 1?</th>
+												{/*<th scope="col">IID</th>*/}
+												<th scope="col">Type</th>
+												<th scope="col">Filter(s)</th>
 												<th scope="col">Add</th>
 											</tr>
 										</thead>
@@ -1339,7 +1468,6 @@ class PromptDisplay extends React.Component {
 							</div>
 						</div>
 					</div>
-					
 				</div>
 			</div>
 		)

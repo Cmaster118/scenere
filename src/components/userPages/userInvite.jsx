@@ -6,15 +6,16 @@ import { Alert } from 'react-bootstrap';
 
 const inviteType = ['Invalid', 'Admin User', 'Viewing User', 'Governed User']
 
+const debugPageName = "User Invites"
+
 class UserInvitePage extends React.Component {
 	constructor(props) {
         super(props);
         this.state = {
 			inviteCode: "",
 			
-			inviteIDList: [],
-			inviteNamesList: [],
-			inviteRolesList: [],	
+			invitePendingList: [],
+			inviteActiveList: [],
 			
 			getUserInvitesStatus: 0,
 			submitCodeStatus: 0,
@@ -37,6 +38,7 @@ class UserInvitePage extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "User Invites")
 			this.props.refreshToken(this.getUserInvites)
 			return
 		}
@@ -57,6 +59,7 @@ class UserInvitePage extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "User Invites", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getUserInvitesErrors: returnData,
@@ -64,23 +67,27 @@ class UserInvitePage extends React.Component {
 		})
 	}
 	getUserInvitesSuccess = ( incomingData ) => {
+		//console.log(incomingData)
 		//console.log("Got the Invites")
-		let idSet = []
-		let userNames = []
-		let divisionNames = []
-		let targetRole = []
+		
+		let invitesUserSide = []
+		let invitesDivisionSide = []
+		
 		for (let index in incomingData) {
-			
-			idSet.push( incomingData[index].id )
-			userNames.push( incomingData[index].getUserFullName )
-			divisionNames.push( incomingData[index].inviteDivision )
-			targetRole.push( inviteType[ incomingData[index].targetRole ] )
+			// If it is from a company to this user, it goes in the invite area
+			if (incomingData[index].whoIsOrigin === 1) {
+				invitesDivisionSide.push( incomingData[index] )
+			}
+			// If it is from us, to a company... then it goes in the pending field
+			else if (incomingData[index].whoIsOrigin === 2) {
+				invitesUserSide.push( incomingData[index] )
+			}
 		}
 		
+		this.props.debugSet(debugPageName, "User Invites", "Success")
 		this.setState({
-			inviteIDList: idSet,
-			inviteNamesList: divisionNames,
-			inviteRolesList: targetRole,
+			invitePendingList: invitesDivisionSide,
+			inviteActiveList: invitesUserSide,
 			
 			getUserInvitesStatus:2,
 		})
@@ -100,6 +107,7 @@ class UserInvitePage extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Submit Code")
 			this.props.refreshToken(this.submitCode)
 			return
 		}
@@ -134,14 +142,16 @@ class UserInvitePage extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Submit Code", "False")
 		returnData = responseData['messages']
 		this.setState({
 			submitCodeErrors: returnData,
 			submitCodeStatus:3,
 		})
 	}
-	inviteSuccess = (successCodes, successData) => {
-		console.log("Invite Success")
+	inviteSuccess = (successData) => {
+		//console.log("Invite Success")
+		this.props.debugSet(debugPageName, "Submit Code", "Success")
 		this.setState({
 			submitCodeStatus:2,
 		})
@@ -163,6 +173,7 @@ class UserInvitePage extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Spend Invite")
 			this.props.refreshToken(this.baseTryAgain)
 			return
 		}
@@ -184,6 +195,7 @@ class UserInvitePage extends React.Component {
 		}
 		
 		returnData = responseData['messages']
+		this.props.debugSet(debugPageName, "Spend Invite", "Success")
 		
 		this.getUserInvites()
 		this.props.triggerRefresh()
@@ -196,6 +208,7 @@ class UserInvitePage extends React.Component {
 		//console.log("Spend Invite Success")
 		//console.log(successData)
 		
+		this.props.debugSet(debugPageName, "Spend Invite", "Success")
 		this.getUserInvites()
 		this.props.triggerRefresh()
 		this.setState({
@@ -239,11 +252,12 @@ class UserInvitePage extends React.Component {
 	}
 	
 	render() {
-		//console.log(this.state.inviteNamesList)
-		//console.log(this.state.inviteRolesList)
+		//console.log(this.state.invitePendingList)
+		//console.log(this.state.inviteActiveList)
 		
 		let displayWaiting = this.state.getUserInvitesStatus === 1 || this.state.spendInviteStatus === 1 || this.state.submitCodeStatus === 1
-		let displaySuccess = false//this.state.getUserInvitesStatus === 2 || this.state.spendInviteStatus === 2 || this.state.submitCodeStatus === 2
+		let displaySuccessInvite = this.state.submitCodeStatus === 2
+		//let displaySuccessOters = this.state.getUserInvitesStatus === 2 || this.state.spendInviteStatus === 2
 		let displayErrors = this.state.getUserInvitesStatus === 3 || this.state.spendInviteStatus === 3 || this.state.submitCodeStatus === 3
 		
 		let errorParse = []
@@ -268,27 +282,55 @@ class UserInvitePage extends React.Component {
 			)
 		}
 		
-		let invitesDisplayList = []
-		for (let i in this.state.inviteNamesList) {
+		let currentInvitesDisplayList = []
+		for (let i in this.state.invitePendingList) {
 			let extra = ""
-			invitesDisplayList.push(
+			currentInvitesDisplayList.push(
 				<li className={"list-group-item d-flex justify-content-around"+extra} key={i}>
 					<div className="col alignOverride">
-						{this.state.inviteNamesList[i]}
+						{this.state.invitePendingList[i].inviteDivision}
 					</div>
 					<div className="col alignOverride">
-						{this.state.inviteRolesList[i]}
+						{inviteType[this.state.invitePendingList[i].targetRole]}
 					</div>
 					<div className="col-2">
-						<button className="badge badge-success badge-pill" value={this.state.inviteIDList[i]} onClick={this.inviteYes}>/</button>
+
 					</div>
 					<div className="col-1">
-						<button className="badge badge-danger badge-pill" value={this.state.inviteIDList[i]} onClick={this.inviteNo}>X</button>
+
 					</div>
 				</li>
 			)
 		}
-		if (this.state.inviteNamesList.length === 0) {
+		if (currentInvitesDisplayList.length === 0) {
+			currentInvitesDisplayList.push(
+				<li className="list-group-item" key={0}>
+					No Invites!
+				</li>
+			)
+		}
+		
+		let invitesDisplayList = []
+		for (let i in this.state.inviteActiveList) {
+			let extra = ""
+			invitesDisplayList.push(
+				<li className={"list-group-item d-flex justify-content-around"+extra} key={i}>
+					<div className="col alignOverride">
+						{this.state.inviteActiveList[i].inviteDivision}
+					</div>
+					<div className="col alignOverride">
+						{inviteType[this.state.inviteActiveList[i].targetRole]}
+					</div>
+					<div className="col-2">
+						<button className="badge badge-success badge-pill" value={this.state.inviteActiveList[i].id} onClick={this.inviteYes}>/</button>
+					</div>
+					<div className="col-1">
+						<button className="badge badge-danger badge-pill" value={this.state.inviteActiveList[i].id} onClick={this.inviteNo}>X</button>
+					</div>
+				</li>
+			)
+		}
+		if (invitesDisplayList.length === 0) {
 			invitesDisplayList.push(
 				<li className="list-group-item" key={0}>
 					No Invites!
@@ -325,6 +367,38 @@ class UserInvitePage extends React.Component {
 						<div className="col">
 							<div className="card shadow">
 								<div className="card-header">
+									<h5>Current Sent Pending Invites</h5>
+								</div>
+								<div className="card-body">
+									<ul className="list-group">
+										{/*Trying a non-table solution because of the buttons?*/}
+										<li className="list-group-item" key={-1}>
+											<div className="row">
+												<div className="col-1">
+												</div>
+												<div className="col alignOverride">
+													<u>Division name</u>
+												</div>
+												<div className="col alignOverride">
+													<u>Target Role</u>
+												</div>
+												<div className="col-2">
+												</div>
+												<div className="col-1">
+												</div>
+											</div>
+										</li>
+										{currentInvitesDisplayList}
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div className="row">
+						<div className="col">
+							<div className="card shadow">
+								<div className="card-header">
 									<h5>Current Company Invites</h5>
 								</div>
 								<div className="card-body">
@@ -332,14 +406,15 @@ class UserInvitePage extends React.Component {
 										{/*Trying a non-table solution because of the buttons?*/}
 										<li className="list-group-item" key={-1}>
 											<div className="row">
-												<div className="col alignOverride">
-													Division name
+												<div className="col-1">
 												</div>
 												<div className="col alignOverride">
-													Target Role
+													<u>Division name</u>
+												</div>
+												<div className="col alignOverride">
+													<u>Target Role</u>
 												</div>
 												<div className="col-2">
-												
 												</div>
 												<div className="col-1">
 												</div>
@@ -366,11 +441,11 @@ class UserInvitePage extends React.Component {
 						<hr />
 					</Alert>
 					
-					<Alert show={displaySuccess} variant="success">
+					<Alert show={displaySuccessInvite} variant="success">
 						<Alert.Heading>Success!</Alert.Heading>
 						<hr />
 						<p>
-						  Success!
+						  Successfully Send Invite!
 						</p>
 						<hr />
 					</Alert>

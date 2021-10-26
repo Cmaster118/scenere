@@ -13,10 +13,10 @@ export class Sidebar extends React.Component {
 			enabled:false,
 			displayState:0,
 			
-			showUserActions:false,
+			showUserActions:true,
 			showUserEmailScan:false,
 			
-			showCompanyDataFlag:false,
+			showCompanyDataFlag:true,
 			showCompanyEmailFlag:false,
 			showCompanySettingsFlag:false,
 			
@@ -52,6 +52,7 @@ export class Sidebar extends React.Component {
 		if (typeof nextThing !== "number") {
 			return false
 		}
+		
 		if (nextThing === -1) {
 			this.setState({
 				showCompanyDataFlag: false,
@@ -59,7 +60,7 @@ export class Sidebar extends React.Component {
 				showCompanySettingsFlag: false,
 			})
 		}
-		if (nextThing === 0) {
+		else if (nextThing === 0) {
 			this.setState({
 				showCompanyDataFlag: true,
 			})
@@ -115,6 +116,12 @@ export class Sidebar extends React.Component {
 		}
 	}
 	
+	/*
+	<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyWeb"} key="4">
+		Email Scan Settings
+	</Link>,
+	*/
+	
 	render() {
 		
 		let displayMenu = []
@@ -138,22 +145,41 @@ export class Sidebar extends React.Component {
 						</Link>,
 						<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/writeSuggestion"} key="4">
 							Make Suggestions
-						</Link>
+						</Link>,
 					)
 				}
+				
+				displayMenu.push(
+					<div className="list-group-item list-group-item-secondary" key="5.5">
+						<h4>
+							Email Scanning
+						</h4>
+					</div>,
+				)
 				if (this.state.showUserEmailScan) {
 					displayMenu.push(
-						<div className="list-group-item list-group-item-secondary" key="4.5">
-							<h4>
-								Email Scanning
-							</h4>
-						</div>,
-						
-						<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/userWeb"} key="5">
+						<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/userWeb"} key="6">
 							View Contact Web
 						</Link>,
 					)
 				}
+				
+				displayMenu.push(
+					<div className="list-group-item list-group-item-secondary" key="4.5">
+						<h4>
+							Settings
+						</h4>
+					</div>,
+					<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/userPrompts"} key="5">
+						Edit Personal Events
+					</Link>
+				)
+				
+				displayMenu.push(
+					<Link className="list-group-item" to={this.props.basePath+"/dashboard/userMode/userSyncSettings"} key="7">
+						Sync Settings
+					</Link>,
+				)
 				break;
 			case 1:
 				displayMenu.push(
@@ -192,12 +218,6 @@ export class Sidebar extends React.Component {
 						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyWeb"} key="4">
 							View Web (Beta)
 						</Link>,
-						
-						{/*
-						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyWeb"} key="4">
-							Email Scan Settings
-						</Link>,
-						*/}
 					)
 				}
 				if (this.state.showCompanySettingsFlag) {
@@ -211,7 +231,6 @@ export class Sidebar extends React.Component {
 						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyPrompts"} key="5">
 							Edit Prompt Events
 						</Link>,
-						/*Yo! Split these next!*/
 						<Link className="list-group-item list-group-item-light" to={this.props.basePath+"/dashboard/companyMode/companyInvites"} key="6">
 							User Invites
 						</Link>,

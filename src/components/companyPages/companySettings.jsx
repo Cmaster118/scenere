@@ -5,6 +5,7 @@ import { withRouter } from "react-router-dom";
 import { Alert } from 'react-bootstrap';
 
 const viewingPermsCheck = ['Public', 'Private', 'Governed Users']
+const debugPageName = "Division Settings"
 
 class CompanySettings extends React.Component {
 	
@@ -44,6 +45,7 @@ class CompanySettings extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Data")
 			this.props.refreshToken(this.getDivisionData)
 			return
 		}
@@ -64,6 +66,7 @@ class CompanySettings extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Data", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getSettingsStatus: 3,
@@ -72,6 +75,8 @@ class CompanySettings extends React.Component {
 	}
 	getSuccess = (successData) => {
 		//console.log("Get Data Success")
+		
+		this.props.debugSet(debugPageName, "Get Division Data", "Success")
 		this.setState({
 		
 			companyFullName: successData["fullPathName"],
@@ -110,6 +115,7 @@ class CompanySettings extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Data Settings")
 			this.props.refreshToken(this.saveChanges)
 			return
 		}
@@ -130,6 +136,7 @@ class CompanySettings extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Data Settings", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			saveChangesStatus: 3,
@@ -137,9 +144,10 @@ class CompanySettings extends React.Component {
 		})
 	}
 	setSuccess = (successData) => {
-		console.log("Set Data Success")
-		console.log(successData)
+		//console.log("Set Data Success")
+		//console.log(successData)
 		
+		this.props.debugSet(debugPageName, "Get Division Data Settings", "Success")
 		this.props.triggerRefresh()
 		
 		this.setState({

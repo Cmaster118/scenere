@@ -44,7 +44,7 @@ export const timedSaveStorage = (key, data, length) => {
 		let storageTime = new Date()
 		
 		if (length === 0) {
-			storageTime.setHours(storageTime.getHours()+1)
+			storageTime.setHours(storageTime.getHours()+6)
 		}
 		else if (length === 1) {
 			storageTime.setDate(storageTime.getDate()+1)
@@ -66,25 +66,29 @@ export const timedSaveStorage = (key, data, length) => {
 	return true
 }
 export const clearStorage = () => {
-	console.log("Clearing Data...")
+	//console.log("Clearing Data...")
 	Store.clearAll()
-	console.log("Done!")
+	//console.log("Done!")
 	
 	return false
 }
-export const checkStorageContents = () => {
-	console.log("Checking Storage contents:")
+export const cleanStorageKeys = () => {
+	//console.log("Cleaning Storage contents...")
+	//let checkValue = 0
 	Store.each(function(value, key) {
-		console.log(key, '==', value)
+		//console.log(key, '==', value)
 		
 		let dateSaved = value["expiryDate"]
 		let now = Date.now()
 		if (now > dateSaved) {
-			console.log("Found Expired Key!")
+			//console.log("Found Expired Key!")
 			Store.remove(key)
+			//checkValue += 1
 		}
 	})
-	console.log("Done!")
+	//console.log("Done!")
+	//console.log("Num Cleaned Values:")
+	//console.log(checkValue)
 	
 	return false
 }

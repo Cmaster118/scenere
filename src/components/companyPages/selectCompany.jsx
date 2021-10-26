@@ -91,7 +91,6 @@ class selectCompany extends React.Component  {
 	initializeSubList = () => {
 		
 		let generateingList = []
-		
 		// Hm, this may run multiple times due to my now-messed data reloading structure...
 		for (let index in this.props.userLoadedCompanyList) {
 			
@@ -105,6 +104,8 @@ class selectCompany extends React.Component  {
 				else if (this.props.userLoadedCompanyList[index]["perm"][permIndex] === 1) {
 					//console.log("Is Viewable")
 					// Set it to viewable... AS LONG AS it is NOT set to admin..
+					
+					// Unnecessary...
 					if (!(permType === 0)) {
 						permType = 1
 					}
@@ -115,7 +116,7 @@ class selectCompany extends React.Component  {
 				generateingList.push( [this.props.userLoadedCompanyList[index], permType] )
 			}
 		}
-		
+
 		return generateingList
 	}
 	
@@ -138,8 +139,8 @@ class selectCompany extends React.Component  {
 		
 		if (event.target.value === "fwd") {
 			newPage = newPage + 1
-		
-			if (newPage > this.props.subList.length/this.state.numPerPage) {
+
+			if (newPage > this.state.subList.length/this.state.numPerPage) {
 				return
 			}
 		}
@@ -190,7 +191,7 @@ class selectCompany extends React.Component  {
 			displayDivisionList.push(
 				<div className="row" key="0">
 					<div className="col">
-						No Companies! If you see this page then this is an error!
+						Server Reported no valid Companies to select!
 					</div>
 				</div>
 			)

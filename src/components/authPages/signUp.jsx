@@ -98,9 +98,9 @@ class signup extends React.Component {
 			nowSendEmailState:2,
 		})
 	}
-	nowSendEmail = (newToken) => {
+	nowSendEmail = () => {
 		// Now sending the validator email...
-		APIResendValidator(newToken, this.nowSendEmailCallback, this.nowSendEmailFailure)
+		APIResendValidator(this.nowSendEmailCallback, this.nowSendEmailFailure)
 		this.setState({
 			nowSendEmailState:1,
 		})
@@ -122,7 +122,7 @@ class signup extends React.Component {
 		const sanityCheck = this.props.loginSave( incomingToken, this.state.username, false )
 		if (sanityCheck) {
 			console.log("Token registered")
-			this.nowSendEmail(incomingToken)
+			this.nowSendEmail()
 		}
 		else {
 			console.log("Token Failed..?")
@@ -133,7 +133,7 @@ class signup extends React.Component {
 		})
 	}
 	nowSignIn = () => {
-		APISignIn(this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
+		APISignIn(false, this.state.username, this.state.password, this.nowSignInCallback, this.nowSignInFailure)
 		this.setState({
 			nowSignInState:1,
 		})

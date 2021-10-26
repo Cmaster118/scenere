@@ -4,6 +4,8 @@ import { withRouter } from "react-router-dom";
 import { APIUserSettingsEdit} from "../../utils";
 import { Alert } from 'react-bootstrap';
 
+const debugPageName = "User Profile"
+
 // Trying this in function form instead of class
 class UserProfile extends React.Component {
 	
@@ -14,6 +16,7 @@ class UserProfile extends React.Component {
 			togSends: [],
 			delGoverns: [],
 			
+			adminSubList: this.initAdmin(),
 			viewSubList: this.initViews(),
 			sendSubList: this.initSends(),
 			govSubList: this.initGovs(),
@@ -24,11 +27,22 @@ class UserProfile extends React.Component {
         };
 	}
 	
+	initAdmin = () => {
+		let adminSubList = []
+		for (let index in this.props.userLoadedCompanyList) {
+			// View
+			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(0) > -1) {
+				adminSubList.push(this.props.userLoadedCompanyList[index])
+			}
+		}
+		return adminSubList
+	}
+	
 	initViews = () => {
 		let viewSubList = []
 		for (let index in this.props.userLoadedCompanyList) {
 			// View
-			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(1) > -1 ) {
+			if (this.props.userLoadedCompanyList[index]["perm"].indexOf(1) > -1) {
 				viewSubList.push(this.props.userLoadedCompanyList[index])
 			}
 		}
@@ -77,6 +91,10 @@ class UserProfile extends React.Component {
 				tempSen.push( this.state.viewSubList[valueIndex]["id"] )
 				selectedName = this.state.viewSubList[valueIndex]["fullname"]
 				break;
+			case "admSen":
+				tempSen.push( this.state.adminSubList[valueIndex]["id"] )
+				selectedName = this.state.adminSubList[valueIndex]["fullname"]
+				break;
 			case "vie":
 				tempVie.push( this.state.viewSubList[valueIndex]["id"] )
 				selectedName = this.state.viewSubList[valueIndex]["fullname"]
@@ -101,6 +119,7 @@ class UserProfile extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Save Profile Changes")
 			this.props.refreshToken(this.saveChanges())
 			return
 		}
@@ -121,6 +140,7 @@ class UserProfile extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Save Changes", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			saveChangesError: returnData,
@@ -128,8 +148,10 @@ class UserProfile extends React.Component {
 		})
 	}
 	setSuccess = (successData) => {
-		console.log("Set Data Success")
-		console.log(successData)
+		//console.log("Set Data Success")
+		//console.log(successData)
+		
+		this.props.debugSet(debugPageName, "Save Changes", "Success")
 		
 		// This needs to be a props refresh..
 		this.props.triggerRefresh()
@@ -161,42 +183,93 @@ class UserProfile extends React.Component {
 	render() {
 		
 		let displayViewSends = []
-		if (this.state.viewSubList.length > 0) {
-			for (let i in this.state.viewSubList) {
-				let extra = ""
-				// Blank will just be admin/view for now... Highlighted in green means Email...
-				let index = this.state.sendSubList.indexOf(this.state.viewSubList[i])
-				if (index >= 0) {
-					extra = 'bg-info'
-				}
-				
-				// Sends we are toggling....
-				index = this.state.togSends.indexOf(this.state.viewSubList[i]["id"])
-				if (index >= 0) {
-					extra = 'bg-warning'
-				}
-				// Views we are deleting
-				index = this.state.delViews.indexOf(this.state.viewSubList[i]["id"])
-				if (index >= 0) {
-					extra = 'bg-danger'
-				}
-				
-				displayViewSends.push(
-					<li key={i} className={"list-group-item d-flex justify-content-around "+extra}>
-						<div className="col alignOverride">
-							{this.state.viewSubList[i]["fullname"]}
-						</div>
-						<div className="col-2">
-							<button className="badge badge-success badge-pill" name="sen" value={i} data-toggle="modal" data-target="#viewToggleConfirm" onClick={this.setCurrentData}>View</button>
-						</div>
-						<div className="col-1">
-							<button className="badge badge-danger badge-pill" name="vie" value={i} data-toggle="modal" data-target="#deleteConfirm" onClick={this.setCurrentData}>X</button>
-						</div>
-					</li>
-				)
+		for (let i in this.state.adminSubList) {
+			
+			let displayToggle = "Off"
+			let buttonClass = "badge-danger"
+			// Blank will just be admin/view for now... Highlighted in green means Email...
+			let index = this.state.sendSubList.indexOf(this.state.adminSubList[i])
+			if (index >= 0) {
+				displayToggle = "On"
+				buttonClass = "badge-success"
 			}
+			
+			let extra = ""
+			// Sends we are toggling....
+			index = this.state.togSends.indexOf(this.state.adminSubList[i]["id"])
+			if (index >= 0) {
+				extra = 'bg-warning'
+			}
+			// Views we are deleting
+			index = this.state.delViews.indexOf(this.state.adminSubList[i]["id"])
+			if (index >= 0) {
+				extra = 'bg-danger'
+			}
+			
+			displayViewSends.push(
+				<li key={i} className={"list-group-item d-flex justify-content-around "+extra}>
+					<div className="col alignOverride">
+						{this.state.adminSubList[i]["fullname"]}
+					</div>
+					<div className="col">
+						Admin
+					</div>
+					<div className="col-2">
+						<button className={"badge "+buttonClass+" badge-pill"} name="admSen" value={i} data-toggle="modal" data-target="#viewToggleConfirm" onClick={this.setCurrentData}>
+							{displayToggle}
+						</button>
+					</div>
+					<div className="col-1">
+						<button className="badge badge-secondary badge-pill" name="adm" value={i} data-toggle="modal" data-target="#deleteConfirm" onClick={this.setCurrentData} disabled>X</button>
+					</div>
+				</li>
+			)
 		}
-		else {
+		
+		for (let i in this.state.viewSubList) {
+			
+			let displayToggle = "Off"
+			let buttonClass = "badge-danger"
+			// Blank will just be admin/view for now... Highlighted in green means Email...
+			let index = this.state.sendSubList.indexOf(this.state.viewSubList[i])
+			if (index >= 0) {
+				displayToggle = "On"
+				buttonClass = "badge-success"
+			}
+			
+			let extra = ""
+			// Sends we are toggling....
+			index = this.state.togSends.indexOf(this.state.viewSubList[i]["id"])
+			if (index >= 0) {
+				extra = 'bg-warning'
+			}
+			// Views we are deleting
+			index = this.state.delViews.indexOf(this.state.viewSubList[i]["id"])
+			if (index >= 0) {
+				extra = 'bg-danger'
+			}
+			
+			displayViewSends.push(
+				<li key={i} className={"list-group-item d-flex justify-content-around "+extra}>
+					<div className="col alignOverride">
+						{this.state.viewSubList[i]["fullname"]}
+					</div>
+					<div className="col">
+						Viewer
+					</div>
+					<div className="col-2">
+						<button className={"badge "+buttonClass+" badge-pill"} name="sen" value={i} data-toggle="modal" data-target="#viewToggleConfirm" onClick={this.setCurrentData}>
+							{displayToggle}
+						</button>
+					</div>
+					<div className="col-1">
+						<button className="badge badge-danger badge-pill" name="vie" value={i} data-toggle="modal" data-target="#deleteConfirm" onClick={this.setCurrentData}>X</button>
+					</div>
+				</li>
+			)
+		}
+		
+		if (displayViewSends.length === 0) {
 			// There was nothing
 			displayViewSends.push(
 				<li key={0} className="list-group-item d-flex justify-content-around">
@@ -265,6 +338,19 @@ class UserProfile extends React.Component {
 								</div>
 								<div className="card-body">
 									<ul className="list-group">
+										<li key={-1} className={"list-group-item d-flex justify-content-around"}>
+											<div className="col alignOverride">
+												Company Division Name
+											</div>
+											<div className="col">
+												Type
+											</div>
+											<div className="col-2">
+												Notifications
+											</div>
+											<div className="col-1">
+											</div>
+										</li>								
 										{displayViewSends}
 									</ul>
 								</div>

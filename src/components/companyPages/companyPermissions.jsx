@@ -4,6 +4,8 @@ import { APIDivisionSettingsEdit, APIDivisionSettingsGet } from "../../utils";
 import { withRouter } from "react-router-dom";
 import { Alert } from 'react-bootstrap';
 
+const debugPageName = "Division Permissions"
+
 class CompanyPermissions extends React.Component {
 	
 	constructor(props) {
@@ -53,6 +55,7 @@ class CompanyPermissions extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Division Permissions")
 			this.props.refreshToken(this.getDivisionData)
 			return
 		}
@@ -73,6 +76,7 @@ class CompanyPermissions extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Division Permissions", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getPermissionsStatus: 3,
@@ -81,6 +85,7 @@ class CompanyPermissions extends React.Component {
 	}
 	getSuccess = (successData) => {
 		//console.log("Get Data Success")
+		this.props.debugSet(debugPageName, "Get Division Permissions", "Success")
 		this.setState({
 		
 			companyFullName: successData["fullPathName"],
@@ -132,6 +137,7 @@ class CompanyPermissions extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Set Division Permissions")
 			this.props.refreshToken(this.saveChanges)
 			return
 		}
@@ -152,6 +158,7 @@ class CompanyPermissions extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Set Division Permissions", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			setPermissionsStatus: 3,
@@ -159,9 +166,10 @@ class CompanyPermissions extends React.Component {
 		})
 	}
 	setSuccess = (successData) => {
-		console.log("Set Data Success")
-		console.log(successData)
+		//console.log("Set Data Success")
+		//console.log(successData)
 		
+		this.props.debugSet(debugPageName, "Set Division Permissions", "Success")
 		this.props.triggerRefresh()
 		
 		this.setState({

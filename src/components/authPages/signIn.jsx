@@ -5,6 +5,8 @@ import { Alert } from 'react-bootstrap';
 
 import { APISignIn } from "../../utils";
 
+const debugPagename = "SignIn"
+
 class signIn extends React.Component {
 
 	// Lets test this out, before we move this over to the App js file
@@ -128,6 +130,7 @@ class signIn extends React.Component {
 			serverErrorFlag = true
 		}
 		
+		this.props.debugSet(debugPagename, "Failed!", String(responseData["action"]))
 		this.setState({
 			
 			networkError: networkErrorFlag,
@@ -154,18 +157,17 @@ class signIn extends React.Component {
 
 		let sanityCheck = this.props.loginSave( accessToken, displayName, this.state.remember )
 		if (sanityCheck) {
-			//console.log("Token registered")
-			
 			/*
 			this.setState({
 				signInState:2,
 			})
 			*/
 
+			this.props.debugSet(debugPagename, "Function", "Login Success")
 			this.props.history.push(this.props.reRouteTarget)
 		}
 		else {
-			console.log("Token Set on OUR END Failed..?")
+			//console.log("Token Set on OUR END Failed..?")
 			this.setState({
 				signInState:3,
 			})

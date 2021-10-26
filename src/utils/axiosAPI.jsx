@@ -1,8 +1,8 @@
 import axios from "axios"
 
 // Change this over!
-const hostName = "https://cmaster.pythonanywhere.com"
-//const hostName = "http://10.0.0.60:8000"
+//const hostName = "https://cmaster.pythonanywhere.com"
+const hostName = "http://10.0.0.60:8000"
 
 // CSRF TOKEN IS NOT WORKING CORRECTLY!!!
 const axiosInstance = axios.create({
@@ -11,10 +11,12 @@ const axiosInstance = axios.create({
 	withCredentials: true,
 });
 
-let accessToken = ""
+//let debugMode = false
 
+let accessToken = ""
 export const setAccessToken = (token) => {
 	accessToken = token
+	return true
 }
 
 /*
@@ -42,6 +44,10 @@ const convertDate = (date) => {
 }
 // Maybe, I should keep ALLLLL data related to API stuff over here
 // All reformats...
+
+export const getHostName = () => {
+	return hostName
+}
 
 // Put a generalized Error Gathering here? Would save time...
 // I would LOVE to make it so that all the general stuf happens in here, but I have yet to figure that out...
@@ -75,37 +81,41 @@ const checkError = (err) => {
 			// ALSO, remember! if it is a DEACTIVATED account, then it is different!
 			return {'action':2, 'messages':[ {'mod':-1, 'text':"Permission Failed"} ]}
 		}
+		else if (errStatus === 404) {
+			// Currently, either the page doesnt exist, or its my special password failure state...
+			return {'action':6, 'messages':[ {'mod':1, 'text':"404 not found"} ]}
+		}
 		else if (errStatus === 400) {
 			// Bad Request, sort out so its just a single number set...
 			let errorSet = []
 			
 			for (let errorName in errData) {
 				if (errorName === "username") {
-					errorSet.push( {'mod':1, 'text':errData[errorName]} )
+					errorSet.push( {'mod':1, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "password") {
-					errorSet.push( {'mod':2, 'text':errData[errorName]} )
+					errorSet.push( {'mod':2, 'text':String(errData[errorName])} )
 				} 
 				else if (errorName === "non_field_errors") {
-					errorSet.push( {'mod':3, 'text':errData[errorName]} )
+					errorSet.push( {'mod':3, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "email") {
-					errorSet.push( {'mod':4, 'text':errData[errorName]} )
+					errorSet.push( {'mod':4, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "dup") {
-					errorSet.push( {'mod':5, 'text':errData[errorName]} )
+					errorSet.push( {'mod':5, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "token") {
-					errorSet.push( {'mod':6, 'text':errData[errorName]} )
+					errorSet.push( {'mod':6, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "invite") {
-					errorSet.push( {'mod':7, 'text':errData[errorName]} )
+					errorSet.push( {'mod':7, 'text':String(errData[errorName])} )
 				}
 				else if (errorName === "status") {
-					errorSet.push( {'mod':8, 'text':errData[errorName]} )
+					errorSet.push( {'mod':8, 'text':String(errData[errorName])} )
 				}
 				else {
-					errorSet.push( {'mod':0, 'text':errData[errorName]} )
+					errorSet.push( {'mod':0, 'text':String(errData[errorName])} )
 				}
 			}
 			
@@ -277,7 +287,7 @@ export const APIResendValidator = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/api/emailVerifyResend", config)
+	axiosInstance.get("/api/emailVerifyResend/", config)
 	.then(res => {
 			//console.log("Got Data!")
 			//console.log(res.data)
@@ -292,6 +302,7 @@ export const APIResendValidator = (callbackFunction, callbackFailure) => {
 
 // Check if the user is active!
 export const APICheckActive = (callbackFunction, callbackFailure) => {
+	
 	const config = {
 		headers: { 
 			Authorization: `JWT ${accessToken}`,
@@ -300,7 +311,7 @@ export const APICheckActive = (callbackFunction, callbackFailure) => {
 		}
 	};
 	
-	axiosInstance.get("/api/userIsActive", config)
+	axiosInstance.get("/api/userIsActive/", config)
 	.then(res => {
 		callbackFunction(res.data[0].isActive)
 	})
@@ -439,6 +450,7 @@ export const APISaveSuggestion = (postingDate, targetDivision, content, editorBl
 	// As UTC: postingDate.toJSON().split("T")[0]
 	const data = {
 		reqDiv: targetDivision,
+		targetDivision: targetDivision,
 		
 		createdDate: convertDate( postingDate ),
 		content: content,
@@ -460,29 +472,45 @@ export const APISaveSuggestion = (postingDate, targetDivision, content, editorBl
 // Save the journal data...
 export const APISaveJournal = (postingDate, promptValue, targetDiv, content, editorBlock, callbackFunction, callbackFailure) => {
 	
-	console.log()
-	
 	const randomID = Math.random().toString(16).substr(2, 8);
 	
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	const data = {
-		shorthand: "WEB"+randomID,
-		
-		targetDivision: targetDiv,
-		
-		// Author is filled in based on your Token on the server side...
-		// The timezone on the server is different.....
-		forDate: convertDate( postingDate ),
+	let data = {}
+	if (targetDiv === "usr") {
+		data = {
+			shorthand: "WEBUSR:"+randomID,
+			
+			targetDivision: undefined,
+			
+			// Author is filled in based on your Token on the server side...
+			// The timezone on the server is different.....
+			forDate: convertDate( postingDate ),
 
-		usedPromptKeyText: promptValue,
+			usedPromptKeyText: promptValue,
 
-		content: content,
-		richText: editorBlock,
-	};
-	
+			content: content,
+			richText: editorBlock,
+		};
+	}
+	else {
+		data = {
+			shorthand: 'WEBDIV'+randomID,
+			
+			targetDivision: targetDiv,
+			
+			// Author is filled in based on your Token on the server side...
+			// The timezone on the server is different.....
+			forDate: convertDate( postingDate ),
+
+			usedPromptKeyText: promptValue,
+
+			content: content,
+			richText: editorBlock,
+		};
+	}
 	//console.log(data)
 	
 	axiosInstance.post("/api/saveUserJournal/", data, config )
@@ -506,19 +534,38 @@ export const APISaveNonJournal = (postingDate, promptValue, targetDiv, incomingD
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	const data = {
-		shorthand: 'made from the website: '+randomID,
-		
-		targetDivision: targetDiv,
-		
-		// Author is filled in based on your Token on the server side...
-		// The timezone on the server is different.....
-		forDate: convertDate( postingDate ),
+	let data = {}
+	if (targetDiv === "usr") {
+		data = {
+			shorthand: 'WEBUSR'+randomID,
+			
+			targetDivision: undefined,
+			
+			// Author is filled in based on your Token on the server side...
+			// The timezone on the server is different.....
+			forDate: convertDate( postingDate ),
 
-		usedPromptKeyText: promptValue,
+			usedPromptKeyText: promptValue,
 
-		chosenValue: incomingData,
-	};
+			chosenValue: incomingData,
+		};
+	}
+	else {
+		data = {
+			shorthand: "WEBDiv:"+randomID,
+			
+			targetDivision: targetDiv,
+			
+			// Author is filled in based on your Token on the server side...
+			// The timezone on the server is different.....
+			forDate: convertDate( postingDate ),
+
+			usedPromptKeyText: promptValue,
+
+			chosenValue: incomingData,
+		};
+	}
+		
 	//console.log(data)
 	axiosInstance.post("/api/saveUserNonJournal/", data, config )
 	.then( res => { 
@@ -536,9 +583,27 @@ export const APIGetJournalPrompts = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/api/getValidPrompts", config)
+	axiosInstance.get("/api/getValidPrompts/", config)
 	.then( 
 		res => {
+			//res.data
+			
+			/*
+			let divType = []
+			let perType = []
+			
+			for (let index in res.data) {
+				// User Mode
+				if ("userTarget" in res.data[index]) {
+					perType.push(res.data[index])
+				}
+				// Division Mode
+				if ("divTarget" in res.data[index]) {
+					divType.push(res.data[index])
+				}
+			}
+			*/
+			
 			// This should be ok for now?
 			callbackFunction( res.data )
 	})
@@ -556,7 +621,7 @@ export const APIGetJournalDates = (callbackFunction, callbackFailure) => {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/api/getJournalDates", config)
+	axiosInstance.get("/api/getJournalDates/", config)
 	.then( 
 		res => {
 			//console.log("Got Data!")
@@ -571,36 +636,65 @@ export const APIGetJournalDates = (callbackFunction, callbackFailure) => {
 				const newDate = new Date(res.data[item].forDate)
 				const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)	
 				
+				// This may be unnecessary, and could be moved to the JournalMake...
+				if (res.data[item]["targetDivision"] === null) {
+					res.data[item]["targetDivision"] = "usr"
+				}
+				
 				if (res.data[item].hasAI) {
-					if (checkDate in tempJoObject) {
-						tempAIObject[checkDate].push( res.data[item].usedPromptKey )
+					if (checkDate in tempAIObject) {
+						if (res.data[item].targetDivision in tempAIObject[checkDate]) {
+							tempAIObject[checkDate][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+						}
+						else {
+							tempAIObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+						}
 					}
 					else {
-						tempAIObject[checkDate] = [ res.data[item].usedPromptKey ]
+						tempAIObject[checkDate] = {}
+						tempAIObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 					}
 					
 					if (todayDate === checkDate) {
 						if ("today" in tempAIObject) {
-							tempAIObject["today"].push( res.data[item].usedPromptKey )
+							if (res.data[item].targetDivision in tempAIObject["today"]) {
+								tempAIObject["today"][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+							}
+							else {
+								tempAIObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+							}
 						}
 						else {
-							tempAIObject["today"] = [ res.data[item].usedPromptKey ]
+							tempAIObject["today"] = {}
+							tempAIObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 						}
 					}
 				} else {
 					if (checkDate in tempJoObject) {
-						tempJoObject[checkDate].push( res.data[item].usedPromptKey )
+						if (res.data[item].targetDivision in tempJoObject[checkDate]) {
+							tempJoObject[checkDate][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+						}
+						else {
+							tempJoObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+						}
 					}
 					else {
-						tempJoObject[checkDate] = [ res.data[item].usedPromptKey ]
+						tempJoObject[checkDate] = {}
+						tempJoObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 					}
 					
 					if (todayDate === checkDate) {
 						if ("today" in tempJoObject) {
-							tempJoObject["today"].push( res.data[item].usedPromptKey )
+							if (res.data[item].targetDivision in tempJoObject["today"]) {
+								tempJoObject["today"][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+							}
+							else {
+								tempJoObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+							}
 						}
 						else {
-							tempJoObject["today"] = [ res.data[item].usedPromptKey ]
+							tempJoObject["today"] = {}
+							tempJoObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 						}
 					}
 				}
@@ -619,9 +713,10 @@ export const APIGetNonJournalDates = (callbackFunction, callbackFailure) => {
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
-	axiosInstance.get("/api/getNonJournalDates", config)
+	axiosInstance.get("/api/getNonJournalDates/", config)
 	.then( 
 		res => {
+			
 			//console.log("Got Data!")
 			let todayDateFull = new Date()
 			let todayDate = todayDateFull.getFullYear()+"-"+todayDateFull.getMonth()+"-"+(todayDateFull.getDate())
@@ -631,22 +726,40 @@ export const APIGetNonJournalDates = (callbackFunction, callbackFailure) => {
 				const newDate = new Date(res.data[item].forDate)
 				const checkDate = newDate.getFullYear()+"-"+newDate.getMonth()+"-"+(newDate.getDate()+1)
 				
+				// This may be unnecessary, and could be moved to the JournalMake...
+				if (res.data[item]["targetDivision"] === null) {
+					res.data[item]["targetDivision"] = "usr"
+				}
+				
 				if (checkDate in tempJoObject) {
-					tempJoObject[checkDate].push( res.data[item].usedPromptKey )
+					if (res.data[item].targetDivision in tempJoObject[checkDate]) {
+						tempJoObject[checkDate][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+					}
+					else {
+						tempJoObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+					}
 				}
 				else {
-					tempJoObject[checkDate] = [ res.data[item].usedPromptKey ]
+					tempJoObject[checkDate] = {}
+					tempJoObject[checkDate][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 				}
 				
 				if (todayDate === checkDate) {
 					if ("today" in tempJoObject) {
-						tempJoObject["today"].push( res.data[item].usedPromptKey )
+						if (res.data[item].targetDivision in tempJoObject["today"]) {
+							tempJoObject["today"][res.data[item].targetDivision].push( res.data[item].usedPromptKey )
+						}
+						else {
+							tempJoObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
+						}
 					}
 					else {
-						tempJoObject["today"] = [ res.data[item].usedPromptKey ]
+						tempJoObject["today"] = {}
+						tempJoObject["today"][res.data[item].targetDivision] = [ res.data[item].usedPromptKey ]
 					}
 				}
 			}
+
 			callbackFunction(tempJoObject)
 	})
 	.catch( err => {
@@ -731,7 +844,7 @@ export const APIGetUsersPermTree = (reqPerms, callbackFunction, callbackFailure)
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 
-	axiosInstance.get("/api/getUsersPermissionTree?reqPerms="+reqPerms, config)
+	axiosInstance.get("/api/getUsersPermissionTree/?reqPerms="+reqPerms, config)
 	.then( 	res => {
 			
 			// Normal behaviour
@@ -887,7 +1000,7 @@ export const APIGetSuggestionData = (targetCompany, targetDate, callbackFunction
 	
 	const dateReq = targetDate.toJSON().split("T")[0]
 	
-	axiosInstance.get("/api/getCompanySuggestionData?reqDiv="+targetCompany+"&reqDate="+dateReq, config)
+	axiosInstance.get("/api/getCompanySuggestionData/?reqDiv="+targetCompany+"&reqDate="+dateReq, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
 		//console.log(res.data)
@@ -969,7 +1082,7 @@ export const APIDivisionInvitesGet = (targetCompany, callbackFunction, callbackF
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/api/getDivisionInvites?reqDiv="+targetCompany, config)
+	axiosInstance.get("/api/getDivisionInvites/?reqDiv="+targetCompany, config)
 	.then( 	res => {
 		//console.log(res)
 		// I am clearly not thinking these through correctly...
@@ -1085,9 +1198,7 @@ export const APIUserInviteCode = (inviteCode, callbackFunction, callbackFailure)
 	axiosInstance.get("/api/useDivisionInvite?joinCode="+inviteCode, config)
 	.then( 	res => {
 		// Should respond with a 1 length thing
-		//let succCode = res.response.status
-		let succData = res.response.data
-		//console.log(res.data)
+		let succData = res.data
 
 		callbackFunction( succData )
 	})
@@ -1253,13 +1364,13 @@ export const APIChangeUserPassword = (newPass, oldPass, oldPass2, callbackFuncti
 	});
 }
 
-export const APIGetSearchPrompts = (searchTerm, searchType, callbackFunction, callbackFailure) => {
+export const APIGetSearchPrompts = (searchTerm, searchTypes, searchFilters, callbackFunction, callbackFailure) => {
 		
 	const config = {
 		headers: { Authorization: `JWT ${accessToken}` }
 	};
 	
-	axiosInstance.get("/api/searchPrompts/?queryText=" + searchTerm + "&queryType=" + searchType, config)
+	axiosInstance.get("/api/searchPrompts/?queryText=" + searchTerm + "&queryTypes=" + searchTypes + "&queryFilters=" + searchFilters, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1274,6 +1385,31 @@ export const APIGetSearchPrompts = (searchTerm, searchType, callbackFunction, ca
 	})
 }
 
+export const APIGetUserEvents = (userName, callbackFunction, callbackFailure) => {
+		
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	axiosInstance.get("/api/getUserEvents/", config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+		for (let index in succData) {
+			succData[index]["isSaved"] = true
+		}
+		
+
+		callbackFunction( succData )
+	})
+	.catch( err => {
+		
+		let result = checkError(err)
+		//console.log(result)
+		callbackFailure(result)		
+	})
+}
+
 export const APIGetDivisionEvents = (divisionID, callbackFunction, callbackFailure) => {
 		
 	const config = {
@@ -1284,17 +1420,11 @@ export const APIGetDivisionEvents = (divisionID, callbackFunction, callbackFailu
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
-		
+	
 		for (let index in succData) {
-			let isEnabled = false
-			if ( succData[index]["usedBy"].find(element => element === Number(divisionID)) !== undefined ) {
-				isEnabled = true
-			}
-			succData[index]["usedBy"] = isEnabled
-			succData[index]["fromServer"] = true
+			succData[index]["isSaved"] = true
 		}
 		
-
 		callbackFunction( succData )
 	})
 	.catch( err => {
@@ -1318,9 +1448,75 @@ export const APISetNonDivisionEvents = (savedID, incomingId, incomingDivision, i
 		reqDiv: incomingDivision,
 		
 		enabledDiv: incomingEnabledDiv,
+		//sharingEnabled: incomingEnabled,
 	}
 	
 	axiosInstance.post("/api/setNonDivisionEvents/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( savedID, succData )
+	})
+	.catch( err => {
+		let result = checkError(err)
+		//console.log(result)
+		callbackFailure(result)
+		
+		//callbackFailure( savedID, errCodes, errDatas )
+		
+	})
+}
+
+export const APISetUserEvents = (savedID, incomingId, incomingEnabled, incomingEnabledShare, incomingType, incomingPrompts, callbackFunction, callbackFailure) => {
+
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	const data = {
+		// Supply an ID to update...
+		// If this is here, its an update, if it is NOT, its a create
+		id: incomingId,
+		
+		// This is the wrong one but hey
+		enabledDiv: incomingEnabled,
+		sharingEnabled: incomingEnabledShare,
+		
+		triggerType: incomingType,
+		promptSet: incomingPrompts,
+	}
+	
+	axiosInstance.post("/api/setUserEvents/", data, config)
+	.then( 	res => {
+		//let succCode = res.status
+		let succData = res.data
+
+		callbackFunction( savedID, succData )
+	})
+	.catch( err => {
+		let result = checkError(err)
+		//console.log(result)
+		callbackFailure(result)
+		
+		//callbackFailure( savedID, errCodes, errDatas )
+		
+	})
+}
+
+export const APIDeleteUserEvents = (savedID, incomingId, callbackFunction, callbackFailure) => {
+
+	const config = {
+		headers: { Authorization: `JWT ${accessToken}` }
+	};
+	
+	const data = {
+		// Supply an ID to update...
+		// If this is here, its an update, if it is NOT, its a create
+		id: incomingId,
+	}
+	
+	axiosInstance.post("/api/deleteUserEvents/", data, config)
 	.then( 	res => {
 		//let succCode = res.status
 		let succData = res.data
@@ -1350,7 +1546,8 @@ export const APISetDivisionEvents = (savedID, incomingId, incomingDivision, inco
 		reqDiv: incomingDivision,
 		
 		enabledDiv: incomingEnabledDiv,
-		enabled: incomingEnabled,
+		sharingEnabled: incomingEnabled,
+		
 		triggerType: incomingType,
 		promptSet: incomingPrompts,
 	}
@@ -1479,35 +1676,6 @@ export const APIGetUserWeb = (targetDate, callbackFunction, callbackFailure) => 
 	.then( 
 		res => {
 				callbackFunction(res.data)
-	})
-	.catch( err => {
-		
-		let result = checkError(err)
-		//console.log(result)
-		callbackFailure(result)
-	});
-};
-
-// This is for our testing!
-export const APIGetEmailAIData = (requestID, callbackFunction, callbackFailure) => {
-	const config = {
-		headers: { Authorization: `JWT ${accessToken}` }
-	};
-	
-	//!! IS THE EMAIL ID ACTUALLY SECRET? !!
-	//!! CHANGE THIS TO A POST IF SO!!
-	
-	axiosInstance.get("/api/getEmailScan/?emailID="+requestID, config)
-	.then( 
-		res => {
-			//console.log(res.data)
-			if (res.data.length > 0) {
-				callbackFunction(res.data[0])
-			}
-			else {
-				callbackFailure({'mod':37, 'text':"No Data to read!"})
-			}
-
 	})
 	.catch( err => {
 		

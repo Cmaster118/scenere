@@ -26,6 +26,8 @@ const promptType = [
 ]
 */
 
+const debugPageName = "Journal Make"
+
 // START OF EXAMPLE CODE FROM THE DRAFT.JS!!!!!
 class StyleButton extends React.Component {
 	constructor() {
@@ -230,7 +232,7 @@ class RatingIteration extends React.Component {
 			<div className="RatingIteration">
 				{this.props.alreadyDone && 
 					<div className="row">
-						<div className="col text-warning">
+						<div className="col text-success">
 							Already Submitted!
 						</div>
 					</div>
@@ -320,6 +322,9 @@ class JournalIteration extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
+			lastTargetDiv: props.targetDiv,
+			lastPromptID: props.id,
+			lastInitialSave: props.initialSave,
 			editorState: this.loadData(),
 		}	
 		this.focusMe = (event) => this.refs.editor.focus();
@@ -330,9 +335,26 @@ class JournalIteration extends React.Component {
 		};
 	}
 	
-	loadData = () => {
+	static getDerivedStateFromProps(props, state) {
 		
+		if (state.lastPromptID !== props.id || state.lastTargetDiv !== props.targetDiv) {
+			
+			if (props.initialSave !== undefined) {
+
+				return {editorState: EditorState.createWithContent( convertFromRaw(props.initialSave["data"]["block"]) ), lastPromptID: props.id, lastTargetDiv: props.targetDiv,}
+				//return {editorState: state.editorState}
+			}
+			
+			return {editorState: EditorState.createEmpty(), lastPromptID: props.id, lastTargetDiv: props.targetDiv,}
+		}
+		else {
+			return {editorState: state.editorState}
+		}
+	}
+	
+	loadData = () => {
 		if (this.props.initialSave !== undefined) {
+			//console.log(this.props.initialSave["data"]["raw"])
 			return EditorState.createWithContent( convertFromRaw(this.props.initialSave["data"]["block"]) )
 		}
 		
@@ -456,14 +478,15 @@ class journalCreate extends React.Component {
 	}
 	
 	journalPostFailure = (responseData) => {
-		//let returnData = []
+		let returnData = []
 		// Server is dead
 		if (responseData["action"] === 0) {
 			
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.props.refreshToken(this.saveFullSet)
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Journal Posting")
+			this.props.refreshToken(this.saveCurrent)
 			return
 		}
 		// Invalid Permissions
@@ -483,13 +506,16 @@ class journalCreate extends React.Component {
 
 		}
 		
-		//returnData = responseData['messages']
+		this.props.debugSet(debugPageName, "Journal Posting", "Failure")
+		returnData = responseData['messages']
 		this.setState({
-			//journalErrors: returnData,
+			journalErrors: returnData,
 			postJournalStatus:3,
 		})
 	}
 	journalPostCallback = (incomingStuff) => {
+		
+		this.props.debugSet(debugPageName, "Journal Posting", "Success")
 		// Set something to notify user....
 		this.setState({
 			journalErrors: [],
@@ -523,7 +549,8 @@ class journalCreate extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
-			this.props.refreshToken(this.saveFullSet)
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Multi Choice Posting")
+			this.props.refreshToken(this.saveCurrent)
 			return
 		}
 		// Invalid Permissions
@@ -543,6 +570,7 @@ class journalCreate extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Multi Choice Posting", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			nonJournalErrors: returnData,
@@ -550,6 +578,8 @@ class journalCreate extends React.Component {
 		})
 	}
 	nonJournalPostCallback = (incomingStuff) => {
+		
+		this.props.debugSet(debugPageName, "Multi Choice Posting", "Success")
 		// Set something to notify user....
 		this.setState({
 			journalErrors: [],
@@ -599,46 +629,68 @@ class journalCreate extends React.Component {
 			duplicate[prop] = this.state.promptData[prop];
 		}
 		
-		duplicate[identifier] = {"targetID":targetID, "type":type, "data":data}
+		if (!(targetID in duplicate)) {
+			duplicate[targetID] = {}
+		}
+		
+		if (!(identifier in duplicate[targetID])) {
+			duplicate[targetID][identifier] = {}
+		}
+		
+		duplicate[targetID][identifier] = {"type":type, "data":data}
 		
 		this.setState({
 			promptData: duplicate
 		})
 		
-		timedSaveStorage("promptDataSaved-"+this.props.currentUser, duplicate, 1)
+		// This is likely poor
+		timedSaveStorage("promptDataSaved-"+this.props.currentUser, duplicate, 0)
 	}
 	
-	saveFullSet = () => {
+	saveCurrent = () => {
 
 		let targetID = -1
 		if (this.props.promptList.length > 0 && this.state.selectedDivision >= 0 && this.state.selectedDivision < this.props.promptList.length) {
-			targetID = this.props.promptList[this.state.selectedDivision]["divTarget"]["id"]
+			
+			if (this.props.promptList[this.state.selectedDivision]["typeFlag"]) {
+				targetID = 'usr'
+			}
+			else {
+				targetID = this.props.promptList[this.state.selectedDivision]["divTarget"]["id"]
+			}
+			
 		}
 		else {
 			// Invalid Selection!]
 			return
 		}
 		
-		for (let index in this.state.promptData) {
-
-			if (this.state.promptData[index] === undefined) {
+		let runAmount = 0
+		for (let promptID in this.state.promptData[targetID]) {
+			
+			let checkMatch = this.checkIfDoneToday(targetID, promptID)
+			if (checkMatch) {
 				continue
 			}
 			
-			if (this.state.promptData[index]["targetID"] === targetID) {
-				//console.log("Allowed to save!")
-				//console.log(this.state.promptData[index]["data"])
-				
-				if ( this.state.promptData[index]["type"] === 0 ) {
-				this.postJournal( index, this.state.promptData[index]["data"], this.state.promptData[index]["targetID"] )
-				}
-				else {
-					this.postNonJournal( index, this.state.promptData[index]["data"], this.state.promptData[index]["targetID"] )
-				}
+			if (this.state.promptData[targetID][promptID] === undefined) {
+				continue
+			}
+								
+			if ( this.state.promptData[targetID][promptID]["type"] === 0 ) {
+				//console.log("Save Journal")
+				this.postJournal( promptID, this.state.promptData[targetID][promptID]["data"], targetID )
 			}
 			else {
-				//Display Error
+				//console.log("Save Non Journal")
+				this.postNonJournal( promptID, this.state.promptData[targetID][promptID]["data"], targetID )
 			}
+			
+			runAmount += 1
+		}
+		
+		if (runAmount === 0) {
+			// NOTHING POSTED! ERROR?
 		}
 	}
 	
@@ -648,6 +700,60 @@ class journalCreate extends React.Component {
 			selectedDivision:Number(event.target.value)
 		})
 	}
+	
+	checkIfDoneToday = (currentDivID, promptID) => {
+		let matchToday = false
+
+		// This needs to be put down in the switch statement so all 3 are not run at the same time...
+		// Either that or the if checks :P
+		// Too lazy right now :P
+		if (this.props.nonJournalPromptsDone["today"] !== undefined) {
+			if (currentDivID in this.props.nonJournalPromptsDone["today"]) {
+				for (let i in this.props.nonJournalPromptsDone["today"][currentDivID]) {
+
+					if (this.props.nonJournalPromptsDone["today"][currentDivID][i] === null) {
+						continue
+					}
+					if ( promptID === this.props.nonJournalPromptsDone["today"][currentDivID][i]["identifier"]) {
+						matchToday = true
+						break
+					}
+				}
+			}
+		}
+		
+		if (this.props.journalPromptsDone["today"] !== undefined) {
+			if (currentDivID in this.props.journalPromptsDone["today"]) {
+				for (let i in this.props.journalPromptsDone["today"][currentDivID]) {
+
+					if (this.props.journalPromptsDone["today"][currentDivID][i] === null) {
+						continue
+					}
+					if ( promptID === this.props.journalPromptsDone["today"][currentDivID][i]["identifier"]) {
+						matchToday = true
+						break
+					}
+				}
+			}
+		}
+		
+		if (this.props.journalScanPromptsDone["today"] !== undefined) {
+			if (currentDivID in this.props.journalScanPromptsDone["today"]) {
+				for (let i in this.props.journalScanPromptsDone["today"][currentDivID]) {
+
+					if (this.props.journalScanPromptsDone["today"][currentDivID][i] === null) {
+						continue
+					}
+					if ( promptID === this.props.journalScanPromptsDone["today"][currentDivID][i]["identifier"]) {
+						matchToday = true
+						break
+					}
+				}
+			}
+		}
+		
+		return matchToday
+	}
 
 	render() {
 		
@@ -655,27 +761,54 @@ class journalCreate extends React.Component {
 		let currentDisplayDivision = "None Selected!"
 		let currentDivID = -1
 		if (this.props.promptList.length > 0 && this.state.selectedDivision >= 0 && this.state.selectedDivision < this.props.promptList.length) {
-			currentDisplayDivision = this.props.promptList[this.state.selectedDivision]["divTarget"]["divisionName"]
-			currentDivID = this.props.promptList[this.state.selectedDivision]["divTarget"]["id"]
+			
+			if (this.props.promptList[this.state.selectedDivision]["typeFlag"]) {
+				currentDisplayDivision = "Prompts For You"
+				currentDivID = "usr"
+			}
+			else {
+				currentDisplayDivision = "Prompts for " + this.props.promptList[this.state.selectedDivision]["divTarget"]["divisionName"]
+				currentDivID = this.props.promptList[this.state.selectedDivision]["divTarget"]["id"]
+			}
 			promptSet = this.props.promptList[this.state.selectedDivision]["promptSet"]
 		}
 		
 		let displayButtonSet = []
+
 		for (let index in this.props.promptList) {
-			let dataTarget = this.props.promptList[index]["divTarget"]
-			//let dataPromptList = this.props.promptList[index]["divTarget"]
 			
-			let classSet = "btn btn-outline-secondary"
-			if (String(this.state.selectedDivision) === index) {
-				classSet = "btn btn-secondary"
+			if (this.props.promptList[index]["typeFlag"]) {
+				let dataTarget = this.props.promptList[index]["userTarget"]
+
+				let classSet = "btn btn-outline-secondary"
+				if (String(this.state.selectedDivision) === index) {
+					classSet = "btn btn-secondary"
+				}
+			
+				displayButtonSet.push(			
+					<button key={index} className={classSet} value={index} onClick={this.selectDisplayButton}>
+						{dataTarget}
+					</button>
+				)
 			}
-			
-			displayButtonSet.push(			
-				<button key={index} className={classSet} value={index} id={dataTarget.id} onClick={this.selectDisplayButton}>
-					{dataTarget.divisionName}
-				</button>
-			)
+			else {
+				let dataTarget = this.props.promptList[index]["divTarget"]
+				
+				let classSet = "btn btn-outline-secondary"
+				if (String(this.state.selectedDivision) === index) {
+					classSet = "btn btn-secondary"
+				}
+				
+				displayButtonSet.push(			
+					<button key={index} className={classSet} value={index} onClick={this.selectDisplayButton}>
+						{dataTarget.divisionName}
+					</button>
+				)
+			}
 		}
+		
+		//console.log( currentDivID )
+		//console.log( this.props.journalPromptsDone["today"] )
 		
 		// Lets mess about!
 		let promptDisplay = []
@@ -684,42 +817,23 @@ class journalCreate extends React.Component {
 			let outputThing = "Prompt Showing Error!"
 			let promptID = promptSet[index]['identifier']
 			
-			let matchToday = false
-			for (let i in this.props.nonJournalPromptsDone["today"]) {
-				if (this.props.nonJournalPromptsDone["today"][i] === null) {
-					continue
-				}
-				if ( promptID === this.props.nonJournalPromptsDone["today"][i]["identifier"]) {
-					matchToday = true
-					break
-				}
-			}
-			for (let i in this.props.journalPromptsDone["today"]) {
-				if (this.props.journalPromptsDone["today"][i] === null) {
-					continue
-				}
-				if ( promptID === this.props.journalPromptsDone["today"][i]["identifier"]) {
-					matchToday = true
-					break
-				}
-			}
-			for (let i in this.props.journalScanPromptsDone["today"]) {
-				if (this.props.journalScanPromptsDone["today"][i] === null) {
-					continue
-				}
-				if ( promptID === this.props.journalScanPromptsDone["today"][i]["identifier"]) {
-					matchToday = true
-					break
-				}
-			}
+			let matchToday = this.checkIfDoneToday(currentDivID, promptID)
 			
-			
+			let setData = this.state.promptData[currentDivID]
+			let saveData = undefined
+			try{
+				saveData = setData[promptID]
+			}
+			catch{
+				
+			}
+
 			switch ( promptSet[index]['promptType'] ) {
 				// Open Ended
 				case 0:
+					
 					outputThing = <JournalIteration
-						
-						initialSave={this.state.promptData[promptID]}
+						initialSave={saveData}
 						id={promptID}
 						targetDiv={currentDivID}
 						saveTo={this.savePromptData}	
@@ -730,7 +844,7 @@ class journalCreate extends React.Component {
 				case 1:
 					outputThing = <LikertIteration 
 					
-						initialSave={this.state.promptData[promptID]}
+						initialSave={saveData}
 						id={promptID}
 						targetDiv={currentDivID}
 						saveTo={this.savePromptData}	
@@ -741,7 +855,7 @@ class journalCreate extends React.Component {
 				case 2:
 					outputThing = <RatingIteration 
 					
-						initialSave={this.state.promptData[promptID]}
+						initialSave={saveData}
 						id={promptID}
 						targetDiv={currentDivID}
 						saveTo={this.savePromptData}	
@@ -754,7 +868,7 @@ class journalCreate extends React.Component {
 					
 						choices={promptSet[index]["promptChoices"]}
 					
-						initialSave={this.state.promptData[promptID]}
+						initialSave={saveData}
 						id={promptID}
 						targetDiv={currentDivID}
 						saveTo={this.savePromptData}	
@@ -808,6 +922,15 @@ class journalCreate extends React.Component {
 				}
 			}
 			
+			let setData = this.state.promptData[currentDivID]
+			let saveData = undefined
+			try{
+				saveData = setData[promptID]
+			}
+			catch{
+				
+			}
+			
 			promptDisplay.push (
 				<div key={0}>
 					<div className="row my-3">
@@ -817,7 +940,7 @@ class journalCreate extends React.Component {
 							</h5>
 							<div>
 								<JournalIteration
-									initialSave={this.state.promptData[promptID]}
+									initialSave={saveData}
 									id={promptID}
 									saveTo={this.savePromptData}	
 									alreadyDone={matchToday}
@@ -835,6 +958,8 @@ class journalCreate extends React.Component {
 		let showSuccess = this.state.postJournalStatus === 2 || this.state.postNonJournalStatus === 2
 		let showError = this.state.postJournalStatus === 3 || this.state.postNonJournalStatus === 3
 		
+		// Note to self, my error game is awful!
+		// It first goes from here!
 		let errorParse = []
 		for (let index in this.state.journalErrors) {
 			errorParse.push(
@@ -861,9 +986,9 @@ class journalCreate extends React.Component {
 						<div className="card-header">
 							<div className="row">
 								<div className="col">
-									<h4>
+									<h5>
 										{currentDisplayDivision}
-									</h4>
+									</h5>
 								</div>
 							</div>
 							<div className="row">
@@ -877,7 +1002,7 @@ class journalCreate extends React.Component {
 							
 							<div className="row">
 								<div className="col">
-									<button className="btn btn-outline-primary" onMouseDown={this.saveFullSet}> Post! </button>
+									<button className="btn btn-outline-primary" onMouseDown={this.saveCurrent}> Post! </button>
 								</div>
 							</div>
 						</div>
@@ -896,7 +1021,7 @@ class journalCreate extends React.Component {
 						<Alert.Heading>Success!</Alert.Heading>
 						<hr />
 						<p>
-						  Entry Posted!
+						  Entries Posted!
 						</p>
 						<hr />
 					</Alert>

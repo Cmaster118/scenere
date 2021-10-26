@@ -4,6 +4,8 @@ import Graph from "react-graph-vis";
 import { Alert } from 'react-bootstrap';
 import { Accordion, Card } from 'react-bootstrap';
 
+import { ChevronDown } from 'react-bootstrap-icons';
+
 //APIGetDivisionWebDates
 import { APIGetUserWeb } from "../../utils";
 import { convertScanToWidth, convertScanToColor, graphOptions } from "../../utils";
@@ -14,32 +16,12 @@ import 'react-calendar/dist/Calendar.css';
 
 import { withRouter } from "react-router-dom";
 
+const debugPageName = "User Webs"
+
 // How would these even work???
 //import "./styles.css";
 // need to import the vis network css in order to show tooltip
 //import "./network.css";
-
-const GenerateTestInfo = () => {
-	
-	let toSetList = []
-	
-	const maxNodes = Math.floor(20*Math.random())
-	for (let i = 1; i < maxNodes; i++) {
-		toSetList.push(
-			{"dispName":"Other User " + i, to:i, sentiment:2*Math.random()-1, freq:Math.random()*7}
-		)
-	}
-	
-	let testInfo = [{
-		'id':0,
-		"name": "This Users Name",
-		'isTracked': true,
-		
-		'toSet':toSetList,
-	}]
-	
-	return testInfo
-}
 
 class UserWeb extends React.Component {
 	
@@ -47,8 +29,17 @@ class UserWeb extends React.Component {
         super(props);
         this.state = {
 			
+			maxNodes:20,
+			minNodes:0,
+			
+			maxSenti:1,
+			minSenti:-1,
+			
+			maxFreq:7,
+			minFreq:0,
+			
 			loadedDataDate: "None",
-			loadedData: 0,
+			loadedData: [],
 			graphDataPrimary: this.GenerateGraph( [] ),
 			
 			selectedNodes: ["None"],
@@ -59,6 +50,28 @@ class UserWeb extends React.Component {
 			
 			selectedWebDay: new Date(),
         };
+	}
+	
+	GenerateTestInfo = () => {
+	
+		let toSetList = []
+
+		const numNodes = Math.floor( Math.random()*(this.state.maxNodes-this.state.minNodes)+this.state.minNodes )
+		for (let i = 1; i < numNodes; i++) {
+			toSetList.push(
+				{"dispName":"Other User " + i, to:i, sentiment:Math.random()*(this.state.maxSenti-this.state.minSenti)+this.state.minSenti, freq:Math.random()*(this.state.maxFreq-this.state.minFreq) + this.state.minFreq}
+			)
+		}
+		
+		let testInfo = [{
+			'id':0,
+			"name": "This Users Name",
+			'isTracked': true,
+			
+			'toSet':toSetList,
+		}]
+		
+		return testInfo
 	}
 	
 	timedRefresh = () => {
@@ -142,6 +155,7 @@ class UserWeb extends React.Component {
 		}
 		else if (incomingError['action'] === 1) {
 			//Unauthorized
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get User Web")
 			this.props.refreshToken(this.getUserWebRecent)
 			return
 		}
@@ -149,6 +163,7 @@ class UserWeb extends React.Component {
 			// Obtain error!
 		}
 		
+		this.props.debugSet(debugPageName, "Get User Web", "Failure")
 		this.setState({
 			getWebStatus: 3,
 			getDatesWebError: incomingError["messages"],
@@ -160,13 +175,10 @@ class UserWeb extends React.Component {
 			// There should ONLY BE 1
 			webThing = incomingWeb[0]["webStructure"]
 		}
-		
-		if (typeof(webThing) === 'object') {
-			webThing = [webThing]
-		}
-		
+
+		this.props.debugSet(debugPageName, "Get User Web", "Success")
 		this.setState({
-			loadedData: webThing.length,
+			loadedData: webThing,
 			graphDataPrimary: this.GenerateGraph( webThing ),	
 			loadedDataDate: "Current",
 			getWebStatus: 2,
@@ -199,7 +211,7 @@ class UserWeb extends React.Component {
 		}
 		else if (incomingError['action'] === 1) {
 			//Unauthorized
-
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get User Web")
 			this.props.refreshToken(this.timedRefresh)
 			return
 		}
@@ -207,6 +219,7 @@ class UserWeb extends React.Component {
 			// Obtain error!
 		}
 		
+		this.props.debugSet(debugPageName, "Get User Web", "Failure")
 		this.setState({
 			getWebStatus: 3,
 			getDatesWebError: incomingError["messages"],
@@ -221,12 +234,9 @@ class UserWeb extends React.Component {
 			webDate = incomingWeb[0]['forDate']
 		}
 		
-		if (typeof(webThing) === 'object') {
-			webThing = [webThing]
-		}
-		
+		this.props.debugSet(debugPageName, "Get User Web", "Success")
 		this.setState({
-			loadedData: incomingWeb.length,
+			loadedData: webThing,
 			graphDataPrimary: this.GenerateGraph( webThing ),	
 			loadedDataDate: webDate,
 			getWebStatus: 2,
@@ -262,7 +272,7 @@ class UserWeb extends React.Component {
 	}
 	
 	loadData = () => {
-		const dert = GenerateTestInfo()
+		const dert = this.GenerateTestInfo()
 		
 		// If something, set to current, if not, set to the date?
 		let whenPicked = "Current"
@@ -272,6 +282,27 @@ class UserWeb extends React.Component {
 			loadedData: dert.length,
 			graphDataPrimary: this.GenerateGraph( dert ),
 		})
+	}
+	
+	maxNodeFieldChange = (event) => {
+		this.setState( {maxNodes: Number(event.target.value)} )
+	}
+	minNodeFieldChange = (event) => {
+		this.setState( {minNodes: Number(event.target.value)} )
+	}
+	
+	maxSentiFieldChange = (event) => {
+		this.setState( {maxSenti: Number(event.target.value)} )
+	}
+	minSentiFieldChange = (event) => {
+		this.setState( {minSenti: Number(event.target.value)} )
+	}
+	
+	maxFreqFieldChange = (event) => {
+		this.setState( {maxFreq: Number(event.target.value)} )
+	}
+	minFreqFieldChange = (event) => {
+		this.setState( {minFreq: Number(event.target.value)} )
 	}
 	
 	render() {
@@ -344,12 +375,9 @@ class UserWeb extends React.Component {
 		return (
 			<div className="UserWebStuff bg-secondary">
 			
-				<div className="container bg-light border">
-					<div className="row">
+				<div className="container bg-light border shadow">
+					<div className="row my-3">
 						<div className="col">
-							<button className="btn btn-secondary" onClick={this.loadData}>
-								Load Example Data
-							</button>
 							<button className="btn btn-dark" onClick={this.getUserWebRecent}>
 								Load Most Recent Web From Server
 							</button>
@@ -358,8 +386,18 @@ class UserWeb extends React.Component {
 					<div className="row">
 						<div className="col">
 							<Accordion>
-								<Accordion.Toggle as={Card.Header} className="border" variant="link" eventKey="open">
-									Get a Previous Web
+								<Accordion.Toggle as={Card.Header} className="border btn btn-outline-dark btn-block" variant="link" eventKey="open">
+									<div className="row">
+										<div className="col-1">
+
+										</div>
+										<div className="col">
+											Get a Previous Web 
+										</div>
+										<div className="col-1">
+											<ChevronDown />
+										</div>
+									</div>
 								</Accordion.Toggle>
 								
 								<Accordion.Collapse eventKey="open">
@@ -384,8 +422,81 @@ class UserWeb extends React.Component {
 						</div>
 					</div>
 					
+					<div className="row my-3">
+						<div className="col">
+							
+							<Accordion>
+								<Accordion.Toggle as={Card.Header} className="border btn btn-outline-dark btn-block" variant="link" eventKey="open">
+									<div className="row">
+										<div className="col-1">
+
+										</div>
+										<div className="col">
+											Create a Test Web
+										</div>
+										<div className="col-1">
+											<ChevronDown />
+										</div>
+									</div>
+								</Accordion.Toggle>
+								
+								<Accordion.Collapse eventKey="open">
+								
+									<div>
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Nodes</label>
+													<input type='number' className="form-control" value={this.state.maxNodes} onChange={this.maxNodeFieldChange} placeholder='Enter Max Node Number' />
+													
+													<label id="label-left">Min Nodes</label>
+													<input type='number' className="form-control" value={this.state.minNodes} onChange={this.minNodeFieldChange} placeholder='Enter Min Node Number' />
+												</div>
+											</div>
+										</div>
+										
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Sentiment</label>
+													<input type='number' className="form-control" value={this.state.maxSenti} onChange={this.maxSentiFieldChange} placeholder='Enter Max Sentiment' />
+													
+													<label id="label-left">Min Seniment</label>
+													<input type='number' className="form-control" value={this.state.minSenti} onChange={this.minSentiFieldChange} placeholder='Enter Min Sentiment' />
+												</div>
+											</div>
+										</div>
+										
+										<div className="row my-2">
+											<div className="col">
+												<div className='form-group'>
+													<label id="label-left">Max Email Amount</label>
+													<input type='number' className="form-control" value={this.state.maxFreq} onChange={this.maxFreqFieldChange} placeholder='Enter Max Email Amount' />
+													
+													<label id="label-left">Min Email Amount</label>
+													<input type='number' className="form-control" value={this.state.minFreq} onChange={this.minFreqFieldChange} placeholder='Enter Min Email Amount' />
+												</div>
+											</div>
+										</div>
+									
+										<div className="row">
+											<div className="col"/>
+											<div className="col-">
+												<button className="btn btn-secondary" onClick={this.loadData}>
+													Create Data!
+												</button>
+											</div>
+											<div className="col"/>
+										</div>
+									</div>
+								</Accordion.Collapse>
+								
+							</Accordion>
+						</div>
+					</div>
+					
 					<div className="border">
-						{this.state.loadedData === 0 ?
+						{this.state.loadedData.length === 0 ?
 							<div className="row my-5">
 								{show0 && <div className="col">Waiting for signal to get data</div>}
 								{show1 && <div className="col">Getting Data...</div>}
@@ -411,7 +522,9 @@ class UserWeb extends React.Component {
 							</div>
 						}
 					</div>
+					
 					<ShowWebInfoComponent/>
+					<div className="row my-2"/>
 					
 				</div>
 				

@@ -27,6 +27,11 @@ class contact extends React.Component {
 		})
 	}
 	handleSubmit = (event) => {
+		
+		// Need to do a check on if this is a valid email
+		if (this.state.email === "") {
+			return
+		}
 
 		APIBetaSignEmail(this.state.email, this.callbackSuccess, this.callbackFailure)
 		event.preventDefault();

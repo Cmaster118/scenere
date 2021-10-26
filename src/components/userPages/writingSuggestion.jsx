@@ -166,7 +166,7 @@ const InlineStyleControls = (props) => {
 };
 
 // This contains the EditorJS code... So lets do it last as I am unsure as of what to do...
-class journalView extends React.Component {
+class suggestionMake extends React.Component {
 	
 	constructor(props) {
         super(props);
@@ -320,7 +320,7 @@ class journalView extends React.Component {
 			displayDivisionList.push(
 				<div className="row" key="0">
 					<div className="col">
-						No Companies! If you see this page then this is an error!
+						The Server has reported you are not the governed user for any companies!
 					</div>
 				</div>
 			)
@@ -369,7 +369,7 @@ class journalView extends React.Component {
 									<div className="row">
 										<div className="col my-2">
 											<div className={errorCheckingClass}>
-												Select Part of Company:
+												<h4><u>Which Company Part Is This For?</u></h4>
 											</div>
 										</div>
 									</div>
@@ -402,11 +402,11 @@ class journalView extends React.Component {
 						<div className="col">
 							<div className="card shadow">
 								<div className="card-header">
-									<h4>Writing Suggestion for:</h4>
+									<h4><u>Writing Suggestion for:</u></h4>
 									<div className="row">
 										<div className="col my-2">
 											<div className={errorCheckingClass}>
-												{selectedDivisionFull}
+												<h5><b>{selectedDivisionFull}</b></h5>
 											</div>
 										</div>
 									</div>
@@ -484,7 +484,7 @@ class journalView extends React.Component {
 					</Alert>
 					
 					<Alert show={showError} variant="danger">
-						<Alert.Heading>Danger!</Alert.Heading>
+						<Alert.Heading>Error!</Alert.Heading>
 						<hr />
 						<p>
 							{errorParse}
@@ -498,4 +498,4 @@ class journalView extends React.Component {
 	}
 }
 
-export default withRouter(journalView);
+export default withRouter(suggestionMake);

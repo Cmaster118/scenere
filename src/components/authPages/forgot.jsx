@@ -26,18 +26,9 @@ class forgotPassword extends React.Component {
 
 			passwordsSameError: false,
 			
-			networkError: false,
+			generalErrorDetail: [],
 			
-			emailError: false,
-			emailErrorDetail: '',
-			
-			tokenError: false,
-			tokenErrorDetail: '',
-			
-			passwordError: false,
-			passwordErrorDetail: '',
-			
-			uncaughtError: false,
+			uncaughtError: true,
 			
 			sendEmailState: 0,
 			validateCodeState: 0,
@@ -66,26 +57,36 @@ class forgotPassword extends React.Component {
 	}
 
 	swapToCode = () => {
-		this.setState( {currentState: 1} )
+		this.setState({
+			currentState: 1,
+			generalErrorDetail: [],
+		})
+	}
+	
+	forceSwapForTesting = (event) => {
+		this.setState({
+			currentState: Number(event.target.value),
+			generalErrorDetail: [],
+			
+			sendEmailState: 0,
+			validateCodeState: 0,
+			submitPasswordState: 0,
+		})
 	}
 
 	sendEmailSuccess = (successCode, successData) => {
-		console.log("Email Send Success")
+		//console.log("Email Send Success")
 		this.setState({
 			currentState: 1,
-			networkError: false,
-			uncaughtError: false,
+			generalErrorDetail:[],
 			
 			sendEmailState:2,
 		})
 	}
 	sendEmailFailure = (responseData) => {
 		
-		let networkErrorFlag = false
-		let emailErrorFlag = false
-		let unknownErrorFlag = false
+		let emailErrorDetails = []
 		
-		let emailErrorDetails = ""
 		// Server is dead
 		if (responseData["action"] === 0) {
 			
@@ -97,10 +98,10 @@ class forgotPassword extends React.Component {
 		// Bad Request
 		else if (responseData["action"] === 3) {
 			for (let index in responseData['messages']) {
-				if (responseData['messages'][index]['mod'] === 4) {
-					emailErrorFlag = true
-					emailErrorDetails = responseData['messages'][index]['text']
-				}
+				// Hmmmmmmmmm
+				//if (responseData['messages'][index]['mod'] === 4) {
+				emailErrorDetails.push(responseData['messages'][index]['text'])
+				//}
 			}
 		}
 		// Server Exploded Error
@@ -113,17 +114,13 @@ class forgotPassword extends React.Component {
 		}
 
 		this.setState({
-			networkError:networkErrorFlag,
-			emailError:emailErrorFlag,
-			uncaughtError:unknownErrorFlag,
-			
-			emailErrorDetail:emailErrorDetails,
+			generalErrorDetail:emailErrorDetails,
 			
 			sendEmailState:3,
 		})
 	}
 	sendEmail = () => {
-		console.log("Sending the Email Here...")
+		//console.log("Sending the Email Here...")
 		APIForgotEmailSend(this.state.email, this.sendEmailSuccess, this.sendEmailFailure)
 		
 		this.setState({
@@ -133,11 +130,7 @@ class forgotPassword extends React.Component {
 
 	checkTokenFailure = (responseData) => {
 		
-		let networkErrorFlag = false
-		let tokenErrorFlag = false
-		let unknownErrorFlag = false
-		
-		let tokenErrorDetails = ""
+		let tokenErrorDetails = []
 		// Server is dead
 		if (responseData["action"] === 0) {
 			
@@ -149,10 +142,9 @@ class forgotPassword extends React.Component {
 		// Bad Request
 		else if (responseData["action"] === 3) {
 			for (let index in responseData['messages']) {
-				if (responseData['messages'][index]['mod'] === 4) {
-					tokenErrorFlag = true
-					tokenErrorDetails = responseData['messages'][index]['text']
-				}
+				//if (responseData['messages'][index]['mod'] === 4) {
+				tokenErrorDetails.push(responseData['messages'][index]['text'])
+				//}
 			}
 		}
 		// Server Exploded Error
@@ -165,40 +157,35 @@ class forgotPassword extends React.Component {
 		}
 		
 		this.setState({
-			networkError:networkErrorFlag,
-			tokenError:tokenErrorFlag,
-			uncaughtError:unknownErrorFlag,
-			
-			tokenErrorDetail:tokenErrorDetails[1],
+			generalErrorDetail:tokenErrorDetails,
 			
 			validateCodeState:3,
 		})
 	}
 	checkTokenSuccess = (successCode) => {
-		console.log("Token Matched!")
+		//console.log("Token Matched!")
 		this.setState({
 			currentState: 2,
-			networkError: false,
-			uncaughtError: false,
+			generalErrorDetail:[],
 			
 			validateCodeState:2,
 		})
 	}
 	checkToken = () => {
-		console.log("Send Token Here...")
+		//console.log("Send Token Here...")
 		APIForgotEmailValidate( this.state.resetToken, this.checkTokenSuccess, this.checkTokenFailure)
 
 		this.setState({
+			generalErrorDetail:[],
 			validateCodeState:1,
+			
+			submitPasswordState:0,
 		})
 	}
 	
 	submitPasswordFailure = (responseData) => {
-		let networkErrorFlag = false
-		let passwordErrorFlag = false
-		let unknownErrorFlag = false
-		
-		let passwordErrorDetail = ""
+		let errorText = []
+		let newState = 2
 		// Server is dead
 		if (responseData["action"] === 0) {
 			
@@ -210,13 +197,12 @@ class forgotPassword extends React.Component {
 		// Bad Request
 		else if (responseData["action"] === 3) {
 			for (let index in responseData['messages']) {
-				if (responseData['messages'][index]['mod'] === 2) {
-					passwordErrorFlag = true
-					passwordErrorDetail = responseData['messages'][index]['text']
-				}
-				else {
-					unknownErrorFlag = true
-				}
+				//if (responseData['messages'][index]['mod'] === 2) {
+				errorText.push(responseData['messages'][index]['text'])
+				//}
+				//else {
+				//	unknownErrorFlag = true
+				//}
 			}
 		}
 		// Server Exploded Error
@@ -227,32 +213,33 @@ class forgotPassword extends React.Component {
 		else if (responseData["action"] === 5) {
 
 		}
+		// 404!
+		else if (responseData["action"] === 6) {
+			errorText.push("Token was not found!")
+			newState = 1
+		}
 		
 		this.setState({
-			networkError:networkErrorFlag,
-			passwordError:passwordErrorFlag,
-			uncaughtError:unknownErrorFlag,
+			generalErrorDetail: errorText,
 			
-			passwordErrorDetail:passwordErrorDetail,
+			currentState: newState,
 			
 			submitPasswordState:3,
 		})
 	}
 	submitPasswordSuccess = (successCode) => {
-		console.log("Password Reset Success!")
+		//console.log("Password Reset Success!")
 		this.setState({
 			currentState: 3,
-			networkError: false,
-			uncaughtError: false,
-			
+			generalErrorDetail:[],
 			submitPasswordState:2,
 		})
 	}
 	submitPasswords = () => {
 		// I can use the API for this...	
-		console.log("Checking Passwords...")
+		//console.log("Checking Passwords...")
 		if (this.arePasswordsSame()) {
-			console.log("Passwords Checked out!")
+			//console.log("Passwords Checked out!")
 			APIForgotEmailChangePassword(this.state.resetToken, this.state.password1, this.state.password2, this.submitPasswordSuccess, this.submitPasswordFailure)
 			
 			this.setState({
@@ -260,7 +247,7 @@ class forgotPassword extends React.Component {
 			})
 		}
 		else {
-			console.log("Passwords Failed!")
+			//console.log("Passwords Failed!")
 		}
 	}
 	
@@ -298,13 +285,6 @@ class forgotPassword extends React.Component {
 
 		// Enter Email For Recovery State
 		if (this.state.currentState === 0) {
-			
-			if (this.state.networkError) {
-				
-			}
-			if (this.state.emailError) {
-				
-			}
 			
 			currentMessage = (
 				<div className="row">
@@ -351,13 +331,6 @@ class forgotPassword extends React.Component {
 		}
 		// Enter Token From Email State
 		else if (this.state.currentState === 1) {
-			
-			if (this.state.networkError) {
-				
-			}
-			if (this.state.tokenError) {
-				
-			}
 
 			currentMessage = (
 				<div className="col">
@@ -387,13 +360,6 @@ class forgotPassword extends React.Component {
 		}
 		// Enter New Passwords State
 		else if (this.state.currentState === 2) {
-	
-			if (this.state.networkError) {
-				
-			}
-			if (this.state.passwordError) {
-				
-			}
 	
 			currentMessage = [
 				<div className="row" key={1}> 
@@ -464,13 +430,43 @@ class forgotPassword extends React.Component {
 			)
 		}
 		
+		
 		//let showIdle = this.state.sendEmailState === 0
 		let showWaiting = this.state.sendEmailState === 1 || this.state.validateCodeState === 1 || this.state.submitPasswordState === 1
-		let showSuccess = this.state.sendEmailState === 2 || this.state.validateCodeState === 2 || this.state.submitPasswordState === 2
+		let showSuccess = false//this.state.sendEmailState === 2 || this.state.validateCodeState === 2 || this.state.submitPasswordState === 2
 		let showError = this.state.sendEmailState === 3 || this.state.validateCodeState === 3 || this.state.submitPasswordState === 3
+
+		let indexKey = 0
+		let displayedError = []
+		
+		for (let thing in this.state.generalErrorDetail) {
+			displayedError.push( 
+				<div key={indexKey}>
+					{this.state.generalErrorDetail[thing]}
+				</div>
+			)
+			indexKey++;
+		}
+		
+		if (displayedError.length === 0) {
+			displayedError = "Unknown Error!"
+		}
 
 		return (
 			<div className='container-sm'>
+			
+				<button className="btn btn-outline-secondary" onClick={this.forceSwapForTesting} value={0}>
+					T0
+				</button>
+				<button className="btn btn-outline-secondary" onClick={this.forceSwapForTesting} value={1}>
+					T1
+				</button>
+				<button className="btn btn-outline-secondary" onClick={this.forceSwapForTesting} value={2}>
+					T2
+				</button>
+				<button className="btn btn-outline-secondary" onClick={this.forceSwapForTesting} value={3}>
+					T3
+				</button>
 				
 				<div className="row">
 					<div className="col">
@@ -505,7 +501,7 @@ class forgotPassword extends React.Component {
 					<Alert.Heading>Error!</Alert.Heading>
 					<hr />
 					<p>
-					  This should display if we got an error
+						{displayedError}
 					</p>
 					<hr />
 				</Alert>

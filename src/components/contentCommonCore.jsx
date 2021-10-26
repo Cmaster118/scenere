@@ -13,10 +13,8 @@ import { UserPages, CompanyPages, Dashboard } from "."
 import { APIGetJournalPrompts, APIGetJournalDates, APIGetNonJournalDates, APIGetSuggestionDates, APIGetSuggestionData, APIGetUsersPermTree, APIGetCompanyValidDates, APIGetCompanySummary, APIGetServerEHIData, APIGetDivisionWebDates, APICheckActive } from "../utils";
 import { APIGetUserWebDates } from "../utils";
 
-import { APIGetEmailAIData } from "../utils";
-
 //, deleteStorageKey
-import { timedLoadStorage, timedSaveStorage} from "../utils";
+import { timedLoadStorage, timedSaveStorage } from "../utils";
 //convertFromRaw
 
 // This needs to be changed out as this is now in 2 files....
@@ -32,7 +30,15 @@ import { timedLoadStorage, timedSaveStorage} from "../utils";
 ];
 */
 
+const fakeUse = (input) => {
+	
+}
+
 const waitTimeMS = 100
+//const debugPageName = "Content Common UserHalf"
+//const debugPageNameDiv = "Content Common DivisionHalf"
+const debugPageName = "Content Common"
+const debugPageNameDiv = "Content Common"
 
 class ContentPages extends React.Component {
 	
@@ -105,6 +111,7 @@ class ContentPages extends React.Component {
 			
 			getCompanyDataStatus: true,
 			
+			journalValidUserPrompts: [],
 			journalValidPrompts: [],
 			journalPromptsErrors: [],
 			getJournalPromptsStatus: 0,
@@ -135,10 +142,13 @@ class ContentPages extends React.Component {
 			// Wait until app.js has loaded....
 			this.waitForParent = setInterval(this.checkParentIsLoaded, waitTimeMS)
 		}
+		
 	}
 	
-	triggerLogout = () => {
+	triggerLogout = (sourceString) => {
+		console.log(sourceString)
 		this.props.logout()
+		this.props.debugSet(debugPageName, "Logout Trigger", sourceString)
 		this.props.history.push(this.props.reRouteSignIn)
 	}
 	
@@ -159,6 +169,7 @@ class ContentPages extends React.Component {
 	}
 	
 	checkParentIsLoaded = () => {
+		
 		if (this.props.parentHasLoaded) {
 			clearInterval(this.waitForParent)
 			//console.log("Content page Finished Loading!")
@@ -166,13 +177,20 @@ class ContentPages extends React.Component {
 			
 			return true
 		}
+		else if (this.props.currentUser === undefined) {
+			// NO USER! FECK
+			//clearInterval(this.waitForParent)
+			//this.triggerLogout("NO USER CHECK")
+			
+			//return true
+		}
 		else {
 			return false
 		}
 	}
 	
 	loadFromLocalStorage = () => {
-		let lastDivObject = timedLoadStorage('lastGotCompany');
+		let lastDivObject = timedLoadStorage(this.props.currentUser+'/lastGotCompany');
 		
 		if (lastDivObject === 0) {
 			//console.log("No User In the Storage!")
@@ -184,7 +202,7 @@ class ContentPages extends React.Component {
 			//console.log("Invalid Save!")
 		}
 		else {
-			this.getCompanyDataRequest(lastDivObject)
+			//this.getCompanyDataRequest(lastDivObject)
 		}
 		
 		this.setState({
@@ -193,7 +211,7 @@ class ContentPages extends React.Component {
 	}
 	
 	loadData = () => {
-		//console.log("Triggered Load")
+		
 		// Do have this as a check on the server side in everything... A special error
 		this.props.changeUserMenuItems(-1)
 		this.checkActiveUser()
@@ -202,25 +220,19 @@ class ContentPages extends React.Component {
 	
 	loadOtherData = () => {
 		this.getJournalPrompts()
-		this.getValidJournalDates()
-		this.getValidNonJournalDates()
+		this.getValidDates()
 		
 		this.getValidWebDates()
 		
 		this.getUserCompanyPermsApp()
 		
 		// Check to see if there was a previous load we want...
-		this.loadFromLocalStorage()
+		//this.loadFromLocalStorage()
 	}
 	
-	APIGetEmailAIDataFailure = (responseData) => {
-		console.log(responseData)
-	}
-	APIGetEmailAIDataCallback = (incomingPrompts) => {
-		console.log(incomingPrompts)
-	}
-	APIGetEmailAIData = () => {
-		APIGetEmailAIData("ASDF", this.APIGetEmailAIDataCallback, this.APIGetEmailAIDataFailure)
+	getValidDates = () => {
+		this.getValidJournalDates()
+		this.getValidNonJournalDates()
 	}
 	
 	// I should consider rolling this into the other callbacks...
@@ -233,6 +245,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Journal Prompts")
 			this.props.refreshToken(this.loadOtherData)
 			return
 		}
@@ -253,6 +266,8 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Journals", "FAILURE")
+		
 		returnData = responseData['messages']
 		this.setState({
 			journalPromptsErrors:returnData,
@@ -264,6 +279,9 @@ class ContentPages extends React.Component {
 		// Or do I just store this shiz into storage?
 		// Hm, how much... SHOULD go into storage?
 		//console.log(incomingPrompts)
+		//console.log(incomingPersonalPrompts)
+		
+		this.props.debugSet(debugPageName, "Get Journals", Number(incomingPrompts.length))
 		this.setState({
 			journalValidPrompts: incomingPrompts,
 			getJournalPromptsStatus:2,
@@ -285,7 +303,7 @@ class ContentPages extends React.Component {
 			}
 		}
 		else {
-			this.triggerLogout()
+			this.triggerLogout("GetJournalPrompts")
 		}
 	}
 	
@@ -295,10 +313,11 @@ class ContentPages extends React.Component {
 		let returnData = []
 		// Server is dead
 		if (responseData["action"] === 0) {
-			console.log("WHY")
+			//console.log("WHY")
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Active User")
 			this.props.refreshToken(this.loadData)
 			return
 		}
@@ -319,6 +338,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Active User", "Error")
 		returnData = responseData['messages']
 
 		this.setState({
@@ -328,6 +348,7 @@ class ContentPages extends React.Component {
 
 	}
 	checkActiveUserCallback = (ActiveState) => {
+		
 		if (ActiveState === true) {
 			//console.log("User is considered Active")
 			this.props.changeUserMenuItems(0)
@@ -335,10 +356,12 @@ class ContentPages extends React.Component {
 				checkActiveUserStatus: 2,
 			})
 			// Continue!
+			this.props.debugSet(debugPageName, "Active User", "True")
 			this.loadOtherData()
 		}
 		else {
 			//console.log("User needs to activate account")
+			this.props.debugSet(debugPageName, "Active User", "False")
 			this.props.history.push(this.props.activateRedirect)
 		}
 	}
@@ -350,7 +373,7 @@ class ContentPages extends React.Component {
 			})
 		}
 		else {
-			this.triggerLogout()
+			this.triggerLogout("CheckActiveUser")
 		}
 	}
 	
@@ -362,9 +385,12 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Web Dates")
 			this.props.refreshToken( this.loadOtherData )
 			return
 		}
+		
+		this.props.debugSet(debugPageName, "Get Valid Webs", "Failure")
 		
 		returnData = responseData['messages']
 		this.setState({
@@ -377,7 +403,10 @@ class ContentPages extends React.Component {
 		//Store.set(this.props.currentUser+"-ValidDates", {"journalDates":incomingJournalDates ,"AIDates":incomingJournalAIDates})
 		// Hmmmmmm, how should I do this?
 		
-		this.props.changeUserMenuItems(1)
+		this.props.debugSet(debugPageName, "Get Valid Webs", Number(incomingWebDates.length))
+		if(incomingWebDates.length > 0) {
+			this.props.changeUserMenuItems(1)
+		}
 		this.setState({
 			validUserWebDates: incomingWebDates,
 			getValidWebDatesStatus: 2,
@@ -405,7 +434,7 @@ class ContentPages extends React.Component {
 		}
 		else {
 			//console.log("Invalid User")
-			this.triggerLogout()
+			this.triggerLogout("GetValidWebDates")
 		}
 	}
 	
@@ -417,6 +446,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Journal Dates")
 			this.props.refreshToken( this.loadOtherData )
 			return
 		}
@@ -437,6 +467,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Journal Dates", "Error")
 		returnData = responseData['messages']
 		this.setState({
 			getJournalDatesStatus: 3,
@@ -449,7 +480,18 @@ class ContentPages extends React.Component {
 		//console.log(incomingJournalDates)
 		//console.log(incomingJournalAIDates)
 		
+		let thing = ""
+		let len = 0
+		for (thing in incomingJournalDates) {
+			len += 1
+		}
+		for (thing in incomingJournalAIDates) {
+			len += 1
+		}
+		fakeUse(thing)
+		
 		//Store.set(this.props.currentUser+"-ValidDates", {"journalDates":incomingJournalDates ,"AIDates":incomingJournalAIDates})
+		this.props.debugSet(debugPageName, "Get Journal Dates", len)
 		this.setState({
 			validJournalDates: incomingJournalDates,
 			validJournalScanDates: incomingJournalAIDates,
@@ -478,7 +520,7 @@ class ContentPages extends React.Component {
 		}
 		else {
 			//console.log("Invalid User")
-			this.triggerLogout()
+			this.triggerLogout("GetValidJournalDates")
 		}
 	}
 	
@@ -490,6 +532,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Multi Choice Dates")
 			this.props.refreshToken( this.loadOtherData )
 			return
 		}
@@ -510,6 +553,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Multi Choice Dates", "Error")
 		returnData = responseData['messages']
 		this.setState({
 			getNonJournalDatesStatus: 3,
@@ -521,7 +565,16 @@ class ContentPages extends React.Component {
 		
 		//console.log(incomingNonJournalDates)
 		
+		let thing = ""
+		
+		let len = 0
+		for (thing in incomingNonJournalDates) {
+			len += 1
+		}
+		fakeUse(thing)
+		
 		//Store.set(this.props.currentUser+"-ValidDates", {"journalDates":incomingJournalDates ,"AIDates":incomingJournalAIDates})
+		this.props.debugSet(debugPageName, "Get Multi Choice Dates", len)
 		this.setState({
 			validNonJournalDates: incomingNonJournalDates,
 			getNonJournalDatesStatus: 2,
@@ -547,7 +600,7 @@ class ContentPages extends React.Component {
 		}
 		else {
 			//console.log("Invalid User")
-			this.triggerLogout()
+			this.triggerLogout("GetValidNon-JournalDates")
 		}
 	}
 	
@@ -560,6 +613,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageName, "Refresh Triggered", "Get Company List")
 			this.props.refreshToken(this.loadOtherData)
 			return
 		}
@@ -580,6 +634,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageName, "Get Permissions", "Error")
 		returnData = responseData['messages']
 		this.setState({
 			getUserCompanyPermsAppStatus: 3,
@@ -587,7 +642,7 @@ class ContentPages extends React.Component {
 		})
 	}
 	companyListCallback = (incomingCompanyList) => {
-		//console.log(incomingCompanyList)
+		
 		//Store.set(this.props.currentUser+'-loadedList', incomingCompanyList)
 		this.setState({
 			userLoadedCompanyList: incomingCompanyList,
@@ -612,6 +667,7 @@ class ContentPages extends React.Component {
 			}
 		}
 
+		this.props.debugSet(debugPageName, "Get Permissions", Number(incomingCompanyList.length))
 		// Auto trigger a load? This may be bad if the user is not needing the company mode
 		// It MAY BE BETTER to put this over into the company pages....
 		// Perms can be loaded here... Hm
@@ -637,7 +693,7 @@ class ContentPages extends React.Component {
 			}
 		}
 		else {
-			this.triggerLogout()
+			this.triggerLogout("GetUserCompanyPerms")
 		}
 	}
 	
@@ -649,6 +705,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Division Dates")
 			this.props.refreshToken(this.getThatData)
 			return
 		}
@@ -669,6 +726,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Dates", "FAILURE")
 		returnData = responseData['messages']
 		this.setState({
 			getCompanyValidDatesStatus: 3,
@@ -677,6 +735,13 @@ class ContentPages extends React.Component {
 	}
 	companyDatesCallback = (incomingDatesObject) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidDates", {'dates':incomingDatesList})
+		let length = 0
+		
+		for (let thing in incomingDatesObject) {
+			length += incomingDatesObject[thing].length
+		}
+		
+		this.props.debugSet(debugPageNameDiv, "Get Division Dates", length)
 		this.setState({
 			validCompanySummaryDates: incomingDatesObject,
 			getCompanyValidDatesStatus: 2,
@@ -710,6 +775,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Division Suggesstion Dates")
 			this.props.refreshToken(this.getThatData)
 			return
 		}
@@ -730,6 +796,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Suggestion Dates", "FAILURE")
 		returnData = responseData['messages']
 		this.setState({
 			getCompanyValidSuggestionDatesStatus: 3,
@@ -739,6 +806,7 @@ class ContentPages extends React.Component {
 	companySuggestionDateCallback = (incomingDatesList) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-ValidSuggestionDates", {'dates':incomingDatesList})
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Suggestion Dates", Number(incomingDatesList.length))
 		this.setState({
 			validDivisionSuggestionDates: incomingDatesList,
 			getCompanyValidSuggestionDatesStatus: 2,
@@ -772,7 +840,9 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Company Suggestions")
 			this.props.refreshToken(this.tokenHasRefreshed)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -791,6 +861,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Suggestion Data", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getCompanySuggestionDataStatus: 3,
@@ -799,7 +870,7 @@ class ContentPages extends React.Component {
 	}
 	companySuggestionDataCallback = (targetDate, incomingData) => {
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+targetDate+"-suggestions", {'data':incomingData})
-		//console.log(incomingData)
+		this.props.debugSet(debugPageNameDiv, "Get Division Suggestion Data", "Got Data")
 		let givenDate = new Date(targetDate)
 		this.setState({
 			selectedSuggestDay: givenDate,
@@ -844,7 +915,9 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Division Summary Data")
 			this.props.refreshToken(this.tokenHasRefreshed)
+			return
 		}
 		// Invalid Permissions
 		else if (responseData["action"] === 2) {
@@ -863,6 +936,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Summary Data", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getCompanyWeeklySummaryStatus: 3,
@@ -870,6 +944,8 @@ class ContentPages extends React.Component {
 		})
 	}
 	companyDataCallback = (incomingDataDict, summaryType) => {
+		
+		this.props.debugSet(debugPageNameDiv, "Get Division Summary Data", "Success")
 		
 		//Store.set(this.props.currentUser+"-"+this.state.currentDivisionID+"-"+anchorDate+"Data", {'data':incomingDataDict})
 		this.setState({
@@ -912,7 +988,7 @@ class ContentPages extends React.Component {
 	}
 	
 	tokenHasRefreshed = () => {
-		console.log("Tell the user to redo that!")
+		//console.log("Tell the user to redo that!")
 	}
 	
 	companyEHIFailure = (responseData) => {
@@ -923,6 +999,7 @@ class ContentPages extends React.Component {
 		}
 		// Unauthorized
 		else if (responseData["action"] === 1) {
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Division EHI")
 			this.props.refreshToken(this.getThatData)
 			return
 		}
@@ -943,6 +1020,7 @@ class ContentPages extends React.Component {
 
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division EHI", "Failure")
 		returnData = responseData['messages']
 		this.setState({
 			getCompanyEHIDataStatus: 3,
@@ -950,6 +1028,7 @@ class ContentPages extends React.Component {
 		})
 	}
 	companyEHICallback = (incomingEHIData) => {
+		this.props.debugSet(debugPageNameDiv, "Get Division EHI", "Success")
 		//Store.set(this.props.currentUser+'-'+this.state.currentDivisionID+'-EHI', {'labelsDays':incomingEHIDaysLabels, 'dataDays':incomingEHIDaysData, 'labelsWeeks':incomingEHIWeeksLabels, 'dataWeeks':incomingEHIWeeksData})
 		this.setState({
 			EHIData: incomingEHIData,
@@ -980,18 +1059,22 @@ class ContentPages extends React.Component {
 	// Move this up? Move it down? Think of a way to resort this!
 	getDivisionWebDatesFailure = (incomingError) => {
 		
+		//Network Error
 		if (incomingError['action'] ===	 0) {
-			//Network Error
+			
 		}
+		//Unauthorized
 		else if (incomingError['action'] === 1) {
-			//Unauthorized
+			this.props.debugSet(debugPageNameDiv, "Refresh Triggered", "Division Web Dates")
 			this.props.refreshToken(this.getDivisionWebDates)
 			return
 		}
+		// Obtain error!
 		else if (incomingError['action'] === 3) {
-			// Obtain error!
+			
 		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Web Dates", "Failure")
 		this.setState({
 			getDatesWebStatus: 3,
 			getDatesWebError: incomingError["messages"],
@@ -1000,8 +1083,11 @@ class ContentPages extends React.Component {
 	getDivisionWebDatesCallback = (incomingDates) => {
 		//console.log(incomingWeb)
 		
-		this.props.changeCompanyMenuItems(1)
+		if(incomingDates.length > 0) {
+			this.props.changeCompanyMenuItems(1)
+		}
 		
+		this.props.debugSet(debugPageNameDiv, "Get Division Web Dates", Number(incomingDates.length))
 		this.setState({
 			validDivisionWebDates: incomingDates,
 			getDatesWebStatus: 2,
@@ -1050,7 +1136,8 @@ class ContentPages extends React.Component {
 			this.props.changeCompanyMenuItems(0)
 		}
 		
-		timedSaveStorage( "lastGotCompany", divisionObj, 1)
+		// Wait, we need the user in this too... Oops
+		timedSaveStorage( this.props.currentUser+"/lastGotCompany", divisionObj, 1)
 		
 		// So, if this triggers, the menu will be in the proper mode for that....
 		if (adminCheck || viewerCheck) {
@@ -1104,12 +1191,20 @@ class ContentPages extends React.Component {
 								toUserPage={this.props.match.url+"/userMode/journalWrite"}
 								toCompanyPage={this.props.match.url+"/companyMode/companySelect"}
 
+								journalValidPrompts={this.state.journalValidPrompts}
+								
 								userLoadedCompanyList={this.state.userLoadedCompanyList}
+								
+								validNonJournalDates={this.state.validNonJournalDates}
+								validJournalDates={this.state.validJournalDates}
+								validJournalScanDates={this.state.validJournalScanDates}
 							/>} 
 						/>
 						<Route path={this.props.match.url+"/userMode"} component={() => <UserPages
 
 								reRouteUser={this.props.reRouteUser}
+								
+								getValidDates={this.getValidDates}
 
 								currentDate={this.state.currentDate}
 								
@@ -1132,12 +1227,15 @@ class ContentPages extends React.Component {
 								
 								journalValidPrompts={this.state.journalValidPrompts}
 								journalPromptsErrors={this.state.journalPromptsErrors}
+								
+								debugSet={this.props.debugSet}
 							/>} 
 						/>
 						<Route path={this.props.match.url+"/companyMode"} component={() => <CompanyPages
 								
 								refreshToken={this.props.refreshToken}
 								parentHasLoaded={this.state.pageIsLoaded}
+								currentUser={this.props.currentUser}
 								
 								reRouteCompany={this.props.reRouteCompany}
 								userLoadedCompanyList={this.state.userLoadedCompanyList}
@@ -1204,6 +1302,8 @@ class ContentPages extends React.Component {
 								
 								getDatesWebStatus={this.state.getDatesWebStatus}
 								getDatesWebError={this.state.getDatesWebError}
+								
+								debugSet={this.props.debugSet}
 							/>} 
 						/>
 					</Switch>
